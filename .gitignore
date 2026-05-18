@@ -1,0 +1,14 @@
+# Bibliotecas embutidas (geradas automaticamente)
+libs/
+
+# Arquivos auxiliares / dados brutos
+secretario_limpo_check.csv
+secretario_powerbi.xlsx
+gerar_dashboard.py
+guia_powerbi.html
+dashboard_secretario.png
+.sixth/
+
+# Python cache
+__pycache__/
+*.pyc
