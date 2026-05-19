@@ -284,11 +284,13 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .kpi-card.vermelho{{border-color:var(--vermelho);}}
 .kpi-card.verde{{border-color:var(--verde);}}
 .kpi-card.roxo{{border-color:var(--roxo);}}
+.kpi-card.marrom{{border-color:#795548;}}
 .kpi-val{{font-size:30px;font-weight:700;color:var(--azul);line-height:1;}}
 .kpi-card.laranja .kpi-val{{color:var(--laranja);}}
 .kpi-card.vermelho .kpi-val{{color:var(--vermelho);}}
 .kpi-card.verde .kpi-val{{color:var(--verde);}}
 .kpi-card.roxo .kpi-val{{color:var(--roxo);}}
+.kpi-card.marrom .kpi-val{{color:#795548;}}
 .kpi-label{{font-size:11px;color:#666;margin-top:5px;font-weight:500;}}
 .kpi-sub{{font-size:10px;color:#999;margin-top:2px;}}
 .kpi-media{{font-size:10px;color:#555;margin-top:4px;background:#F4F8FF;border-radius:4px;padding:2px 6px;display:inline-block;font-weight:500;}}
@@ -689,6 +691,12 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
         <div class="kpi-sub" id="kpi-roubos-sub">2,7% do total</div>
         <div class="kpi-media" id="kpi-roubos-media"></div>
       </div>
+      <div class="kpi-card marrom">
+        <div class="kpi-val" id="kpi-arrom">0</div>
+        <div class="kpi-label">Arrombamentos</div>
+        <div class="kpi-sub" id="kpi-arrom-sub">0% do total</div>
+        <div class="kpi-media" id="kpi-arrom-media"></div>
+      </div>
       <div class="kpi-card roxo">
         <div class="kpi-val" id="kpi-turno">Noite</div>
         <div class="kpi-label">Turno Mais Crítico</div>
@@ -1071,12 +1079,14 @@ function renderKPIs(data) {{
   const total   = data.length;
   const furtos  = data.filter(r=>r.tipo==='Furto').length;
   const roubos  = data.filter(r=>r.tipo==='Roubo').length;
+  const arrom   = data.filter(r=>r.tipo==='Arrombamento').length;
   const turnos  = count(data,'turno');
   const bairros = count(data,'bairro');
   const topTurno  = sortedEntries(turnos)[0]||['–',0];
   const topBairro = sortedEntries(bairros)[0]||['–',0];
   const pFurtos = total ? ((furtos/total)*100).toFixed(1) : '0.0';
   const pRoubos = total ? ((roubos/total)*100).toFixed(1) : '0.0';
+  const pArrom  = total ? ((arrom/total)*100).toFixed(1)  : '0.0';
 
   // Calcular média diária
   const datas = data.map(r=>r.data).filter(Boolean).sort();
@@ -1087,22 +1097,27 @@ function renderKPIs(data) {{
     const mediaTotal  = (total/nDias).toFixed(1);
     const mediaFurtos = (furtos/nDias).toFixed(1);
     const mediaRoubos = (roubos/nDias).toFixed(1);
+    const mediaArrom  = (arrom/nDias).toFixed(1);
     document.getElementById('kpi-total-media').textContent  = `📅 ${{mediaTotal}}/dia · ${{nDias}} dias`;
     document.getElementById('kpi-furtos-media').textContent = `📅 ${{mediaFurtos}}/dia · ${{nDias}} dias`;
     document.getElementById('kpi-roubos-media').textContent = `📅 ${{mediaRoubos}}/dia · ${{nDias}} dias`;
+    document.getElementById('kpi-arrom-media').textContent  = `📅 ${{mediaArrom}}/dia · ${{nDias}} dias`;
   }} else {{
     document.getElementById('kpi-total-media').textContent  = '';
     document.getElementById('kpi-furtos-media').textContent = '';
     document.getElementById('kpi-roubos-media').textContent = '';
+    document.getElementById('kpi-arrom-media').textContent  = '';
   }}
 
   document.getElementById('kpi-total').textContent   = total;
   document.getElementById('kpi-furtos').textContent  = furtos;
   document.getElementById('kpi-roubos').textContent  = roubos;
+  document.getElementById('kpi-arrom').textContent   = arrom;
   document.getElementById('kpi-turno').textContent   = topTurno[0];
   document.getElementById('kpi-bairro').textContent  = topBairro[0];
   document.getElementById('kpi-furtos-sub').textContent  = pFurtos + '% do total';
   document.getElementById('kpi-roubos-sub').textContent  = pRoubos + '% do total';
+  document.getElementById('kpi-arrom-sub').textContent   = pArrom  + '% do total';
   document.getElementById('kpi-turno-sub').textContent   = topTurno[1] + ' casos';
   document.getElementById('kpi-bairro-sub').textContent  = topBairro[1] + ' casos';
   document.getElementById('badge-total').textContent = total + ' ocorrências';
