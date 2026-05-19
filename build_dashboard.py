@@ -625,11 +625,9 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
     <button class="menu-toggle" onclick="toggleSidebar()" title="Filtros">☰</button>
     <div>
       <h1>🛡️ Dashboard de Segurança Pública – Balneário Camboriú</h1>
-      <div class="sub" id="header-sub">Boletins de Ocorrência · 2026</div>
     </div>
   </div>
   <div class="header-right">
-    <span class="badge" id="badge-total">147 ocorrências</span>
     <button class="btn-reset" onclick="resetFilters()">⟳ Limpar Filtros</button>
     <button class="btn-pdf" onclick="gerarPDF()">🖨️ Gerar PDF</button>
   </div>
@@ -1181,8 +1179,6 @@ function renderKPIs(data) {{
   document.getElementById('kpi-dia-num').textContent     = topDia[1];
   document.getElementById('kpi-dia-pct').textContent     = pDia2;
 
-  document.getElementById('badge-total').textContent  = total + ' ocorrências';
-  document.getElementById('header-sub').textContent   = `Boletins de Ocorrência · ${{RAW.length}} registros · visualizando ${{total}}`;
 }}
 
 // ── TABELA ────────────────────────────────────────────────────────────────────
