@@ -1420,12 +1420,11 @@ function renderPlanoPolicial(data) {
   const total = data.length;
   if(total===0){ document.getElementById('plano-policial').innerHTML=''; return; }
 
-  // ── Separar os dois turnos operacionais ───────────────────────────────────
-  // Turno A: 07h–19h → 8 viaturas
-  // Turno B: 19h–07h → 7 viaturas
-  const dadosA = data.filter(r=>{ const h=parseInt(r.hora); return !isNaN(h)&&h>=7&&h<19; });
-  const dadosB = data.filter(r=>{ const h=parseInt(r.hora); return !isNaN(h)&&(h>=19||h<7); });
-  const semHora= data.filter(r=>{ const h=parseInt(r.hora); return isNaN(h); });
+  // ── Separar os dois turnos operacionais (usa campo turno, igual ao gráfico) ──
+  // Turno A: Manhã + Tarde → 8 viaturas
+  // Turno B: Noite + Madrugada → 7 viaturas
+  const dadosA = data.filter(r=>r.turno==='Manhã'||r.turno==='Tarde');
+  const dadosB = data.filter(r=>r.turno==='Noite'||r.turno==='Madrugada');
 
   const bairrosA = count(dadosA,'bairro');
   const bairrosB = count(dadosB,'bairro');
