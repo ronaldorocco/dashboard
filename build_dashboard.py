@@ -298,6 +298,14 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .kpi-label{{font-size:11px;color:#666;margin-top:5px;font-weight:500;}}
 .kpi-sub{{font-size:10px;color:#999;margin-top:2px;}}
 .kpi-media{{font-size:10px;color:#555;margin-top:4px;background:#F4F8FF;border-radius:4px;padding:2px 6px;display:inline-block;font-weight:500;}}
+.kpi-count{{margin-top:6px;display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;}}
+.kpi-count-num{{font-size:24px;font-weight:700;color:#1A1A2E;line-height:1;}}
+.kpi-count-unit{{font-size:11px;color:#888;}}
+.kpi-count-pct{{font-size:10px;font-weight:600;color:white;background:#888;border-radius:3px;padding:1px 5px;margin-left:2px;}}
+.kpi-card.verde .kpi-count-pct{{background:var(--verde);}}
+.kpi-card.teal  .kpi-count-pct{{background:#0097A7;}}
+.kpi-card.roxo  .kpi-count-pct{{background:var(--roxo);}}
+.kpi-card.indigo .kpi-count-pct{{background:#3949AB;}}
 
 /* CHART GRID */
 .row{{display:grid;gap:12px;margin-bottom:12px;}}
@@ -707,22 +715,38 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
       <div class="kpi-card verde">
         <div class="kpi-val" id="kpi-bairro">–</div>
         <div class="kpi-label">Bairro Mais Afetado</div>
-        <div class="kpi-sub" id="kpi-bairro-sub"></div>
+        <div class="kpi-count">
+          <span class="kpi-count-num" id="kpi-bairro-num">–</span>
+          <span class="kpi-count-unit">casos</span>
+          <span class="kpi-count-pct" id="kpi-bairro-pct"></span>
+        </div>
       </div>
       <div class="kpi-card teal">
-        <div class="kpi-val" id="kpi-rua" style="font-size:15px;padding-top:4px">–</div>
+        <div class="kpi-val" id="kpi-rua" style="font-size:15px;padding-top:4px;line-height:1.3">–</div>
         <div class="kpi-label">Rua Mais Crítica</div>
-        <div class="kpi-sub" id="kpi-rua-sub"></div>
+        <div class="kpi-count">
+          <span class="kpi-count-num" id="kpi-rua-num">–</span>
+          <span class="kpi-count-unit">casos</span>
+          <span class="kpi-count-pct" id="kpi-rua-pct"></span>
+        </div>
       </div>
       <div class="kpi-card roxo">
         <div class="kpi-val" id="kpi-turno">–</div>
         <div class="kpi-label">Turno Mais Crítico</div>
-        <div class="kpi-sub" id="kpi-turno-sub"></div>
+        <div class="kpi-count">
+          <span class="kpi-count-num" id="kpi-turno-num">–</span>
+          <span class="kpi-count-unit">casos</span>
+          <span class="kpi-count-pct" id="kpi-turno-pct"></span>
+        </div>
       </div>
       <div class="kpi-card indigo">
         <div class="kpi-val" id="kpi-dia">–</div>
         <div class="kpi-label">Dia Mais Crítico</div>
-        <div class="kpi-sub" id="kpi-dia-sub"></div>
+        <div class="kpi-count">
+          <span class="kpi-count-num" id="kpi-dia-num">–</span>
+          <span class="kpi-count-unit">casos</span>
+          <span class="kpi-count-pct" id="kpi-dia-pct"></span>
+        </div>
       </div>
     </div>
 
@@ -1130,21 +1154,33 @@ function renderKPIs(data) {{
     document.getElementById('kpi-arrom-media').textContent  = '';
   }}
 
+  const gt = RAW.length;
+  const pBairro2 = gt ? ((topBairro[1]/gt)*100).toFixed(1)+'%' : '';
+  const pRua2    = gt ? ((topRua[1]/gt)*100).toFixed(1)+'%'    : '';
+  const pTurno2  = gt ? ((topTurno[1]/gt)*100).toFixed(1)+'%'  : '';
+  const pDia2    = gt ? ((topDia[1]/gt)*100).toFixed(1)+'%'    : '';
+
   document.getElementById('kpi-total').textContent   = total;
   document.getElementById('kpi-furtos').textContent  = furtos;
   document.getElementById('kpi-roubos').textContent  = roubos;
   document.getElementById('kpi-arrom').textContent   = arrom;
-  document.getElementById('kpi-bairro').textContent  = topBairro[0];
-  document.getElementById('kpi-rua').textContent     = topRua[0];
-  document.getElementById('kpi-turno').textContent   = topTurno[0];
-  document.getElementById('kpi-dia').textContent     = topDia[0];
   document.getElementById('kpi-furtos-sub').textContent  = pFurtos + '% do total';
   document.getElementById('kpi-roubos-sub').textContent  = pRoubos + '% do total';
   document.getElementById('kpi-arrom-sub').textContent   = pArrom  + '% do total';
-  document.getElementById('kpi-bairro-sub').textContent  = topBairro[1] + ' casos';
-  document.getElementById('kpi-rua-sub').textContent     = topRua[1] + ' casos';
-  document.getElementById('kpi-turno-sub').textContent   = topTurno[1] + ' casos';
-  document.getElementById('kpi-dia-sub').textContent     = topDia[1] + ' casos';
+
+  document.getElementById('kpi-bairro').textContent     = topBairro[0];
+  document.getElementById('kpi-bairro-num').textContent  = topBairro[1];
+  document.getElementById('kpi-bairro-pct').textContent  = pBairro2;
+  document.getElementById('kpi-rua').textContent        = topRua[0];
+  document.getElementById('kpi-rua-num').textContent     = topRua[1];
+  document.getElementById('kpi-rua-pct').textContent     = pRua2;
+  document.getElementById('kpi-turno').textContent      = topTurno[0];
+  document.getElementById('kpi-turno-num').textContent   = topTurno[1];
+  document.getElementById('kpi-turno-pct').textContent   = pTurno2;
+  document.getElementById('kpi-dia').textContent        = topDia[0];
+  document.getElementById('kpi-dia-num').textContent     = topDia[1];
+  document.getElementById('kpi-dia-pct').textContent     = pDia2;
+
   document.getElementById('badge-total').textContent = total + ' ocorrências';
 }}
 
