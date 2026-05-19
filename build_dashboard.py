@@ -291,6 +291,7 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .kpi-card.roxo .kpi-val{{color:var(--roxo);}}
 .kpi-label{{font-size:11px;color:#666;margin-top:5px;font-weight:500;}}
 .kpi-sub{{font-size:10px;color:#999;margin-top:2px;}}
+.kpi-media{{font-size:10px;color:#555;margin-top:4px;background:#F4F8FF;border-radius:4px;padding:2px 6px;display:inline-block;font-weight:500;}}
 
 /* CHART GRID */
 .row{{display:grid;gap:12px;margin-bottom:12px;}}
@@ -674,11 +675,13 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
         <div class="kpi-val" id="kpi-total">147</div>
         <div class="kpi-label">Total de Ocorrências</div>
         <div class="kpi-sub" id="kpi-total-sub">2026</div>
+        <div class="kpi-media" id="kpi-total-media"></div>
       </div>
       <div class="kpi-card laranja">
         <div class="kpi-val" id="kpi-furtos">133</div>
         <div class="kpi-label">Furtos</div>
         <div class="kpi-sub" id="kpi-furtos-sub">90,5% do total</div>
+        <div class="kpi-media" id="kpi-furtos-media"></div>
       </div>
       <div class="kpi-card vermelho">
         <div class="kpi-val" id="kpi-roubos">4</div>
@@ -1073,6 +1076,21 @@ function renderKPIs(data) {{
   const topBairro = sortedEntries(bairros)[0]||['–',0];
   const pFurtos = total ? ((furtos/total)*100).toFixed(1) : '0.0';
   const pRoubos = total ? ((roubos/total)*100).toFixed(1) : '0.0';
+
+  // Calcular média diária
+  const datas = data.map(r=>r.data).filter(Boolean).sort();
+  let nDias = 1, mediaLabel = '';
+  if(datas.length > 0) {{
+    const d0 = new Date(datas[0]), d1 = new Date(datas[datas.length-1]);
+    nDias = Math.max(1, Math.round((d1-d0)/86400000)+1);
+    const mediaTotal  = (total/nDias).toFixed(1);
+    const mediaFurtos = (furtos/nDias).toFixed(1);
+    document.getElementById('kpi-total-media').textContent  = `📅 ${{mediaTotal}}/dia · ${{nDias}} dias`;
+    document.getElementById('kpi-furtos-media').textContent = `📅 ${{mediaFurtos}}/dia`;
+  }} else {{
+    document.getElementById('kpi-total-media').textContent  = '';
+    document.getElementById('kpi-furtos-media').textContent = '';
+  }}
 
   document.getElementById('kpi-total').textContent   = total;
   document.getElementById('kpi-furtos').textContent  = furtos;
