@@ -1956,8 +1956,10 @@ function init() {{
 if(document.readyState === 'complete') {{ init(); }}
 else {{ window.addEventListener('load', init); }}
 </script>
-<footer style="text-align:center;padding:14px 0 10px;font-size:11px;color:#aaa;border-top:1px solid #eee;margin-top:8px;">
-  Desenvolvido por <strong style="color:#888">Ronaldo Eliseu Barbosa</strong> — Guarda Municipal
+<footer style="text-align:center;padding:12px 24px;font-size:11px;color:rgba(255,255,255,.75);
+  background:linear-gradient(135deg,#1A1A2E 0%,#0078D4 100%);
+  box-shadow:0 -2px 8px rgba(0,0,0,.3);">
+  Desenvolvido por <strong style="color:white">Ronaldo Eliseu Barbosa</strong> — Guarda Municipal
 </footer>
 </body>
 </html>"""
