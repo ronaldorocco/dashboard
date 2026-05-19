@@ -687,6 +687,7 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
         <div class="kpi-val" id="kpi-roubos">4</div>
         <div class="kpi-label">Roubos</div>
         <div class="kpi-sub" id="kpi-roubos-sub">2,7% do total</div>
+        <div class="kpi-media" id="kpi-roubos-media"></div>
       </div>
       <div class="kpi-card roxo">
         <div class="kpi-val" id="kpi-turno">Noite</div>
@@ -1085,11 +1086,14 @@ function renderKPIs(data) {{
     nDias = Math.max(1, Math.round((d1-d0)/86400000)+1);
     const mediaTotal  = (total/nDias).toFixed(1);
     const mediaFurtos = (furtos/nDias).toFixed(1);
+    const mediaRoubos = (roubos/nDias).toFixed(1);
     document.getElementById('kpi-total-media').textContent  = `📅 ${{mediaTotal}}/dia · ${{nDias}} dias`;
-    document.getElementById('kpi-furtos-media').textContent = `📅 ${{mediaFurtos}}/dia`;
+    document.getElementById('kpi-furtos-media').textContent = `📅 ${{mediaFurtos}}/dia · ${{nDias}} dias`;
+    document.getElementById('kpi-roubos-media').textContent = `📅 ${{mediaRoubos}}/dia · ${{nDias}} dias`;
   }} else {{
     document.getElementById('kpi-total-media').textContent  = '';
     document.getElementById('kpi-furtos-media').textContent = '';
+    document.getElementById('kpi-roubos-media').textContent = '';
   }}
 
   document.getElementById('kpi-total').textContent   = total;
