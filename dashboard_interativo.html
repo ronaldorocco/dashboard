@@ -1000,20 +1000,9 @@ function renderDiagnostico(data) {
   });
   const topCombo = sortedEntries(combos)[0] || ['–',0];
 
-  // Período por hora
-  let madru=0, noite=0, tarde=0, manha=0;
-  data.forEach(r=>{
-    if(!r.hora) return;
-    const h = parseInt(r.hora);
-    if(isNaN(h)) return;
-    if(h>=0  && h<7)  madru++;
-    else if(h>=7  && h<13) manha++;
-    else if(h>=13 && h<19) tarde++;
-    else noite++;
-  });
-  const periodos = [['Madrugada (00h–07h)',madru],['Noite (19h–00h)',noite],
-                    ['Tarde (13h–19h)',tarde],['Manhã (07h–13h)',manha]];
-  const topPeriodo = periodos.sort((a,b)=>b[1]-a[1])[0];
+  // Turno mais crítico — usa o campo turno diretamente (igual ao gráfico)
+  const turnosPer = count(data,'turno');
+  const topPeriodo = sortedEntries(turnosPer)[0] || ['–',0];
 
   const pBairro = ((topBairro[1]/total)*100).toFixed(1);
   const pTurno  = ((topTurno[1]/total)*100).toFixed(1);
@@ -1066,15 +1055,8 @@ function renderRecomendacoes(data) {
   data.forEach(r=>{ const k=r.bairro+' / '+r.turno; combos[k]=(combos[k]||0)+1; });
   const topCombo = sortedEntries(combos)[0]||['–',0];
 
-  let madru=0,noite=0,tarde=0,manha=0;
-  data.forEach(r=>{
-    if(!r.hora) return;
-    const h=parseInt(r.hora); if(isNaN(h)) return;
-    if(h>=0&&h<7) madru++; else if(h>=7&&h<13) manha++; else if(h>=13&&h<19) tarde++; else noite++;
-  });
-  const perArr=[['Madrugada (00h–07h)',madru],['Noite (19h–00h)',noite],['Tarde (13h–19h)',tarde],['Manhã (07h–13h)',manha]];
-  perArr.sort((a,b)=>b[1]-a[1]);
-  const topPer=perArr[0];
+  // Turno mais crítico — usa campo turno diretamente (igual ao gráfico)
+  const topPer = sortedEntries(count(data,'turno'))[0] || ['–',0];
 
   const pB1  = ((top1B[1]/total)*100).toFixed(1);
   const pT1  = ((top1T[1]/total)*100).toFixed(1);
