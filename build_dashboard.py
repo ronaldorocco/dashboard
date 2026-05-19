@@ -273,7 +273,7 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .content{{flex:1;overflow-y:auto;padding:16px;}}
 
 /* KPI */
-.kpi-row{{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px;}}
+.kpi-row{{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;}}
 .kpi-card{{
   background:white;border-radius:8px;padding:14px 16px;
   border-top:4px solid var(--azul);box-shadow:0 2px 6px rgba(0,0,0,.07);
@@ -285,7 +285,7 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .kpi-card.verde{{border-color:var(--verde);}}
 .kpi-card.roxo{{border-color:var(--roxo);}}
 .kpi-card.marrom{{border-color:#795548;}}
-.kpi-val{{font-size:30px;font-weight:700;color:var(--azul);line-height:1;}}
+.kpi-val{{font-size:27px;font-weight:700;color:var(--azul);line-height:1;}}
 .kpi-card.laranja .kpi-val{{color:var(--laranja);}}
 .kpi-card.vermelho .kpi-val{{color:var(--vermelho);}}
 .kpi-card.verde .kpi-val{{color:var(--verde);}}
@@ -366,7 +366,7 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
 
 /* Tablet (≤1100px) */
 @media(max-width:1100px){{
-  .kpi-row{{grid-template-columns:repeat(3,1fr);}}
+  .kpi-row{{grid-template-columns:repeat(3,1fr);gap:8px;}}
   .row3{{grid-template-columns:1fr 1fr;}}
   .row3 .chart-card:last-child{{grid-column:1/-1;}}
   .insight-grid{{grid-template-columns:repeat(2,1fr);}}
