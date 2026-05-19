@@ -963,7 +963,7 @@ function renderTurno(data) {{
   const colors = labels.map((t,i)=>vals[i]===maxTurno?COLORS.vermelho:TURNO_COLORS[t]||COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:10}},automargin:true}},
-    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
+    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}},range:[0,Math.max(...vals)*1.18]}},
     margin:{{l:30,r:10,t:4,b:30}},
   }};
   Plotly.react('chart-turno', barV(labels,vals,colors), layout, CONFIG);
@@ -994,7 +994,7 @@ function renderLinha(data) {{
       tickformat:'%d/%m', tickfont:{{size:9}},
       dtick:'D2',showgrid:false,
     }},
-    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}}}},
+    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}},range:[0,Math.max(...vals,1)*1.20]}},
     margin:{{l:28,r:12,t:4,b:36}},
   }};
   Plotly.react('chart-linha',[trace],layout,CONFIG);
@@ -1013,7 +1013,7 @@ function renderMes(data) {{
   const colors = vals.map((v,i)=>v===maxMes?COLORS.vermelho:colBase[i]||COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:11}}}},
-    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
+    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}},range:[0,Math.max(...vals)*1.18]}},
     margin:{{l:28,r:12,t:4,b:28}},
   }};
   Plotly.react('chart-mes', barV(labels,vals,colors.slice(0,labels.length)), layout, CONFIG);
@@ -1053,7 +1053,7 @@ function renderDia(data) {{
   const colors = labels.map((_,i)=>vals[i]===maxDia?COLORS.vermelho:COLORS.azulClr);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:10}},automargin:true}},
-    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
+    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}},range:[0,Math.max(...vals)*1.18]}},
     margin:{{l:30,r:12,t:4,b:40}},
   }};
   Plotly.react('chart-dia', barV(labels,vals,colors), layout, CONFIG);
@@ -1547,7 +1547,7 @@ function renderHora(data) {{
   }}];
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:8.5}},tickangle:-45}},
-    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}}}},
+    yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}},range:[0,Math.max(...hrs,1)*1.20]}},
     margin:{{l:30,r:10,t:8,b:50}},
     shapes:[
       {{type:'rect',x0:'18h',x1:'24h',y0:0,y1:1,xref:'x',yref:'paper',
