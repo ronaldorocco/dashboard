@@ -962,7 +962,8 @@ function renderTabela(data) {
 
 // ── DIAGNÓSTICO DINÂMICO ─────────────────────────────────────────────────────
 function renderDiagnostico(data) {
-  const total = data.length;
+  const total     = data.length;
+  const grandTotal= RAW.length;
   const box   = document.getElementById('diagnostico-box');
   const sub   = document.getElementById('diag-header-sub');
   if(!box) return;
@@ -1004,9 +1005,9 @@ function renderDiagnostico(data) {
   const turnosPer = count(data,'turno');
   const topPeriodo = sortedEntries(turnosPer)[0] || ['–',0];
 
-  const pBairro = ((topBairro[1]/total)*100).toFixed(1);
-  const pTurno  = ((topTurno[1]/total)*100).toFixed(1);
-  const pItem   = ((topItem[1]/total)*100).toFixed(1);
+  const pBairro = ((topBairro[1]/grandTotal)*100).toFixed(1);
+  const pTurno  = ((topTurno[1]/grandTotal)*100).toFixed(1);
+  const pItem   = ((topItem[1]/grandTotal)*100).toFixed(1);
 
   // Meses presentes
   const mesesSet = [...new Set(data.map(r=>r.mes).filter(Boolean))].sort();
@@ -1016,8 +1017,9 @@ function renderDiagnostico(data) {
 
   box.innerHTML = `
     <strong style="color:#A4262C">🚨 Diagnóstico crítico:</strong>
-    O bairro <strong>${topBairro[0]}</strong> concentra <strong>${topBairro[1]} de ${total} ocorrências (${pBairro}%)</strong> —
-    o principal foco de criminalidade no período analisado.
+    O bairro <strong>${topBairro[0]}</strong> concentra <strong>${topBairro[1]} de ${grandTotal} ocorrências (${pBairro}%)</strong> —
+    o principal foco de criminalidade no período analisado${total<grandTotal?` (filtro ativo: ${total} registros)`:''}.
+
     O período mais perigoso é a <strong>${topPeriodo[0]}</strong> com <strong>${topPeriodo[1]} casos</strong>, sendo
     <strong>${topCombo[0]} o combo mais crítico (${topCombo[1]} casos)</strong>.
     O dia de maior incidência é <strong>${topDia[0]} (${topDia[1]} casos)</strong>,
@@ -1058,16 +1060,17 @@ function renderRecomendacoes(data) {
   // Turno mais crítico — usa campo turno diretamente (igual ao gráfico)
   const topPer = sortedEntries(count(data,'turno'))[0] || ['–',0];
 
-  const pB1  = ((top1B[1]/total)*100).toFixed(1);
-  const pT1  = ((top1T[1]/total)*100).toFixed(1);
-  const pI1  = ((top1I[1]/total)*100).toFixed(1);
-  const pI2  = ((top2I[1]/total)*100).toFixed(1);
-  const pI3  = ((top3I[1]/total)*100).toFixed(1);
-  const pPer = ((topPer[1]/total)*100).toFixed(1);
+  const gt   = RAW.length;
+  const pB1  = ((top1B[1]/gt)*100).toFixed(1);
+  const pT1  = ((top1T[1]/gt)*100).toFixed(1);
+  const pI1  = ((top1I[1]/gt)*100).toFixed(1);
+  const pI2  = ((top2I[1]/gt)*100).toFixed(1);
+  const pI3  = ((top3I[1]/gt)*100).toFixed(1);
+  const pPer = ((topPer[1]/gt)*100).toFixed(1);
   const top3DTotal   = (top1D[1]||0)+(top2D[1]||0)+(top3D[1]||0);
-  const pTop3D       = ((top3DTotal/total)*100).toFixed(1);
+  const pTop3D       = ((top3DTotal/gt)*100).toFixed(1);
   const itemTop3Tot  = (top1I[1]||0)+(top2I[1]||0)+(top3I[1]||0);
-  const pItemTop3    = ((itemTop3Tot/total)*100).toFixed(1);
+  const pItemTop3    = ((itemTop3Tot/gt)*100).toFixed(1);
   const itens12tot   = (top1I[1]||0)+(top2I[1]||0);
 
   function ri(prio, text) {
@@ -1102,7 +1105,7 @@ function renderRecomendacoes(data) {
       <div class="rec-body">
         ${ri('alta',`<strong>Câmeras urgentes nas ruas críticas:</strong> ${top1R[0]} (${top1R[1]} casos), ${top2R[0]} (${top2R[1]}) e ${top3R[0]} (${top3R[1]}). Cobertura 24h com gravação mínima de 30 dias. Integração com central de monitoramento.`)}
         ${ri('alta',`<strong>Ampliar iluminação pública em ${top1R[0]} e ${top2R[0]}.</strong> O período ${topPer[0]} concentra ${topPer[1]} casos (${pPer}%). Iluminação adequada é o fator preventivo mais custo-efetivo contra furtos oportunistas.`)}
-        ${ri('alta',`<strong>Infraestrutura segura para ${top1I[0]} e ${top2I[0]}</strong> (${itens12tot} casos combinados = ${((itens12tot/total)*100).toFixed(1)}%). Pontos seguros monitorados nas áreas de maior incidência em ${top1B[0]}.`)}
+        ${ri('alta',`<strong>Infraestrutura segura para ${top1I[0]} e ${top2I[0]}</strong> (${itens12tot} casos combinados = ${((itens12tot/gt)*100).toFixed(1)}%). Pontos seguros monitorados nas áreas de maior incidência em ${top1B[0]}.`)}
         ${ri('media',`<strong>Câmeras no entorno dos principais pontos de concentração</strong> em ${top1B[0]} e ${top2B[0]}. Parceria público-privada para ampliação do monitoramento em locais críticos.`)}
         ${ri('media',`<strong>Programa de rastreamento</strong> dos itens mais furtados (${top1I[0]}, ${top2I[0]}, ${top3I[0]}). Registro, aplicativo e banco de dados integrado com PM e PC para recuperação dos bens.`)}
         ${ri('baixa',`<strong>Central de monitoramento integrada</strong> com câmeras, rádio e GPS das viaturas. Resposta imediata a acionamentos em ${top1B[0]}, especialmente no combo ${topCombo[0]}.`)}
