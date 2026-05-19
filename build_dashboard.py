@@ -212,6 +212,34 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .btn-reset{{background:#D13438;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
 .btn-reset:hover{{background:#A4262C;}}
+.btn-pdf{{background:#107C10;color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-pdf:hover{{background:#0B5A0B;}}
+
+/* IMPRESSÃO / PDF */
+@media print{{
+  *{{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  .sidebar,.sidebar-overlay,.menu-toggle,.header-right,.active-filters,
+  .sel-hint,.btn-reset,.btn-pdf,.badge{{display:none!important;}}
+  .header{{
+    background:linear-gradient(135deg,#1A1A2E 0%,#0078D4 100%)!important;
+    padding:10px 18px!important;box-shadow:none!important;
+  }}
+  .main-layout{{display:block!important;}}
+  .content{{overflow:visible!important;padding:10px!important;}}
+  .row,.row2,.row3,.row-full{{display:grid!important;}}
+  .chart-card,.kpi-card,.insight-card,.rec-card,.plano-card,.mapa-card{{
+    break-inside:avoid;box-shadow:none!important;
+    border:1px solid #ddd!important;
+  }}
+  .kpi-row{{page-break-after:avoid;}}
+  #mapa-crime{{height:300px!important;}}
+  .section-header{{break-before:auto;}}
+  .plano-grid-wide,.plano-grid,.rec-grid,.insight-grid{{
+    display:grid!important;
+  }}
+  body{{font-size:11px;}}
+}}
 
 /* LAYOUT */
 .main-layout{{display:flex;flex:1;overflow:hidden;}}
@@ -413,8 +441,20 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
   .row3{{grid-template-columns:1fr 1fr;}}
   .row3 .chart-card:last-child{{grid-column:1/-1;}}
   .insight-grid{{grid-template-columns:repeat(2,1fr);}}
-  .tipo-grid{{grid-template-columns:repeat(3,1fr);}}
   .plano-grid{{grid-template-columns:1fr 1fr;}}
+  .rec-grid{{grid-template-columns:1fr 1fr;}}
+}}
+
+/* Telas muito pequenas (≤480px) */
+@media(max-width:480px){{
+  .header h1{{font-size:12px;}}
+  .kpi-row{{grid-template-columns:repeat(2,1fr);gap:6px;}}
+  .kpi-val{{font-size:20px;}}
+  .kpi-label{{font-size:9px;}}
+  .content{{padding:8px;}}
+  .rec-text{{font-size:11.5px;}}
+  .btn-pdf,.btn-reset{{font-size:10px;padding:4px 8px;}}
+  .badge{{font-size:10px;padding:2px 7px;}}
 }}
 
 /* INSIGHTS */
@@ -570,12 +610,13 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
     <button class="menu-toggle" onclick="toggleSidebar()" title="Filtros">☰</button>
     <div>
       <h1>🛡️ Dashboard de Segurança Pública – Balneário Camboriú</h1>
-      <div class="sub">Boletins de Ocorrência · Abril–Maio 2026 · 147 registros</div>
+      <div class="sub">Boletins de Ocorrência · 2026 · 147 registros</div>
     </div>
   </div>
   <div class="header-right">
     <span class="badge" id="badge-total">147 ocorrências</span>
     <button class="btn-reset" onclick="resetFilters()">⟳ Limpar Filtros</button>
+    <button class="btn-pdf" onclick="gerarPDF()">🖨️ Gerar PDF</button>
   </div>
 </div>
 
@@ -632,7 +673,7 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
       <div class="kpi-card">
         <div class="kpi-val" id="kpi-total">147</div>
         <div class="kpi-label">Total de Ocorrências</div>
-        <div class="kpi-sub" id="kpi-total-sub">Abril–Maio 2026</div>
+        <div class="kpi-sub" id="kpi-total-sub">2026</div>
       </div>
       <div class="kpi-card laranja">
         <div class="kpi-val" id="kpi-furtos">133</div>
@@ -751,126 +792,14 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
     <div class="insight-grid" id="insights-container"></div>
 
     <!-- RECOMENDAÇÕES -->
-    <div class="section-header">💡 Recomendações para Redução dos Crimes</div>
-    <div class="rec-grid">
-
-      <div class="rec-card">
-        <div class="rec-header">
-          <span class="rec-icon">👮</span>
-          <span class="rec-title">Policiamento e Fiscalização</span>
-        </div>
-        <div class="rec-body">
-          <div class="rec-item">
-            <span class="rec-prio alta">Alta</span>
-            <span class="rec-text">Reforçar rondas no bairro Centro nos turnos da tarde e noite, que concentram mais de 65% das ocorrências do período.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio alta">Alta</span>
-            <span class="rec-text">Intensificar o patrulhamento nas sextas-feiras, o dia com maior registro de ocorrências da série histórica analisada.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio alta">Alta</span>
-            <span class="rec-text">Criar operações específicas de combate ao furto de bicicletas, o item mais visado com 44 casos registrados.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Reforçar o policiamento entre 20h e 00h, faixa horária com maior concentração de ocorrências noturnas.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Fiscalizar pontos de venda de sucata e peças usadas para coibir a receptação de bens furtados na cidade.</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="rec-card">
-        <div class="rec-header">
-          <span class="rec-icon">📷</span>
-          <span class="rec-title">Tecnologia e Infraestrutura</span>
-        </div>
-        <div class="rec-body">
-          <div class="rec-item">
-            <span class="rec-prio alta">Alta</span>
-            <span class="rec-text">Instalar câmeras de monitoramento nas principais ruas do Centro, Estados e Municípios, os três bairros com mais ocorrências.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio alta">Alta</span>
-            <span class="rec-text">Implementar bicicletários cobertos com câmera em pontos estratégicos para reduzir o furto de bicicletas.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Ampliar a cobertura de iluminação pública nas vias com maior incidência de ocorrências noturnas.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Criar uma sala de monitoramento integrado com câmeras e comunicação em tempo real com as viaturas.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio baixa">Baixa</span>
-            <span class="rec-text">Instalar sistemas de alarme comunitário e botões de pânico em estabelecimentos comerciais das áreas críticas.</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="rec-card">
-        <div class="rec-header">
-          <span class="rec-icon">🤝</span>
-          <span class="rec-title">Prevenção e Comunidade</span>
-        </div>
-        <div class="rec-body">
-          <div class="rec-item">
-            <span class="rec-prio alta">Alta</span>
-            <span class="rec-text">Criar programa de gravação gratuita do número de série em bicicletas e eletrônicos para facilitar a identificação e recuperação.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Realizar campanhas de conscientização sobre guarda segura de bicicletas e celulares em praças, praias e locais de lazer.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Implantar Conselhos Comunitários de Segurança (CONSEG) ativos nos bairros Municípios e Estados.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Criar canal de denúncia anônima acessível por aplicativo para relatos de suspeitos e pontos de risco na cidade.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio baixa">Baixa</span>
-            <span class="rec-text">Implementar programa de vigilância comunitária nos bairros periféricos com menor cobertura policial.</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="rec-card">
-        <div class="rec-header">
-          <span class="rec-icon">📊</span>
-          <span class="rec-title">Gestão e Inteligência</span>
-        </div>
-        <div class="rec-body">
-          <div class="rec-item">
-            <span class="rec-prio alta">Alta</span>
-            <span class="rec-text">Manter atualização semanal deste dashboard para acompanhar tendências e realocar recursos policiais com agilidade.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Cruzar dados de ocorrências com eventos e feriados locais para antecipar picos sazonais e planejar operações.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Definir metas mensais de redução por bairro e tipificação, com acompanhamento em reunião quinzenal de gestão.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio media">Média</span>
-            <span class="rec-text">Integrar os dados com a Polícia Civil e Militar para cruzamento de informações e identificação de reincidentes.</span>
-          </div>
-          <div class="rec-item">
-            <span class="rec-prio baixa">Baixa</span>
-            <span class="rec-text">Publicar relatório mensal com os indicadores de segurança para promover transparência e engajamento da população.</span>
-          </div>
-        </div>
-      </div>
-
+    <div class="section-header">💡 Análise e Recomendações do Analista de Segurança
+      <span id="diag-header-sub" style="font-size:10px;font-weight:400;color:#888;margin-left:8px"></span>
     </div>
+
+    <!-- Resumo executivo dinâmico -->
+    <div id="diagnostico-box" style="background:#FFF4F4;border:1px solid #F1BBBC;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:1.7"></div>
+
+    <div class="rec-grid" id="rec-container"></div>
 
     <!-- Tabela -->
     <div class="chart-card" style="margin-bottom:8px">
@@ -1010,7 +939,7 @@ function renderBairro(data) {{
   const entries = sortedEntries(c);
   const labels = entries.map(e=>e[0]).reverse();
   const vals   = entries.map(e=>e[1]).reverse();
-  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.azul:COLORS.azulClr);
+  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:COLORS.azulClr);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
     yaxis:{{tickfont:{{size:10}},automargin:true}},
@@ -1030,7 +959,8 @@ function renderTurno(data) {{
   const c = count(data,'turno');
   const labels = ORDER.filter(t=>c[t]);
   const vals   = labels.map(t=>c[t]||0);
-  const colors = labels.map(t=>TURNO_COLORS[t]||COLORS.azul);
+  const maxTurno = Math.max(...vals);
+  const colors = labels.map((t,i)=>vals[i]===maxTurno?COLORS.vermelho:TURNO_COLORS[t]||COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:10}},automargin:true}},
     yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
@@ -1078,7 +1008,9 @@ function renderMes(data) {{
   const c = count(data,'mes');
   const labels = ORDER.filter(m=>c[m]);
   const vals   = labels.map(m=>c[m]||0);
-  const colors = [COLORS.azul, COLORS.laranja];
+  const maxMes = Math.max(...vals);
+  const colBase = [COLORS.azul, COLORS.laranja];
+  const colors = vals.map((v,i)=>v===maxMes?COLORS.vermelho:colBase[i]||COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:11}}}},
     yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
@@ -1098,7 +1030,7 @@ function renderItem(data) {{
   const entries = sortedEntries(c).slice(0,10);
   const labels = entries.map(e=>e[0]).reverse();
   const vals   = entries.map(e=>e[1]).reverse();
-  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.azul:COLORS.azulClr);
+  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:COLORS.azulClr);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
     yaxis:{{tickfont:{{size:10}},automargin:true}},
@@ -1117,7 +1049,8 @@ function renderDia(data) {{
   const c = count(data,'dia');
   const labels = DIA_ORDER.filter(d=>c[d]);
   const vals   = labels.map(d=>c[d]||0);
-  const colors = labels.map(DIA_COLORS);
+  const maxDia = Math.max(...vals);
+  const colors = labels.map((_,i)=>vals[i]===maxDia?COLORS.vermelho:COLORS.azulClr);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:10}},automargin:true}},
     yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
@@ -1177,7 +1110,186 @@ function renderTabela(data) {{
     </tr>`).join('');
 }}
 
-// ── RENDERIZAR TUDO ───────────────────────────────────────────────────────────
+// ── DIAGNÓSTICO DINÂMICO ─────────────────────────────────────────────────────
+function renderDiagnostico(data) {{
+  const total = data.length;
+  const box   = document.getElementById('diagnostico-box');
+  const sub   = document.getElementById('diag-header-sub');
+  if(!box) return;
+
+  if(total === 0) {{
+    box.innerHTML = '<em style="color:#999">Nenhum dado para o filtro selecionado.</em>';
+    if(sub) sub.textContent = '';
+    return;
+  }}
+
+  // Calcular tudo dinamicamente
+  const bairros  = count(data,'bairro');
+  const turnos   = count(data,'turno');
+  const dias     = count(data,'dia');
+  const itens    = count(data,'item');
+  const enderecos= count(data,'endereco');
+
+  const topBairro = sortedEntries(bairros)[0] || ['–',0];
+  const topTurno  = sortedEntries(turnos)[0]  || ['–',0];
+  const topDia    = sortedEntries(dias)[0]    || ['–',0];
+  const dia2      = sortedEntries(dias)[1]    || ['–',0];
+  const dia3      = sortedEntries(dias)[2]    || ['–',0];
+  const topItem   = sortedEntries(itens)[0]   || ['–',0];
+  const item2     = sortedEntries(itens)[1]   || ['–',0];
+  const item3     = sortedEntries(itens)[2]   || ['–',0];
+  const topRua    = sortedEntries(enderecos).filter(e=>e[0])[0] || ['–',0];
+  const rua2      = sortedEntries(enderecos).filter(e=>e[0])[1] || ['–',0];
+  const rua3      = sortedEntries(enderecos).filter(e=>e[0])[2] || ['–',0];
+
+  // Combo bairro x turno mais crítico
+  const combos = {{}};
+  data.forEach(r=>{{
+    const k = r.bairro + ' / ' + r.turno;
+    combos[k] = (combos[k]||0)+1;
+  }});
+  const topCombo = sortedEntries(combos)[0] || ['–',0];
+
+  // Período por hora
+  let madru=0, noite=0, tarde=0, manha=0;
+  data.forEach(r=>{{
+    if(!r.hora) return;
+    const h = parseInt(r.hora);
+    if(isNaN(h)) return;
+    if(h>=0  && h<7)  madru++;
+    else if(h>=7  && h<13) manha++;
+    else if(h>=13 && h<19) tarde++;
+    else noite++;
+  }});
+  const periodos = [['Madrugada (00h–07h)',madru],['Noite (19h–00h)',noite],
+                    ['Tarde (13h–19h)',tarde],['Manhã (07h–13h)',manha]];
+  const topPeriodo = periodos.sort((a,b)=>b[1]-a[1])[0];
+
+  const pBairro = ((topBairro[1]/total)*100).toFixed(1);
+  const pTurno  = ((topTurno[1]/total)*100).toFixed(1);
+  const pItem   = ((topItem[1]/total)*100).toFixed(1);
+
+  // Meses presentes
+  const mesesSet = [...new Set(data.map(r=>r.mes).filter(Boolean))].sort();
+  const periodoLabel = mesesSet.length > 1 ? mesesSet.join('–') : (mesesSet[0]||'');
+  const anos = [...new Set(data.map(r=>r.ano))].sort().join('/');
+  if(sub) sub.textContent = `baseado nos ${{total}} B.O. registrados${{periodoLabel?' · '+periodoLabel:''}}${{anos?' · '+anos:''}}`;
+
+  box.innerHTML = `
+    <strong style="color:#A4262C">🚨 Diagnóstico crítico:</strong>
+    O bairro <strong>${{topBairro[0]}}</strong> concentra <strong>${{topBairro[1]}} de ${{total}} ocorrências (${{pBairro}}%)</strong> —
+    o principal foco de criminalidade no período analisado.
+    O período mais perigoso é a <strong>${{topPeriodo[0]}}</strong> com <strong>${{topPeriodo[1]}} casos</strong>, sendo
+    <strong>${{topCombo[0]}} o combo mais crítico (${{topCombo[1]}} casos)</strong>.
+    O dia de maior incidência é <strong>${{topDia[0]}} (${{topDia[1]}} casos)</strong>,
+    seguido de ${{dia2[0]}} <strong>(${{dia2[1]}})</strong> e ${{dia3[0]}} <strong>(${{dia3[1]}})</strong>.
+    O item mais furtado é <strong>${{topItem[0]}} (${{topItem[1]}} casos = ${{pItem}}%)</strong>,
+    seguido de ${{item2[0]}} <strong>(${{item2[1]}})</strong> e ${{item3[0]}} <strong>(${{item3[1]}})</strong>.
+    As ruas de maior risco são:
+    <strong>${{topRua[0]}} (${{topRua[1]}}), ${{rua2[0]}} (${{rua2[1]}}) e ${{rua3[0]}} (${{rua3[1]}})</strong>.
+  `;
+}}
+
+// ── RECOMENDAÇÕES DINÂMICAS ───────────────────────────────────────────────────
+function renderRecomendacoes(data) {{
+  const cont = document.getElementById('rec-container');
+  if(!cont) return;
+  const total = data.length;
+  if(total === 0) {{
+    cont.innerHTML = '<p style="color:#999;font-size:13px;padding:16px">Nenhum dado para o filtro selecionado.</p>';
+    return;
+  }}
+
+  const bairroRank = sortedEntries(count(data,'bairro'));
+  const itemRank   = sortedEntries(count(data,'item'));
+  const ruaRank    = sortedEntries(count(data,'endereco')).filter(e=>e[0]);
+  const diaRank    = sortedEntries(count(data,'dia'));
+  const turnoRank  = sortedEntries(count(data,'turno'));
+
+  const top1B = bairroRank[0]||['–',0], top2B = bairroRank[1]||['–',0], top3B = bairroRank[2]||['–',0];
+  const top1I = itemRank[0]||['–',0],   top2I = itemRank[1]||['–',0],   top3I = itemRank[2]||['–',0];
+  const top1R = ruaRank[0]||['–',0],    top2R = ruaRank[1]||['–',0],    top3R = ruaRank[2]||['–',0];
+  const top1D = diaRank[0]||['–',0],    top2D = diaRank[1]||['–',0],    top3D = diaRank[2]||['–',0];
+  const top1T = turnoRank[0]||['–',0];
+
+  const combos = {{}};
+  data.forEach(r=>{{ const k=r.bairro+' / '+r.turno; combos[k]=(combos[k]||0)+1; }});
+  const topCombo = sortedEntries(combos)[0]||['–',0];
+
+  let madru=0,noite=0,tarde=0,manha=0;
+  data.forEach(r=>{{
+    if(!r.hora) return;
+    const h=parseInt(r.hora); if(isNaN(h)) return;
+    if(h>=0&&h<7) madru++; else if(h>=7&&h<13) manha++; else if(h>=13&&h<19) tarde++; else noite++;
+  }});
+  const perArr=[['Madrugada (00h–07h)',madru],['Noite (19h–00h)',noite],['Tarde (13h–19h)',tarde],['Manhã (07h–13h)',manha]];
+  perArr.sort((a,b)=>b[1]-a[1]);
+  const topPer=perArr[0];
+
+  const pB1  = ((top1B[1]/total)*100).toFixed(1);
+  const pT1  = ((top1T[1]/total)*100).toFixed(1);
+  const pI1  = ((top1I[1]/total)*100).toFixed(1);
+  const pI2  = ((top2I[1]/total)*100).toFixed(1);
+  const pI3  = ((top3I[1]/total)*100).toFixed(1);
+  const pPer = ((topPer[1]/total)*100).toFixed(1);
+  const top3DTotal   = (top1D[1]||0)+(top2D[1]||0)+(top3D[1]||0);
+  const pTop3D       = ((top3DTotal/total)*100).toFixed(1);
+  const itemTop3Tot  = (top1I[1]||0)+(top2I[1]||0)+(top3I[1]||0);
+  const pItemTop3    = ((itemTop3Tot/total)*100).toFixed(1);
+  const itens12tot   = (top1I[1]||0)+(top2I[1]||0);
+
+  function ri(prio, text) {{
+    const label = prio==='alta'?'Alta':prio==='media'?'Média':'Baixa';
+    return `<div class="rec-item"><span class="rec-prio ${{prio}}">${{label}}</span><span class="rec-text">${{text}}</span></div>`;
+  }}
+
+  cont.innerHTML = `
+    <div class="rec-card">
+      <div class="rec-header"><span class="rec-icon">👮</span><span class="rec-title">Policiamento e Distribuição de Guarnições</span></div>
+      <div class="rec-body">
+        ${{ri('alta',`<strong>Concentrar no mínimo 50% do efetivo em ${{top1B[0]}}</strong> em todos os turnos. Com ${{top1B[1]}} ocorrências (${{pB1}}%), é o bairro prioritário absoluto em ambos os turnos operacionais.`)}}
+        ${{ri('alta',`<strong>Reforço no combo ${{topCombo[0]}} — ${{topCombo[1]}} casos.</strong> Manter pelo menos 2 viaturas neste bairro/turno, com ronda intensiva nas ruas ${{top1R[0]}} e ${{top2R[0]}}.`)}}
+        ${{ri('alta',`<strong>Reforço nas ${{top1D[0]}}s (${{top1D[1]}} casos)</strong>, ${{top2D[0]}}s (${{top2D[1]}}) e ${{top3D[0]}}s (${{top3D[1]}}) — os 3 dias mais críticos (${{pTop3D}}% do total). Escalar efetivo adicional nestes dias.`)}}
+        ${{ri('alta',`<strong>${{top1T[0]}} = ${{top1T[1]}} casos (${{pT1}}%).</strong> Não reduzir efetivo neste turno. Priorizar cobertura em ${{top1B[0]}} e ${{top2B[0]}} durante ${{top1T[0].toLowerCase()}}.`)}}
+        ${{ri('media',`<strong>Destinar viatura fixa para ${{top2B[0]}} e ${{top3B[0]}}</strong> — 2º e 3º bairros mais afetados (${{top2B[1]}} e ${{top3B[1]}} casos). Foco no período ${{topPer[0]}}.`)}}
+        ${{ri('media',`<strong>Ronda intensiva em ${{top1R[0]}} (${{top1R[1]}}) e ${{top2R[0]}} (${{top2R[1]}})</strong> — principais endereços de ocorrência. Especialmente no período ${{topPer[0]}} (${{topPer[1]}} casos = ${{pPer}}%).`)}}
+      </div>
+    </div>
+    <div class="rec-card">
+      <div class="rec-header"><span class="rec-icon">🎯</span><span class="rec-title">Operações Específicas por Item e Rua</span></div>
+      <div class="rec-body">
+        ${{ri('alta',`<strong>Prioridade nº 1: ${{top1I[0]}}</strong> — ${{top1I[1]}} furtos (${{pI1}}% do total). Operação direcionada para este item nas ruas ${{top1R[0]}} e ${{top2R[0]}}, especialmente no período ${{topPer[0]}}.`)}}
+        ${{ri('alta',`<strong>${{top1R[0]}} = rua mais crítica (${{top1R[1]}} casos).</strong> Requer ronda permanente. Seguida de ${{top2R[0]}} (${{top2R[1]}}) e ${{top3R[0]}} (${{top3R[1]}}) — eixo central das ocorrências.`)}}
+        ${{ri('alta',`<strong>${{top2I[0]}} (${{top2I[1]}} casos = ${{pI2}}%) e ${{top3I[0]}} (${{top3I[1]}} = ${{pI3}}%).</strong> Juntos com ${{top1I[0]}}, esses 3 itens representam ${{pItemTop3}}% de todos os furtos. Abordagem ostensiva em áreas de lazer.`)}}
+        ${{ri('media',`<strong>Fiscalizar pontos de receptação</strong> nas regiões de ${{top2B[0]}} e ${{top3B[0]}}. Itens de alto valor indicam crime de oportunidade. Revista em pontos de venda informal e ferro-velho.`)}}
+        ${{ri('media',`<strong>Intensificar abordagens no combo ${{topCombo[0]}}</strong> (${{topCombo[1]}} casos). Este é o pico mais crítico — abordagem ostensiva a suspeitos no período de maior incidência.`)}}
+      </div>
+    </div>
+    <div class="rec-card">
+      <div class="rec-header"><span class="rec-icon">📷</span><span class="rec-title">Tecnologia, Infraestrutura e Prevenção</span></div>
+      <div class="rec-body">
+        ${{ri('alta',`<strong>Câmeras urgentes nas ruas críticas:</strong> ${{top1R[0]}} (${{top1R[1]}} casos), ${{top2R[0]}} (${{top2R[1]}}) e ${{top3R[0]}} (${{top3R[1]}}). Cobertura 24h com gravação mínima de 30 dias. Integração com central de monitoramento.`)}}
+        ${{ri('alta',`<strong>Ampliar iluminação pública em ${{top1R[0]}} e ${{top2R[0]}}.</strong> O período ${{topPer[0]}} concentra ${{topPer[1]}} casos (${{pPer}}%). Iluminação adequada é o fator preventivo mais custo-efetivo contra furtos oportunistas.`)}}
+        ${{ri('alta',`<strong>Infraestrutura segura para ${{top1I[0]}} e ${{top2I[0]}}</strong> (${{itens12tot}} casos combinados = ${{((itens12tot/total)*100).toFixed(1)}}%). Pontos seguros monitorados nas áreas de maior incidência em ${{top1B[0]}}.`)}}
+        ${{ri('media',`<strong>Câmeras no entorno dos principais pontos de concentração</strong> em ${{top1B[0]}} e ${{top2B[0]}}. Parceria público-privada para ampliação do monitoramento em locais críticos.`)}}
+        ${{ri('media',`<strong>Programa de rastreamento</strong> dos itens mais furtados (${{top1I[0]}}, ${{top2I[0]}}, ${{top3I[0]}}). Registro, aplicativo e banco de dados integrado com PM e PC para recuperação dos bens.`)}}
+        ${{ri('baixa',`<strong>Central de monitoramento integrada</strong> com câmeras, rádio e GPS das viaturas. Resposta imediata a acionamentos em ${{top1B[0]}}, especialmente no combo ${{topCombo[0]}}.`)}}
+      </div>
+    </div>
+    <div class="rec-card">
+      <div class="rec-header"><span class="rec-icon">📊</span><span class="rec-title">Gestão, Inteligência e Comunidade</span></div>
+      <div class="rec-body">
+        ${{ri('alta',`<strong>Atualização semanal deste dashboard.</strong> Os dados mostram padrões claros (${{top1D[0]}}, ${{top2D[0]}}, ${{topPer[0]}}, ${{top1B[0]}}) que devem ser monitorados continuamente para realocar viaturas conforme mudanças de comportamento criminal.`)}}
+        ${{ri('alta',`<strong>CONSEG atuante em ${{top2B[0]}} e ${{top3B[0]}}</strong> (2º e 3º bairros com ${{top2B[1]}} e ${{top3B[1]}} casos). Reuniões mensais com moradores, comerciantes e PM para troca de informações sobre suspeitos e pontos de risco.`)}}
+        ${{ri('media',`<strong>Cruzar dados com agenda de eventos locais:</strong> coincidências com picos de ${{top1D[0]}} e ${{top2D[0]}}. Planejar reforço preventivo nos dias e locais de maior movimento.`)}}
+        ${{ri('media',`<strong>Integração com Polícia Civil:</strong> cruzar B.O.s para identificar reincidentes. A concentração em ${{top1R[0]}} (${{top1R[1]}}), ${{top2R[0]}} (${{top2R[1]}}) e ${{top3R[0]}} (${{top3R[1]}}) sugere atuação de grupos com horários definidos.`)}}
+        ${{ri('media',`<strong>Campanhas direcionadas por bairro:</strong> em ${{top1B[0]}}, foco em ${{top1I[0]}} e ${{top2I[0]}}; em ${{top2B[0]}}, foco em ${{top2I[0]}} e ${{top3I[0]}}. Abordagem específica por perfil de vitimização local.`)}}
+        ${{ri('baixa',`<strong>Canal de denúncia anônima 24h</strong> com foco em ${{topCombo[0]}}. Monitoramento contínuo dos padrões de ${{top1D[0]}} e ${{top2D[0]}} para planejamento tático semanal.`)}}
+      </div>
+    </div>
+  `;
+}}
+
 // ── INSIGHTS DINÂMICOS ────────────────────────────────────────────────────────
 function renderInsights(data) {{
   const total   = data.length;
@@ -1265,6 +1377,8 @@ function renderAll() {{
   renderHeatmap(data);
   renderHora(data);
   renderPlanoPolicial(data);
+  renderDiagnostico(data);
+  renderRecomendacoes(data);
   renderInsights(data);
   renderMapa(data);
   renderTabela(data);
@@ -1300,6 +1414,14 @@ function toggleFilter(key, val) {{
 function resetFilters() {{
   for(const k of Object.keys(state)) state[k].clear();
   renderAll();
+}}
+
+// ── GERAR PDF ─────────────────────────────────────────────────────────────────
+function gerarPDF() {{
+  // Garante que o mapa está dimensionado corretamente antes de imprimir
+  if(mapaInst) mapaInst.invalidateSize();
+  // Pequena pausa para os gráficos renderizarem completamente
+  setTimeout(() => window.print(), 300);
 }}
 
 // ── SIDEBAR DINÂMICA ──────────────────────────────────────────────────────────
@@ -1421,15 +1543,21 @@ function renderHora(data) {{
     }}
   }});
   const labels = hrs.map((_,i)=>`${{String(i).padStart(2,'0')}}h`);
-  const colors = hrs.map((_,i) => {{
-    if(i>=22||i<6)  return COLORS.roxo;
-    if(i>=18)       return COLORS.azul;
-    if(i>=12)       return COLORS.laranja;
+  const maxHr = Math.max(...hrs);
+  const colors = hrs.map((v,i) => {{
+    if(v===maxHr && v>0) return COLORS.vermelho;
+    if(i>=22||i<6)       return COLORS.roxo;
+    if(i>=18)            return COLORS.azul;
+    if(i>=12)            return COLORS.laranja;
     return COLORS.amarelo;
   }});
   const trace = [{{
     type:'bar', x:labels, y:hrs,
     marker:{{color:colors,line:{{color:'white',width:0.5}}}},
+    text:hrs.map(v=>v>0?String(v):''),
+    textposition:'outside',
+    textfont:{{size:9,color:'#333'}},
+    cliponaxis:false,
     hovertemplate:'<b>%{{x}}</b><br>%{{y}} casos<extra></extra>',
   }}];
   const layout = {{...LAYOUT_BASE,
