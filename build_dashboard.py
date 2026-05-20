@@ -64,7 +64,9 @@ if os.path.exists('geocache.json'):
 df = pd.read_excel('secretario.xlsx', sheet_name='DADOS', engine='openpyxl')
 
 def norm_tipo(v):
+    if pd.isna(v): return ''
     v = str(v).strip().upper()
+    if not v or v == 'NAN': return ''
     if 'TENTATIVA' in v and 'ROUBO' in v: return 'Tentativa de Roubo'
     if 'TENTATIVA' in v and 'FURTO' in v: return 'Tentativa de Furto'
     if v == 'FURTO': return 'Furto'
@@ -84,7 +86,9 @@ ITEM_MAP = {
     'MOTOCICLETA':'Motocicleta',
 }
 def norm_item(v):
+    if pd.isna(v): return ''
     u = str(v).strip().upper()
+    if not u or u == 'NAN': return ''
     return ITEM_MAP.get(u, str(v).strip().title())
 
 BAIRRO_MAP = {
@@ -96,7 +100,9 @@ BAIRRO_MAP = {
     'CENTRO':'Centro','ESTADOS':'Estados','BARRA':'Barra',
 }
 def norm_bairro(v):
+    if pd.isna(v): return ''
     u = str(v).strip().upper()
+    if not u or u == 'NAN': return ''
     return BAIRRO_MAP.get(u, str(v).strip().title())
 
 DIA_MAP = {
@@ -105,7 +111,9 @@ DIA_MAP = {
     'DOMINGO':'Domingo',
 }
 def norm_dia(v):
+    if pd.isna(v): return ''
     u = str(v).strip().upper()
+    if not u or u == 'NAN': return ''
     return DIA_MAP.get(u, str(v).strip().title())
 
 TURNO_MAP = {
@@ -113,7 +121,10 @@ TURNO_MAP = {
     'TARDE':'Tarde','NOITE':'Noite','MADRUGADA':'Madrugada',
 }
 def norm_turno(v):
-    return TURNO_MAP.get(str(v).strip().upper(), str(v).strip().title())
+    if pd.isna(v): return ''
+    u = str(v).strip().upper()
+    if not u or u == 'NAN': return ''
+    return TURNO_MAP.get(u, str(v).strip().title())
 
 MES_MAP = {
     'ABRIL':'Abril','MAIO':'Maio','MARCO':'Março','MARÇO':'Março',
@@ -122,7 +133,10 @@ MES_MAP = {
     'OUTUBRO':'Outubro','NOVEMBRO':'Novembro','DEZEMBRO':'Dezembro',
 }
 def norm_mes(v):
-    return MES_MAP.get(str(v).strip().upper(), str(v).strip().title())
+    if pd.isna(v): return ''
+    u = str(v).strip().upper()
+    if not u or u == 'NAN': return ''
+    return MES_MAP.get(u, str(v).strip().title())
 
 df['TIPIFICACAO'] = df['TIPIFICACAO'].apply(norm_tipo)
 df['ITEM']        = df['ITEM'].apply(norm_item)
@@ -130,6 +144,14 @@ df['BAIRRO']      = df['BAIRRO'].apply(norm_bairro)
 df['DIA_SEMANA']  = df['DIA_SEMANA'].apply(norm_dia)
 df['MES']         = df['MES'].apply(norm_mes)
 df['TURNO']       = df['TURNO'].apply(norm_turno)
+
+# Remover linhas sem B.O. ou sem tipificação (células em branco / linhas vazias)
+df = df[
+    df['B.O.'].notna() &
+    (df['B.O.'].astype(str).str.strip().str.upper() != 'NAN') &
+    (df['B.O.'].astype(str).str.strip() != '') &
+    (df['TIPIFICACAO'] != '')
+].copy()
 df['DATA_COMPLETA'] = pd.to_datetime(
     df['ANO'].astype(str) + '-' +
     df['MES'].str.upper().map({'ABRIL':'04','MAIO':'05'}) + '-' +
@@ -928,7 +950,7 @@ function filtered() {{
 // ── CONTAR ────────────────────────────────────────────────────────────────────
 function count(data, key) {{
   const m = {{}};
-  data.forEach(r => {{ const v=r[key]; m[v]=(m[v]||0)+1; }});
+  data.forEach(r => {{ const v=r[key]; if(v!==null&&v!==undefined&&v!=='') m[v]=(m[v]||0)+1; }});
   return m;
 }}
 function sortedEntries(obj, desc=true) {{
