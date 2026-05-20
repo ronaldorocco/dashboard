@@ -523,6 +523,12 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
       <span class="filter-label">Dia da Semana</span>
       <div id="filter-dia"></div>
     </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Logradouro</span>
+      <input class="filter-search" type="text" placeholder="Buscar rua…" oninput="filterSearch('logradouro',this.value)">
+      <div class="filter-scroll" id="filter-logradouro"></div>
+    </div>
   </div>
 
   <!-- CONTENT -->
@@ -733,7 +739,7 @@ const RAW = [{"data": "2026-04-29", "mes": "Abril", "ano": 2026, "hora": "13:30"
 // ── ESTADO DOS FILTROS ────────────────────────────────────────────────────────
 const state = {
   mes: new Set(), turno: new Set(), tipo: new Set(),
-  bairro: new Set(), item: new Set(), dia: new Set()
+  bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set()
 };
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
@@ -766,12 +772,13 @@ const CONFIG = {responsive:true,displayModeBar:false,locale:'pt-BR'};
 // ── FILTRAR DADOS ─────────────────────────────────────────────────────────────
 function filtered() {
   return RAW.filter(r =>
-    (state.mes.size   === 0 || state.mes.has(r.mes))   &&
-    (state.turno.size === 0 || state.turno.has(r.turno))&&
-    (state.tipo.size  === 0 || state.tipo.has(r.tipo))  &&
-    (state.bairro.size=== 0 || state.bairro.has(r.bairro))&&
-    (state.item.size  === 0 || state.item.has(r.item))  &&
-    (state.dia.size   === 0 || state.dia.has(r.dia))
+    (state.mes.size        === 0 || state.mes.has(r.mes))        &&
+    (state.turno.size      === 0 || state.turno.has(r.turno))    &&
+    (state.tipo.size       === 0 || state.tipo.has(r.tipo))      &&
+    (state.bairro.size     === 0 || state.bairro.has(r.bairro))  &&
+    (state.item.size       === 0 || state.item.has(r.item))      &&
+    (state.dia.size        === 0 || state.dia.has(r.dia))        &&
+    (state.logradouro.size === 0 || state.logradouro.has(r.endereco))
   );
 }
 
@@ -1322,7 +1329,7 @@ function renderAll() {
 }
 
 // ── CHIPS DE FILTROS ATIVOS ───────────────────────────────────────────────────
-const FILTER_LABELS = {mes:'Mês',turno:'Turno',tipo:'Tipo',bairro:'Bairro',item:'Item',dia:'Dia'};
+const FILTER_LABELS = {mes:'Mês',turno:'Turno',tipo:'Tipo',bairro:'Bairro',item:'Item',dia:'Dia',logradouro:'Logradouro'};
 function renderChips() {
   const div = document.getElementById('active-filters');
   const chips = [];
@@ -1378,7 +1385,7 @@ function buildCheckboxes(containerId, key, values, counts) {
 }
 
 function filterSearch(key, q) {
-  const map = {bairro:'filter-bairro',item:'filter-item'};
+  const map = {bairro:'filter-bairro',item:'filter-item',logradouro:'filter-logradouro'};
   const el = document.getElementById(map[key]);
   if(el) el.dataset.search = q;
   buildSidebar();
@@ -1388,19 +1395,21 @@ function buildSidebar() {
   const all = filtered();
   const allCounts = k => count(RAW,k);
 
-  const meses  = [...new Set(RAW.map(r=>r.mes))].sort();
-  const turnos = ['Manhã','Tarde','Noite','Madrugada'];
-  const tipos  = [...new Set(RAW.map(r=>r.tipo))].sort();
-  const bairros= sortedEntries(count(RAW,'bairro')).map(e=>e[0]);
-  const itens  = sortedEntries(count(RAW,'item')).map(e=>e[0]);
-  const dias   = DIA_ORDER.filter(d=>RAW.some(r=>r.dia===d));
+  const meses       = [...new Set(RAW.map(r=>r.mes))].sort();
+  const turnos      = ['Manhã','Tarde','Noite','Madrugada'];
+  const tipos       = [...new Set(RAW.map(r=>r.tipo))].sort();
+  const bairros     = sortedEntries(count(RAW,'bairro')).map(e=>e[0]);
+  const itens       = sortedEntries(count(RAW,'item')).map(e=>e[0]);
+  const dias        = DIA_ORDER.filter(d=>RAW.some(r=>r.dia===d));
+  const logradouros = [...new Set(RAW.map(r=>r.endereco).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
 
-  buildCheckboxes('filter-mes',   'mes',   meses,  allCounts('mes'));
-  buildCheckboxes('filter-turno', 'turno', turnos, allCounts('turno'));
-  buildCheckboxes('filter-tipo',  'tipo',  tipos,  allCounts('tipo'));
-  buildCheckboxes('filter-bairro','bairro',bairros,allCounts('bairro'));
-  buildCheckboxes('filter-item',  'item',  itens,  allCounts('item'));
-  buildCheckboxes('filter-dia',   'dia',   dias,   allCounts('dia'));
+  buildCheckboxes('filter-mes',        'mes',        meses,       allCounts('mes'));
+  buildCheckboxes('filter-turno',      'turno',      turnos,      allCounts('turno'));
+  buildCheckboxes('filter-tipo',       'tipo',        tipos,      allCounts('tipo'));
+  buildCheckboxes('filter-bairro',     'bairro',     bairros,     allCounts('bairro'));
+  buildCheckboxes('filter-item',       'item',        itens,      allCounts('item'));
+  buildCheckboxes('filter-dia',        'dia',         dias,       allCounts('dia'));
+  buildCheckboxes('filter-logradouro', 'logradouro', logradouros, count(RAW,'endereco'));
 }
 
 // ── RUAS ─────────────────────────────────────────────────────────────────────
