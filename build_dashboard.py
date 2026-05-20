@@ -126,6 +126,24 @@ def norm_turno(v):
     if not u or u == 'NAN': return ''
     return TURNO_MAP.get(u, str(v).strip().title())
 
+def calcular_turno(hora_val, turno_fallback=''):
+    """Calcula turno pela hora:
+       Manhã 06-11h | Tarde 12-17h | Noite 18-23h | Madrugada 00-05h
+       Usa turno_fallback se hora inválida/ausente."""
+    try:
+        if hasattr(hora_val, 'hour'):
+            h = hora_val.hour
+        elif pd.notna(hora_val) and str(hora_val).strip():
+            h = int(str(hora_val).strip().split(':')[0])
+        else:
+            return norm_turno(turno_fallback)
+        if  6 <= h <= 11: return 'Manhã'
+        if 12 <= h <= 17: return 'Tarde'
+        if 18 <= h <= 23: return 'Noite'
+        return 'Madrugada'   # 00-05h
+    except Exception:
+        return norm_turno(turno_fallback)
+
 MES_MAP = {
     'ABRIL':'Abril','MAIO':'Maio','MARCO':'Março','MARÇO':'Março',
     'JANEIRO':'Janeiro','FEVEREIRO':'Fevereiro','JUNHO':'Junho',
@@ -143,7 +161,8 @@ df['ITEM']        = df['ITEM'].apply(norm_item)
 df['BAIRRO']      = df['BAIRRO'].apply(norm_bairro)
 df['DIA_SEMANA']  = df['DIA_SEMANA'].apply(norm_dia)
 df['MES']         = df['MES'].apply(norm_mes)
-df['TURNO']       = df['TURNO'].apply(norm_turno)
+# Turno calculado pela HORA (06-11h=Manhã, 12-17h=Tarde, 18-23h=Noite, 00-05h=Madrugada)
+df['TURNO']       = df.apply(lambda r: calcular_turno(r['HORA'], r['TURNO']), axis=1)
 
 # Remover linhas sem B.O. ou sem tipificação (células em branco / linhas vazias)
 df = df[
@@ -1702,8 +1721,8 @@ function renderPlanoPolicial(data) {{
   if(total===0){{ document.getElementById('plano-policial').innerHTML=''; return; }}
 
   // ── Separar os dois turnos operacionais (usa campo turno, igual ao gráfico) ──
-  // Turno A: Manhã + Tarde → 8 viaturas
-  // Turno B: Noite + Madrugada → 7 viaturas
+  // Turno A: Matutino (Manhã 06-11h) + Vespertino (Tarde 12-17h) → 8 viaturas
+  // Turno B: Noturno (Noite 18-23h) + Madrugada (00-05h) → 7 viaturas
   const dadosA = data.filter(r=>r.turno==='Manhã'||r.turno==='Tarde');
   const dadosB = data.filter(r=>r.turno==='Noite'||r.turno==='Madrugada');
 
