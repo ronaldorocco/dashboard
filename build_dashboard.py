@@ -1107,9 +1107,16 @@ function sair(){{
   </div>
 </div>
 
+<script type="application/json" id="raw-data">{data_json}</script>
 <script>
 // ── DADOS ────────────────────────────────────────────────────────────────────
-const RAW = {data_json};
+var RAW = [];
+try {{
+  RAW = JSON.parse(document.getElementById('raw-data').textContent);
+}} catch(e) {{
+  var _ed = document.getElementById('__err__');
+  if(_ed){{ _ed.style.display='block'; _ed.textContent='ERRO AO CARREGAR DADOS: '+e.message; }}
+}}
 
 // ── ESTADO DOS FILTROS ────────────────────────────────────────────────────────
 const state = {{
