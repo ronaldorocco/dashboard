@@ -773,6 +773,53 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
 
 <div id="__err__" style="display:none;position:fixed;top:0;left:0;right:0;background:#c00;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;white-space:pre-wrap"></div>
 <script>window.onerror=function(m,s,l,c,e){{var d=document.getElementById('__err__');if(d){{d.style.display='block';d.textContent='ERRO JS: '+m+' (linha '+l+')\n'+(e&&e.stack?e.stack:'');}}return false;}};</script>
+
+<script>
+/* ── LOGIN STANDALONE — funciona mesmo se o script principal falhar ── */
+(function(){{
+  if(sessionStorage.getItem('gmbc_auth')==='1'){{
+    document.addEventListener('DOMContentLoaded',function(){{
+      var o=document.getElementById('login-overlay');
+      if(o)o.style.display='none';
+    }});
+  }}
+}})();
+function toggleSenha(){{
+  var i=document.getElementById('login-senha');
+  var b=document.querySelector('.login-eye');
+  if(!i)return;
+  i.type=i.type==='password'?'text':'password';
+  if(b)b.textContent=i.type==='password'?'👁':'🙈';
+}}
+function verificarSenha(){{
+  var i=document.getElementById('login-senha');
+  var e=document.getElementById('login-erro');
+  var c=document.getElementById('login-card');
+  var v=i?i.value:'';
+  if(!v){{if(e)e.textContent='Digite a senha.';return;}}
+  try{{
+    var enc=btoa(unescape(encodeURIComponent(v)));
+    if(enc==='{_senha_b64}'){{
+      sessionStorage.setItem('gmbc_auth','1');
+      var o=document.getElementById('login-overlay');
+      if(o)o.style.display='none';
+    }}else{{
+      if(e)e.textContent='❌ Senha incorreta. Tente novamente.';
+      if(c){{c.classList.remove('login-shake');void c.offsetWidth;c.classList.add('login-shake');}}
+      if(i){{i.value='';i.focus();}}
+    }}
+  }}catch(ex){{if(e)e.textContent='⚠️ Erro. Tente novamente.';}}
+}}
+function sair(){{
+  sessionStorage.removeItem('gmbc_auth');
+  var i=document.getElementById('login-senha');
+  var e=document.getElementById('login-erro');
+  var o=document.getElementById('login-overlay');
+  if(i)i.value='';if(e)e.textContent='';
+  if(o)o.style.display='flex';
+}}
+</script>
+
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <div class="header">
