@@ -99,6 +99,19 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .btn-prev{background:#C05700;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
 .btn-prev:hover{background:#8F3F00;}
+.btn-relatorio{background:#0097A7;color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
+.btn-relatorio:hover{background:#006978;}
+/* ── MODAL RELATÓRIO ── */
+.rel-date-bar{background:#f2f4f8;padding:11px 18px;border-bottom:1px solid #ddd;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;}
+.rel-date-bar label{font-size:11px;font-weight:600;color:#1A1A2E;}
+.rel-date-input{padding:5px 9px;border:1px solid #ccc;border-radius:5px;font-size:12px;
+  font-family:inherit;background:white;color:#1A1A2E;cursor:pointer;}
+.rel-date-input:focus{outline:none;border-color:#0078D4;}
+.rel-gerar-btn{background:#0078D4;color:white;border:none;border-radius:5px;padding:6px 16px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.rel-gerar-btn:hover{background:#005A9E;}
 /* ── RISCO BADGES ── */
 .risco-alto{background:#D13438;color:white;border-radius:4px;padding:2px 8px;font-weight:800;font-size:11px;}
 .risco-medio{background:#E07B00;color:white;border-radius:4px;padding:2px 8px;font-weight:800;font-size:11px;}
@@ -549,6 +562,7 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
     <button class="btn-pdf" onclick="gerarPDF()">🖨️ Gerar PDF</button>
     <button class="btn-analise" onclick="analiseDiaria()">📋 Análise Diária</button>
     <button class="btn-prev" onclick="previsao()">📈 Previsão</button>
+    <button class="btn-relatorio" onclick="relatorioDiario()">📅 Relatório Diário</button>
     <button class="btn-sair" onclick="sair()">🔒 Sair</button>
   </div>
 </div>
@@ -2042,6 +2056,261 @@ function enviarWhatsAppPrevisao() {
   window.open('https://wa.me/?text=' + encodeURIComponent(_prevTextoWA), '_blank');
 }
 
+// ── RELATÓRIO DIÁRIO ──────────────────────────────────────────────────────────
+let _relTextoWA = '';
+
+function relatorioDiario() {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  document.getElementById('rel-data-ini').value = today;
+  document.getElementById('rel-data-fim').value = today;
+  document.getElementById('rel-titulo').textContent = '📅 Relatório de Ocorrências — Guarda Municipal BC';
+  document.getElementById('rel-corpo').innerHTML =
+    '<div style="color:#888;text-align:center;padding:40px;font-style:italic">Selecione o período e clique em <strong>Gerar Relatório</strong>.</div>';
+  document.getElementById('rel-overlay').classList.add('ativo');
+}
+
+function fecharRelatorio() {
+  document.getElementById('rel-overlay').classList.remove('ativo');
+}
+
+function gerarRelatorio() {
+  const ini = document.getElementById('rel-data-ini').value;
+  const fim = document.getElementById('rel-data-fim').value;
+  const corpo = document.getElementById('rel-corpo');
+  if (!ini || !fim) {
+    corpo.innerHTML = '<div style="color:#D13438;text-align:center;padding:20px;font-weight:600">⚠️ Selecione as datas de início e fim.</div>';
+    return;
+  }
+  if (ini > fim) {
+    corpo.innerHTML = '<div style="color:#D13438;text-align:center;padding:20px;font-weight:600">⚠️ A data inicial não pode ser maior que a data final.</div>';
+    return;
+  }
+
+  const data = RAW.filter(r => r.data && r.data >= ini && r.data <= fim);
+
+  const now = new Date();
+  const horaBR    = now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  const nowDateBR = now.toLocaleDateString('pt-BR');
+  const fmtDate   = d => d.split('-').reverse().join('/');
+  const periodoLabel = ini === fim ? fmtDate(ini) : `${fmtDate(ini)} a ${fmtDate(fim)}`;
+
+  document.getElementById('rel-titulo').textContent = `📅 Relatório — ${periodoLabel} — Guarda Municipal BC`;
+
+  if (data.length === 0) {
+    corpo.innerHTML = `<div style="color:#888;text-align:center;padding:40px;font-style:italic">⚠️ Nenhuma ocorrência registrada no período <strong>${periodoLabel}</strong>.</div>`;
+    _relTextoWA = '';
+    return;
+  }
+
+  const cntF = (arr, f) => {
+    const m = {};
+    arr.forEach(r => { if(r[f]) m[r[f]] = (m[r[f]]||0)+1; });
+    return Object.entries(m).sort((a,b) => b[1]-a[1]);
+  };
+
+  const total   = data.length;
+  const furtos  = data.filter(r=>r.tipo==='Furto').length;
+  const roubos  = data.filter(r=>r.tipo==='Roubo').length;
+  const arrom   = data.filter(r=>r.tipo==='Arrombamento').length;
+
+  const tipos   = cntF(data,'tipo');
+  const bairros = cntF(data,'bairro');
+  const turnos  = cntF(data,'turno');
+  const itens   = cntF(data,'item');
+  const ruas    = cntF(data,'endereco').filter(e=>e[0]);
+
+  const pct = n => total ? ((n/total)*100).toFixed(0)+'%' : '0%';
+
+  const mkTable = (rows, headers) =>
+    `<table class="analise-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+
+  const tiposRows = tipos.map((e,i) =>
+    `<tr><td>${i+1}. ${e[0]}</td><td style="text-align:center">${e[1]}</td><td style="text-align:center">${pct(e[1])}</td></tr>`
+  ).join('');
+
+  const bairrosRows = bairros.slice(0,10).map((e,i) =>
+    `<tr><td>${i+1}. ${e[0]}</td><td style="text-align:center">${e[1]}</td><td style="text-align:center">${pct(e[1])}</td></tr>`
+  ).join('');
+
+  const ORDEM_TURNO = ['Madrugada','Manhã','Tarde','Noite'];
+  const turnoMap = {};
+  turnos.forEach(e => turnoMap[e[0]] = e[1]);
+  const turnosRows = ORDEM_TURNO.map(t =>
+    `<tr><td>${t}</td><td style="text-align:center">${turnoMap[t]||0}</td><td style="text-align:center">${pct(turnoMap[t]||0)}</td></tr>`
+  ).join('');
+
+  const itensRows = itens.slice(0,10).map((e,i) =>
+    `<tr><td>${i+1}. ${e[0]}</td><td style="text-align:center">${e[1]}</td><td style="text-align:center">${pct(e[1])}</td></tr>`
+  ).join('');
+
+  const ruasRows = ruas.slice(0,10).map((e,i) =>
+    `<tr><td>${i+1}. ${e[0]}</td><td style="text-align:center">${e[1]}</td><td style="text-align:center">${pct(e[1])}</td></tr>`
+  ).join('');
+
+  const sorted = [...data].sort((a,b) =>
+    ((a.data||'')+' '+(a.hora||'')).localeCompare((b.data||'')+' '+(b.hora||''))
+  );
+  const boRows = sorted.map(r => `
+    <tr>
+      <td>${r.data ? r.data.slice(8)+'/'+r.data.slice(5,7)+'/'+r.data.slice(0,4) : ''}</td>
+      <td>${r.hora}</td>
+      <td>${r.turno}</td>
+      <td style="font-size:9px">${r.bo}</td>
+      <td><span style="background:${TIPO_COLORS[r.tipo]||'#888'};color:white;border-radius:3px;padding:1px 5px;font-size:9px">${r.tipo}</span></td>
+      <td>${r.item}</td>
+      <td>${r.bairro}</td>
+      <td style="font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis">${r.endereco}</td>
+    </tr>`).join('');
+
+  const html = `
+  <div style="text-align:center;background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:8px;
+    padding:12px;margin-bottom:14px;border-left:4px solid #0078D4;">
+    <div style="font-weight:800;font-size:15px;color:#1A1A2E">📅 Relatório de Ocorrências</div>
+    <div style="color:#555;font-size:11px;margin-top:4px">
+      Guarda Municipal de Balneário Camboriú<br>
+      Período: <strong>${periodoLabel}</strong> &nbsp;|&nbsp; Gerado em: <strong>${nowDateBR}</strong> às <strong>${horaBR}</strong>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+    <div style="background:#1A1A2E;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Total</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1">${total}</div>
+      <div style="font-size:9px;opacity:.65">ocorrências</div>
+    </div>
+    <div style="background:#E07B00;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Furtos</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1">${furtos}</div>
+      <div style="font-size:9px;opacity:.65">${pct(furtos)}</div>
+    </div>
+    <div style="background:#D13438;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Roubos</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1">${roubos}</div>
+      <div style="font-size:9px;opacity:.65">${pct(roubos)}</div>
+    </div>
+    <div style="background:#795548;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Arrombamentos</div>
+      <div style="font-size:22px;font-weight:800;line-height:1.3;margin-top:2px">${arrom}</div>
+      <div style="font-size:9px;opacity:.65">${pct(arrom)}</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="analise-section">
+      <h3>🔴 Tipos de Ocorrência</h3>
+      ${mkTable(tiposRows, ['Tipo','Total','%'])}
+    </div>
+    <div class="analise-section">
+      <h3>⏰ Distribuição por Turno</h3>
+      ${mkTable(turnosRows, ['Turno','Total','%'])}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="analise-section">
+      <h3>📍 Bairros Afetados</h3>
+      ${mkTable(bairrosRows, ['Bairro','Total','%'])}
+    </div>
+    <div class="analise-section">
+      <h3>📦 Itens Furtados / Roubados</h3>
+      ${mkTable(itensRows, ['Item','Total','%'])}
+    </div>
+  </div>
+
+  <div class="analise-section" style="margin-bottom:14px">
+    <h3>🛣️ Logradouros com Mais Ocorrências</h3>
+    ${mkTable(ruasRows, ['Logradouro','Total','%'])}
+  </div>
+
+  <div class="analise-section">
+    <h3>📋 Lista Detalhada — ${total} Ocorrência(s)</h3>
+    <div style="overflow-x:auto">
+      <table class="analise-table">
+        <thead><tr>
+          <th>Data</th><th>Hora</th><th>Turno</th><th>B.O.</th>
+          <th>Tipo</th><th>Item</th><th>Bairro</th><th>Endereço</th>
+        </tr></thead>
+        <tbody>${boRows}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="border-top:1px solid #ddd;margin-top:12px;padding-top:8px;color:#888;font-size:10px;text-align:center;">
+    Secretaria de Segurança e Ordem Pública de Balneário Camboriú — Guarda Municipal
+  </div>`;
+
+  corpo.innerHTML = html;
+
+  const waLines = [
+    `📅 *RELATÓRIO DE OCORRÊNCIAS — GUARDA MUNICIPAL BC*`,
+    `Período: *${periodoLabel}*`,
+    `🕐 Gerado em: ${nowDateBR} às ${horaBR}`,
+    ``,
+    `*📊 RESUMO*`,
+    `Total: *${total}* ocorrências`,
+    `Furtos: *${furtos}* (${pct(furtos)})`,
+    `Roubos: *${roubos}* (${pct(roubos)})`,
+    `Arrombamentos: *${arrom}* (${pct(arrom)})`,
+    ``,
+    `*🔴 TIPOS*`,
+    ...tipos.map((e,i) => `${i+1}. ${e[0]}: ${e[1]} (${pct(e[1])})`),
+    ``,
+    `*📍 BAIRROS*`,
+    ...bairros.slice(0,5).map((e,i) => `${i+1}. ${e[0]}: ${e[1]} (${pct(e[1])})`),
+    ``,
+    `*⏰ TURNOS*`,
+    ...ORDEM_TURNO.map(t => `• ${t}: ${turnoMap[t]||0} (${pct(turnoMap[t]||0)})`),
+    ``,
+    `*📦 ITENS*`,
+    ...itens.slice(0,5).map((e,i) => `${i+1}. ${e[0]}: ${e[1]} (${pct(e[1])})`),
+    ``,
+    `*🛣️ LOGRADOUROS*`,
+    ...ruas.slice(0,5).map((e,i) => `${i+1}. ${e[0]}: ${e[1]}`),
+    ``,
+    `_Guarda Municipal de Balneário Camboriú_`,
+    `_Secretaria de Segurança e Ordem Pública_`
+  ];
+  _relTextoWA = waLines.join('\n');
+}
+
+function imprimirRelatorio() {
+  const corpoEl = document.getElementById('rel-corpo');
+  if (!_relTextoWA) { alert('Gere o relatório primeiro.'); return; }
+  const titulo = document.getElementById('rel-titulo').textContent;
+  const w = window.open('','_blank','width=900,height=720');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>${titulo}</title>
+    <style>
+      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+      body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;padding:24px;margin:0;}
+      h2{color:#1A1A2E;font-size:15px;border-bottom:3px solid #0097A7;padding-bottom:6px;margin-bottom:14px;}
+      h3{font-size:11px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #0078D4;
+          padding-bottom:3px;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;}
+      table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}
+      th{background:#1A1A2E!important;color:white!important;padding:4px 8px;text-align:left;}
+      td{padding:4px 8px;border-bottom:1px solid #eee;}
+      tr:nth-child(even){background:#f7f8fa!important;}
+      [style*="background:#1A1A2E"]{background:#1A1A2E!important;color:white!important;}
+      [style*="background:#E07B00"]{background:#E07B00!important;color:white!important;}
+      [style*="background:#D13438"]{background:#D13438!important;color:white!important;}
+      [style*="background:#795548"]{background:#795548!important;color:white!important;}
+      [style*="background:#0078D4"]{background:#0078D4!important;color:white!important;}
+    </style>
+  </head><body>
+    <h2>${titulo}</h2>
+    ${corpoEl.innerHTML}
+  </body></html>`);
+  w.document.close(); w.focus();
+  setTimeout(()=>w.print(), 500);
+}
+
+function enviarWhatsAppRelatorio() {
+  if (!_relTextoWA) { alert('Gere o relatório primeiro.'); return; }
+  window.open('https://wa.me/?text=' + encodeURIComponent(_relTextoWA), '_blank');
+}
+
 // ── SIDEBAR DINÂMICA ──────────────────────────────────────────────────────────
 function buildCheckboxes(containerId, key, values, counts) {
   const container = document.getElementById(containerId);
@@ -2545,6 +2814,32 @@ else { window.addEventListener('load', init); }
       <button class="btn-reset" onclick="fecharPrevisao()">✕ Fechar</button>
       <button class="btn-pdf" onclick="imprimirPrevisao()">🖨️ Salvar PDF</button>
       <button class="btn-analise" onclick="enviarWhatsAppPrevisao()">📱 Enviar WhatsApp</button>
+    </div>
+  </div>
+</div>
+<!-- ── MODAL RELATÓRIO DIÁRIO ── -->
+<div class="analise-overlay" id="rel-overlay" onclick="if(event.target===this)fecharRelatorio()">
+  <div class="analise-box" style="width:min(960px,97vw)">
+    <div class="analise-header">
+      <h2 id="rel-titulo">📅 Relatório de Ocorrências — Guarda Municipal BC</h2>
+      <button class="analise-close" onclick="fecharRelatorio()" title="Fechar">✕</button>
+    </div>
+    <div class="rel-date-bar">
+      <label>Data Inicial:</label>
+      <input type="date" id="rel-data-ini" class="rel-date-input">
+      <label>Data Final:</label>
+      <input type="date" id="rel-data-fim" class="rel-date-input">
+      <button class="rel-gerar-btn" onclick="gerarRelatorio()">🔍 Gerar Relatório</button>
+    </div>
+    <div class="analise-corpo" id="rel-corpo">
+      <div style="color:#888;text-align:center;padding:40px;font-style:italic">
+        Selecione o período e clique em <strong>Gerar Relatório</strong>.
+      </div>
+    </div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharRelatorio()">✕ Fechar</button>
+      <button class="btn-pdf" onclick="imprimirRelatorio()">🖨️ Salvar PDF</button>
+      <button class="btn-analise" onclick="enviarWhatsAppRelatorio()">📱 Enviar WhatsApp</button>
     </div>
   </div>
 </div>

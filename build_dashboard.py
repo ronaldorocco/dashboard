@@ -1,9 +1,17 @@
 import pandas as pd
 import json
 import os
+import hashlib
 import urllib.request
 import warnings
 warnings.filterwarnings('ignore')
+
+# ╔══════════════════════════════════════════════════════╗
+# ║         SENHA DE ACESSO AO DASHBOARD                 ║
+# ║  Altere SENHA_DASHBOARD para mudar a senha           ║
+# ╚══════════════════════════════════════════════════════╝
+SENHA_DASHBOARD = "GuardaBC2026"
+_senha_hash = hashlib.sha256(SENHA_DASHBOARD.encode('utf-8')).hexdigest()
 
 # ── Baixar/embedar bibliotecas JS/CSS ─────────────────────────────────────────
 LIBS_DIR = 'libs'
@@ -173,7 +181,12 @@ df = df[
 ].copy()
 df['DATA_COMPLETA'] = pd.to_datetime(
     df['ANO'].astype(str) + '-' +
-    df['MES'].str.upper().map({'ABRIL':'04','MAIO':'05'}) + '-' +
+    df['MES'].str.upper().map({
+        'JANEIRO':'01','FEVEREIRO':'02','MARÇO':'03','MARCO':'03',
+        'ABRIL':'04','MAIO':'05','JUNHO':'06','JULHO':'07',
+        'AGOSTO':'08','SETEMBRO':'09','OUTUBRO':'10',
+        'NOVEMBRO':'11','DEZEMBRO':'12'
+    }) + '-' +
     df['DATA'].astype(str).str.zfill(2),
     format='%Y-%m-%d', errors='coerce'
 )
@@ -183,6 +196,15 @@ df['BO']       = df['B.O.'].fillna('').astype(str)
 df['ENDERECO'] = df['ENDEREÇO'].fillna('').astype(str)
 df['REF']      = df['PONTO_REFERENCIA'].fillna('').astype(str)
 df['MAPA_URL'] = df['MAPA'].fillna('').astype(str)
+def clean_text_cell(row, col):
+    if col not in df.columns or pd.isna(row[col]):
+        return ''
+    val = row[col]
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
+    txt = str(val).strip()
+    return '' if txt.lower() in ('', 'nan') else txt
+
 def get_coords(mapa_str):
     geo = GEOCACHE.get(str(mapa_str).strip())
     if geo:
@@ -203,14 +225,18 @@ for _, r in df.iterrows():
         'bo': r['BO'],
         'tipo': r['TIPIFICACAO'],
         'item': r['ITEM'],
-        'marca': str(r['MARCA_MODELO']) if pd.notna(r['MARCA_MODELO']) else '',
-        'qnt': str(r['QNT']) if pd.notna(r['QNT']) else '1',
+        'marca': str(r['MARCA_MODELO']) if 'MARCA_MODELO' in df.columns and pd.notna(r['MARCA_MODELO']) else '',
+        'qnt': str(r['QNT']) if 'QNT' in df.columns and pd.notna(r['QNT']) else '',
+        'imei': clean_text_cell(r, 'IMEI'),
+        'placa': clean_text_cell(r, 'PLACA'),
+        'numero_serie': clean_text_cell(r, 'NUMERO_SERIE'),
         'endereco': r['ENDERECO'],
         'bairro': r['BAIRRO'],
         'ref': r['REF'],
         'mapa': r['MAPA_URL'],
         'lat': r['LAT'] if pd.notna(r['LAT']) else None,
         'lon': r['LON'] if pd.notna(r['LON']) else None,
+        'link': str(r['LINK']).strip() if 'LINK' in df.columns and pd.notna(r['LINK']) and str(r['LINK']).strip() not in ('', 'nan') else '',
     })
 
 data_json = json.dumps(records, ensure_ascii=False)
@@ -244,24 +270,104 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .header{{
   background:linear-gradient(135deg,#1A1A2E 0%,#0078D4 100%);
   color:white;padding:14px 24px;display:flex;align-items:center;
-  justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:10;
+  justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.3);
+  position:sticky;top:0;z-index:100;
 }}
 .header h1{{font-size:17px;font-weight:700;letter-spacing:.3px;}}
 .header .sub{{font-size:11px;opacity:.8;margin-top:2px;}}
 .header-right{{display:flex;gap:10px;align-items:center;}}
 .badge{{background:rgba(255,255,255,.2);border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;}}
+/* ── LOGIN ── */
+.login-overlay{{position:fixed;top:0;left:0;width:100%;height:100%;
+  background:linear-gradient(135deg,#1A1A2E 0%,#0078D4 100%);
+  z-index:99999;display:flex;align-items:center;justify-content:center;}}
+.login-card{{background:white;border-radius:14px;padding:40px 36px;width:min(380px,92vw);
+  box-shadow:0 24px 64px rgba(0,0,0,.5);text-align:center;}}
+.login-shield{{margin-bottom:10px;text-align:center;}}
+.login-title{{font-size:15px;font-weight:800;color:#1A1A2E;margin-bottom:4px;}}
+.login-sub{{font-size:11px;color:#666;margin-bottom:24px;line-height:1.6;}}
+.login-input-wrap{{position:relative;width:100%;margin-bottom:10px;}}
+.login-input{{width:100%;box-sizing:border-box;padding:11px 44px 11px 14px;
+  border:2px solid #ddd;border-radius:7px;font-size:14px;
+  font-family:inherit;transition:border-color .2s;}}
+.login-input:focus{{outline:none;border-color:#333D65;}}
+.login-eye{{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:#999;font-size:18px;
+  padding:0;line-height:1;user-select:none;}}
+.login-eye:hover{{color:#333D65;}}
+.login-btn{{width:100%;padding:11px;background:#333D65;color:white;border:none;
+  border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;
+  transition:background .2s;}}
+.login-btn:hover{{background:#222847;}}
+.login-error{{color:#D13438;font-size:12px;margin-top:8px;min-height:18px;}}
+@keyframes shake{{0%,100%{{transform:translateX(0)}}25%{{transform:translateX(-7px)}}75%{{transform:translateX(7px)}}}}
+.login-shake{{animation:shake .35s ease;}}
 .btn-reset{{background:#D13438;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
 .btn-reset:hover{{background:#A4262C;}}
 .btn-pdf{{background:#107C10;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
 .btn-pdf:hover{{background:#0B5A0B;}}
+.btn-analise{{background:#5C2D91;color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-analise:hover{{background:#3D1A6B;}}
+.btn-sair{{background:transparent;color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.4);
+  border-radius:4px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-sair:hover{{background:rgba(255,255,255,.15);color:white;border-color:rgba(255,255,255,.7);}}
+.btn-prev{{background:#C05700;color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-prev:hover{{background:#8F3F00;}}
+.btn-relatorio{{background:#0097A7;color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-relatorio:hover{{background:#006978;}}
+/* ── MODAL RELATÓRIO ── */
+.rel-date-bar{{background:#f2f4f8;padding:11px 18px;border-bottom:1px solid #ddd;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;}}
+.rel-date-bar label{{font-size:11px;font-weight:600;color:#1A1A2E;}}
+.rel-date-input{{padding:5px 9px;border:1px solid #ccc;border-radius:5px;font-size:12px;
+  font-family:inherit;background:white;color:#1A1A2E;cursor:pointer;}}
+.rel-date-input:focus{{outline:none;border-color:#0078D4;}}
+.rel-gerar-btn{{background:#0078D4;color:white;border:none;border-radius:5px;padding:6px 16px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}}
+.rel-gerar-btn:hover{{background:#005A9E;}}
+/* ── RISCO BADGES ── */
+.risco-alto{{background:#D13438;color:white;border-radius:4px;padding:2px 8px;font-weight:800;font-size:11px;}}
+.risco-medio{{background:#E07B00;color:white;border-radius:4px;padding:2px 8px;font-weight:800;font-size:11px;}}
+.risco-baixo{{background:#107C10;color:white;border-radius:4px;padding:2px 8px;font-weight:800;font-size:11px;}}
+.risco-bar-wrap{{background:#eee;height:8px;border-radius:4px;width:70px;display:inline-block;vertical-align:middle;}}
+.risco-bar-fill{{height:8px;border-radius:4px;}}
+/* ── MODAL ANÁLISE DIÁRIA ── */
+.analise-overlay{{position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.65);z-index:9999;display:none;align-items:center;justify-content:center;}}
+.analise-overlay.ativo{{display:flex;}}
+.analise-box{{background:#fff;width:min(840px,96vw);max-height:91vh;border-radius:10px;
+  box-shadow:0 12px 48px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden;}}
+.analise-header{{background:linear-gradient(135deg,#1A1A2E 0%,#0078D4 100%);color:white;
+  padding:13px 18px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}}
+.analise-header h2{{margin:0;font-size:14px;font-weight:700;}}
+.analise-close{{background:none;border:none;color:white;font-size:22px;cursor:pointer;line-height:1;padding:0 4px;opacity:.8;}}
+.analise-close:hover{{opacity:1;}}
+.analise-corpo{{padding:18px 20px;overflow-y:auto;flex:1;font-size:12px;}}
+.analise-section{{margin-bottom:14px;}}
+.analise-section h3{{font-size:11px;font-weight:700;color:#1A1A2E;
+  border-bottom:2px solid #0078D4;padding-bottom:3px;margin:0 0 8px;
+  text-transform:uppercase;letter-spacing:.5px;}}
+.analise-table{{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:2px;}}
+.analise-table th{{background:#1A1A2E;color:white;padding:4px 8px;text-align:left;font-weight:600;}}
+.analise-table td{{padding:4px 8px;border-bottom:1px solid #eee;}}
+.analise-table tr:nth-child(even){{background:#f7f8fa;}}
+.analise-rec-ol{{padding-left:18px;margin:0;}}
+.analise-rec-ol li{{margin-bottom:6px;line-height:1.55;}}
+.analise-footer{{padding:11px 18px;background:#f2f4f8;border-top:1px solid #ddd;
+  display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;}}
+.badge-resumo{{display:inline-block;background:#0078D4;color:white;
+  border-radius:4px;padding:1px 9px;font-weight:700;margin-left:4px;font-size:13px;}}
 
 /* IMPRESSÃO / PDF */
 @media print{{
   *{{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
   .sidebar,.sidebar-overlay,.menu-toggle,.header-right,.active-filters,
-  .sel-hint,.btn-reset,.btn-pdf,.badge{{display:none!important;}}
+  .sel-hint,.btn-reset,.btn-pdf,.btn-analise,.badge,.analise-overlay{{display:none!important;}}
   .header{{
     background:linear-gradient(135deg,#1A1A2E 0%,#0078D4 100%)!important;
     padding:10px 18px!important;box-shadow:none!important;
@@ -671,6 +777,10 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
   <div class="header-right">
     <button class="btn-reset" onclick="resetFilters()">⟳ Limpar Filtros</button>
     <button class="btn-pdf" onclick="gerarPDF()">🖨️ Gerar PDF</button>
+    <button class="btn-analise" onclick="analiseDiaria()">📋 Análise Diária</button>
+    <button class="btn-prev" onclick="previsao()">📈 Previsão</button>
+    <button class="btn-relatorio" onclick="relatorioDiario()">📅 Relatório Diário</button>
+    <button class="btn-sair" onclick="sair()">🔒 Sair</button>
   </div>
 </div>
 
@@ -719,6 +829,26 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
       <span class="filter-label">Logradouro</span>
       <input class="filter-search" type="text" placeholder="Buscar rua…" oninput="filterSearch('logradouro',this.value)">
       <div class="filter-scroll" id="filter-logradouro"></div>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">IMEI</span>
+      <input id="filter-imei-input" class="filter-search" type="text" placeholder="Buscar IMEI..." oninput="filterImei(this.value)">
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Marca / Modelo</span>
+      <input id="filter-marca-input" class="filter-search" type="text" placeholder="Buscar marca/modelo..." oninput="filterMarca(this.value)">
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Placa</span>
+      <input id="filter-placa-input" class="filter-search" type="text" placeholder="Buscar placa..." oninput="filterPlaca(this.value)">
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Número de Série</span>
+      <input id="filter-nserie-input" class="filter-search" type="text" placeholder="Buscar número de série..." oninput="filterNumeroSerie(this.value)">
     </div>
   </div>
 
@@ -932,6 +1062,7 @@ const state = {{
   mes: new Set(), turno: new Set(), tipo: new Set(),
   bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set()
 }};
+let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '';
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
 const COLORS = {{
@@ -968,6 +1099,10 @@ function filtered() {{
     (state.tipo.size       === 0 || state.tipo.has(r.tipo))      &&
     (state.bairro.size     === 0 || state.bairro.has(r.bairro))  &&
     (state.item.size       === 0 || state.item.has(r.item))      &&
+    (imeiQ === '' || (r.imei && r.imei.toLowerCase().includes(imeiQ.toLowerCase()))) &&
+    (marcaQ === '' || (r.marca && r.marca.toLowerCase().includes(marcaQ.toLowerCase()))) &&
+    (placaQ === '' || (r.placa && r.placa.toLowerCase().includes(placaQ.toLowerCase()))) &&
+    (numeroSerieQ === '' || (r.numero_serie && r.numero_serie.toLowerCase().includes(numeroSerieQ.toLowerCase()))) &&
     (state.dia.size        === 0 || state.dia.has(r.dia))        &&
     (state.logradouro.size === 0 || state.logradouro.has(r.endereco))
   );
@@ -1103,12 +1238,12 @@ function renderLinha(data) {{
 function renderMes(data) {{
   if(typeof Plotly === 'undefined') return;
 
-  const ORDER = ['Abril','Maio'];
+  const ORDER = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const c = count(data,'mes');
   const labels = ORDER.filter(m=>c[m]);
   const vals   = labels.map(m=>c[m]||0);
   const maxMes = Math.max(...vals);
-  const colBase = [COLORS.azul, COLORS.laranja];
+  const colBase = [COLORS.azul, COLORS.laranja, COLORS.verde, COLORS.roxo, COLORS.amarelo, COLORS.azulClr, COLORS.vermelho, COLORS.azul, COLORS.laranja, COLORS.verde, COLORS.roxo, COLORS.amarelo];
   const colors = vals.map((v,i)=>v===maxMes?COLORS.vermelho:colBase[i]||COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:11}}}},
@@ -1232,16 +1367,27 @@ function renderKPIs(data) {{
 // ── TABELA ────────────────────────────────────────────────────────────────────
 function renderTabela(data) {{
   const tbody = document.getElementById('tabela-body');
-  const show  = data.slice(0,200);
-  document.getElementById('tabela-count').textContent =
-    `${{data.length}} registros${{data.length>200?' (mostrando primeiros 200)':''}}`;
+  const show  = [...data].sort((a,b) => {{
+    const da = (a.data||'') + ' ' + (a.hora||'');
+    const db = (b.data||'') + ' ' + (b.hora||'');
+    return db.localeCompare(da);
+  }});
+  document.getElementById('tabela-count').textContent = `${{data.length}} registros`;
   tbody.innerHTML = show.map(r => `
     <tr>
-      <td>${{r.data ? r.data.slice(8)+'/'+(r.mes==='Abril'?'04':'05')+'/'+r.ano : ''}}</td>
+      <td>${{r.data ? r.data.slice(8)+'/'+r.data.slice(5,7)+'/'+r.data.slice(0,4) : ''}}</td>
       <td>${{r.hora}}</td>
       <td>${{r.turno}}</td>
       <td>${{r.dia}}</td>
-      <td style="font-size:9px">${{r.bo}}</td>
+      <td style="font-size:9px">${{r.link
+        ? `<a href="${{r.link}}" target="_blank" rel="noopener"
+             title="Abrir PDF do B.O."
+             style="color:#0078D4;text-decoration:none;font-weight:600"
+             onmouseover="this.style.textDecoration='underline'"
+             onmouseout="this.style.textDecoration='none'"
+           >${{r.bo}} <span style="font-size:8px">&#128196;</span></a>`
+        : r.bo
+      }}</td>
       <td><span style="background:${{TIPO_COLORS[r.tipo]||'#888'}};color:white;
         border-radius:3px;padding:1px 5px;font-size:9px">${{r.tipo}}</span></td>
       <td>${{r.item}}</td>
@@ -1546,15 +1692,840 @@ function toggleFilter(key, val) {{
 // ── RESET ─────────────────────────────────────────────────────────────────────
 function resetFilters() {{
   for(const k of Object.keys(state)) state[k].clear();
+  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = '';
+  const imeiInput = document.querySelector('#filter-imei-input');
+  if(imeiInput) imeiInput.value = '';
+  const marcaInput = document.querySelector('#filter-marca-input');
+  if(marcaInput) marcaInput.value = '';
+  const placaInput = document.querySelector('#filter-placa-input');
+  if(placaInput) placaInput.value = '';
+  const nSerieInput = document.querySelector('#filter-nserie-input');
+  if(nSerieInput) nSerieInput.value = '';
   renderAll();
 }}
 
 // ── GERAR PDF ─────────────────────────────────────────────────────────────────
 function gerarPDF() {{
-  // Garante que o mapa está dimensionado corretamente antes de imprimir
   if(mapaInst) mapaInst.invalidateSize();
-  // Pequena pausa para os gráficos renderizarem completamente
   setTimeout(() => window.print(), 300);
+}}
+
+// ── ANÁLISE DIÁRIA ────────────────────────────────────────────────────────────
+let _analiseTextoWA = '';
+
+// ── AUTENTICAÇÃO ──────────────────────────────────────────────────────────────
+(function() {{
+  if (sessionStorage.getItem('gmbc_auth') === '1') {{
+    const ov = document.getElementById('login-overlay');
+    if (ov) ov.style.display = 'none';
+  }}
+}})();
+
+function sair() {{
+  sessionStorage.removeItem('gmbc_auth');
+  document.getElementById('login-senha').value = '';
+  document.getElementById('login-erro').textContent = '';
+  document.getElementById('login-overlay').style.display = 'flex';
+}}
+
+function toggleSenha() {{
+  const inp = document.getElementById('login-senha');
+  const btn = inp.nextElementSibling;
+  if (inp.type === 'password') {{
+    inp.type = 'text';
+    btn.textContent = '🙈';
+  }} else {{
+    inp.type = 'password';
+    btn.textContent = '👁';
+  }}
+}}
+
+async function verificarSenha() {{
+  const input  = document.getElementById('login-senha').value;
+  const erroEl = document.getElementById('login-erro');
+  const cardEl = document.getElementById('login-card');
+  if (!input) {{ erroEl.textContent = 'Digite a senha.'; return; }}
+  const buf    = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  const hex    = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (hex === '{_senha_hash}') {{
+    sessionStorage.setItem('gmbc_auth', '1');
+    document.getElementById('login-overlay').style.display = 'none';
+  }} else {{
+    erroEl.textContent = '❌ Senha incorreta. Tente novamente.';
+    cardEl.classList.remove('login-shake');
+    void cardEl.offsetWidth;
+    cardEl.classList.add('login-shake');
+    document.getElementById('login-senha').value = '';
+    document.getElementById('login-senha').focus();
+  }}
+}}
+
+function analiseDiaria() {{
+  const now = new Date();
+  const horaBR    = now.toLocaleTimeString('pt-BR', {{hour:'2-digit', minute:'2-digit'}});
+  const nowDayBR  = now.toLocaleDateString('pt-BR', {{weekday:'long'}}).replace(/^\w/, c=>c.toUpperCase());
+  const nowDateBR = now.toLocaleDateString('pt-BR');
+
+  // Dia da semana atual
+  const DIAS_JS   = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const diaSemana = DIAS_JS[now.getDay()];
+  const plural    = diaSemana + 's';
+
+  // Todos os registros desse dia da semana (histórico completo)
+  const dayData = RAW.filter(r => r.dia === diaSemana);
+  const total   = dayData.length;
+  const datas   = [...new Set(dayData.map(r => r.data))];
+  const nDias   = datas.length;
+  const media   = nDias > 0 ? (total/nDias).toFixed(1) : '–';
+
+  // Atualiza título do modal
+  const tituloEl = document.getElementById('analise-titulo');
+  if (tituloEl) tituloEl.textContent = '📊 Análise de ' + plural + ' — Guarda Municipal BC';
+
+  if (total === 0) {{
+    document.getElementById('analise-corpo').innerHTML =
+      '<div style="color:#888;text-align:center;padding:40px;font-style:italic">⚠️ Nenhuma ocorrência registrada em ' + plural + ' até o momento.</div>';
+    document.getElementById('analise-overlay').classList.add('ativo');
+    return;
+  }}
+
+  const cntF = (arr, f) => {{
+    const m = {{}};
+    arr.forEach(r => {{ if(r[f]) m[r[f]] = (m[r[f]]||0)+1; }});
+    return Object.entries(m).sort((a,b) => b[1]-a[1]);
+  }};
+  const pct = n => total ? ((n/total)*100).toFixed(0)+'%' : '0%';
+  const med = n => nDias > 0 ? (n/nDias).toFixed(1) : '–';
+
+  const tipos   = cntF(dayData,'tipo');
+  const bairros = cntF(dayData,'bairro');
+  const ruas    = cntF(dayData,'endereco');
+  const turnos  = cntF(dayData,'turno');
+  const topTipo   = tipos[0]  || ['–',0];
+  const topBairro = bairros[0]|| ['–',0];
+  const topTurno  = turnos[0] || ['–',0];
+  const ORDEM_TURNO = ['Madrugada','Manhã','Tarde','Noite'];
+
+  // Recomendações baseadas no padrão histórico do dia da semana
+  const recs = [];
+  if (topBairro[0] !== '–')
+    recs.push(`Em ${{plural}}, o bairro <strong>${{topBairro[0]}}</strong> concentra historicamente ${{topBairro[1]}} ocorrência(s) (${{pct(topBairro[1])}}). Reforçar patrulhamento preventivo nessa área.`);
+  if ((ruas[0]||['–'])[0] !== '–')
+    recs.push(`A <strong>${{ruas[0][0]}}</strong> é o logradouro com maior incidência em ${{plural}}. Considerar ponto fixo de ronda.`);
+  const recTurno = {{
+    'Madrugada': `O turno da <strong>Madrugada (00h–05h)</strong> é o mais crítico em ${{plural}}. Reforçar efetivo e rondas preventivas nos pontos vulneráveis.`,
+    'Manhã':     `O turno <strong>Matutino (06h–11h)</strong> concentra maior índice em ${{plural}}. Ampliar guarnições nos bairros críticos.`,
+    'Tarde':     `O período <strong>Vespertino (12h–17h)</strong> é o mais crítico em ${{plural}}. Atenção especial à movimentação urbana.`,
+    'Noite':     `O turno <strong>Noturno (18h–23h)</strong> é crítico em ${{plural}}. Coordenar blitz e pontos de controle nas vias principais.`
+  }};
+  if (recTurno[topTurno[0]]) recs.push(recTurno[topTurno[0]]);
+  const recTipo = {{
+    'Furto':        `<strong>Furtos</strong> lideram em ${{plural}}. Orientar guarnições: abordagem preventiva próxima a comércio e estacionamentos.`,
+    'Roubo':        `<strong>Roubos</strong> são o crime mais frequente em ${{plural}}. Acionar inteligência para identificar padrões e possíveis autores.`,
+    'Arrombamento': `<strong>Arrombamentos</strong> predominam em ${{plural}}. Intensificar rondas em imóveis comerciais e residenciais.`
+  }};
+  if (recTipo[topTipo[0]]) recs.push(recTipo[topTipo[0]]);
+  recs.push(`Compartilhar esta análise com todas as guarnições no início do turno e manter comunicação ativa pelo rádio.`);
+
+  const mkRows = (data, cols) => data.map((e,i) =>
+    `<tr>${{cols.map(c=>`<td>${{c(e,i)}}</td>`).join('')}}</tr>`).join('');
+  const mkTable = (rows, headers) =>
+    `<table class="analise-table"><thead><tr>${{headers.map(h=>`<th>${{h}}</th>`).join('')}}</tr></thead><tbody>${{rows}}</tbody></table>`;
+
+  const tiposRows   = mkRows(tipos.slice(0,7),  [(e,i)=>`${{i+1}}. ${{e[0]}}`, e=>e[1], e=>pct(e[1]), e=>med(e[1])]);
+  const bairrosRows = mkRows(bairros.slice(0,5), [(e,i)=>`${{i+1}}. ${{e[0]}}`, e=>e[1], e=>pct(e[1])]);
+  const ruasRows    = mkRows(ruas.slice(0,5),    [(e,i)=>`${{i+1}}. ${{e[0]}}`, e=>e[1]]);
+  const turnosRows  = ORDEM_TURNO.map(t => {{
+    const n = (turnos.find(e=>e[0]===t)||[t,0])[1];
+    return `<tr><td>${{t}}</td><td>${{n}}</td><td>${{pct(n)}}</td><td>${{med(n)}}/dia</td></tr>`;
+  }}).join('');
+
+  const datasFormatadas = datas.sort().map(d => {{
+    const pts = d.split('-');
+    return pts[2]+'/'+pts[1];
+  }}).join(', ');
+
+  const corpo = `
+  <div style="text-align:center;background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:8px;
+    padding:12px;margin-bottom:14px;border-left:4px solid #0078D4;">
+    <div style="font-weight:800;font-size:15px;color:#1A1A2E">📊 Análise de ${{plural}}</div>
+    <div style="color:#555;font-size:11px;margin-top:4px">
+      Guarda Municipal de Balneário Camboriú<br>
+      📅 Gerado em: <strong>${{nowDayBR}}, ${{nowDateBR}}</strong> às <strong>${{horaBR}}</strong>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+    <div style="background:#1A1A2E;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Total histórico</div>
+      <div style="font-size:26px;font-weight:800;line-height:1.1">${{total}}</div>
+      <div style="font-size:9px;opacity:.65">ocorrências</div>
+    </div>
+    <div style="background:#0078D4;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">${{plural}} analisados</div>
+      <div style="font-size:26px;font-weight:800;line-height:1.1">${{nDias}}</div>
+      <div style="font-size:9px;opacity:.65">com registros</div>
+    </div>
+    <div style="background:#107C10;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Média por ${{diaSemana}}</div>
+      <div style="font-size:26px;font-weight:800;line-height:1.1">${{media}}</div>
+      <div style="font-size:9px;opacity:.65">oc./dia</div>
+    </div>
+    <div style="background:#5C2D91;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Turno crítico</div>
+      <div style="font-size:14px;font-weight:800;line-height:1.3;margin-top:4px">${{topTurno[0]}}</div>
+      <div style="font-size:9px;opacity:.65">${{topTurno[1]}} oc. (${{pct(topTurno[1])}})</div>
+    </div>
+  </div>
+  <div class="analise-section">
+    <h3>🔴 Tipos de Ocorrência em ${{plural}}</h3>
+    ${{mkTable(tiposRows,['Tipo','Total','%','Média/dia'])}}
+  </div>
+  <div class="analise-section">
+    <h3>📍 Bairros Mais Afetados em ${{plural}}</h3>
+    ${{mkTable(bairrosRows,['Bairro','Total','%'])}}
+  </div>
+  <div class="analise-section">
+    <h3>🛣️ Logradouros de Risco em ${{plural}}</h3>
+    ${{mkTable(ruasRows,['Logradouro','Total'])}}
+  </div>
+  <div class="analise-section">
+    <h3>⏰ Distribuição por Turno em ${{plural}}</h3>
+    ${{mkTable(turnosRows,['Turno','Total','%','Média/dia'])}}
+  </div>
+  <div class="analise-section">
+    <h3>🎯 Recomendações para ${{plural}}</h3>
+    <ol class="analise-rec-ol">${{recs.map(r=>`<li>${{r}}</li>`).join('')}}</ol>
+  </div>
+  <div style="border-top:1px solid #ddd;margin-top:12px;padding-top:8px;color:#888;font-size:10px;text-align:center;">
+    Secretaria de Segurança e Ordem Pública de Balneário Camboriú — Guarda Municipal
+  </div>`;
+
+  const waLns = [
+    `📊 *ANÁLISE DE ${{plural.toUpperCase()}} — GUARDA MUNICIPAL BC*`,
+    `📅 ${{nowDayBR}}, ${{nowDateBR}} às ${{horaBR}}`,
+    ``,
+    `*📋 RESUMO HISTÓRICO DE ${{plural.toUpperCase()}}*`,
+    `Total de ocorrências: *${{total}}*`,
+    `${{plural}} com dados: *${{nDias}}* | Média: *${{media}}* oc./dia`,
+    `Tipo mais frequente: *${{topTipo[0]}}* (${{topTipo[1]}} — ${{pct(topTipo[1])}})`,
+    `Bairro mais afetado: *${{topBairro[0]}}* (${{topBairro[1]}} oc.)`,
+    `Turno crítico: *${{topTurno[0]}}* (${{topTurno[1]}} oc. — ${{pct(topTurno[1])}})`,
+    ``,
+    `*🔴 TIPOS EM ${{plural.toUpperCase()}}*`,
+    ...tipos.slice(0,6).map(e=>`• ${{e[0]}}: ${{e[1]}} total (${{pct(e[1])}}) | média ${{med(e[1])}}/dia`),
+    ``,
+    `*📍 BAIRROS EM ${{plural.toUpperCase()}}*`,
+    ...bairros.slice(0,4).map((e,i)=>`${{i+1}}. ${{e[0]}}: ${{e[1]}} oc. (${{pct(e[1])}})`),
+    ``,
+    `*⏰ TURNOS EM ${{plural.toUpperCase()}}*`,
+    ...ORDEM_TURNO.map(t=>{{ const n=(turnos.find(e=>e[0]===t)||[t,0])[1]; return `• ${{t}}: ${{n}} (${{pct(n)}}) | média ${{med(n)}}/dia`; }}),
+    ``,
+    `*🎯 RECOMENDAÇÕES*`,
+    ...recs.map((r,i)=>`${{i+1}}. ${{r.replace(/<[^>]+>/g,'')}}`),
+    ``,
+    `_${{plural}} analisados: ${{datasFormatadas}}_`,
+    `_Guarda Municipal de Balneário Camboriú_`,
+    `_Secretaria de Segurança e Ordem Pública_`
+  ];
+  _analiseTextoWA = waLns.join('\\n');
+
+  document.getElementById('analise-corpo').innerHTML = corpo;
+  document.getElementById('analise-overlay').classList.add('ativo');
+}}
+
+function fecharAnalise() {{
+  document.getElementById('analise-overlay').classList.remove('ativo');
+}}
+
+// ── PREVISÃO DE RISCO ─────────────────────────────────────────────────────────
+let _prevTextoWA = '';
+function previsao() {{
+  const now      = new Date();
+  const horaBR   = now.toLocaleTimeString('pt-BR', {{hour:'2-digit',minute:'2-digit'}});
+  const nowDayBR = now.toLocaleDateString('pt-BR', {{weekday:'long'}}).replace(/^\w/,c=>c.toUpperCase());
+  const nowDateBR= now.toLocaleDateString('pt-BR');
+  const DIAS_JS  = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const diaSemana= DIAS_JS[now.getDay()];
+  const plural   = diaSemana + 's';
+  const tituloEl = document.getElementById('prev-titulo');
+  if (tituloEl) tituloEl.textContent = '📈 Previsão de Risco — ' + plural + ' — Guarda Municipal BC';
+
+  const hist  = RAW.filter(r => r.dia === diaSemana);
+  const datas = [...new Set(hist.map(r=>r.data))].sort();
+  const nDias = datas.length;
+
+  if (nDias === 0) {{
+    document.getElementById('prev-corpo').innerHTML =
+      '<div style="color:#888;text-align:center;padding:40px;font-style:italic">⚠️ Nenhuma ocorrência registrada em ' + plural + ' até o momento.</div>';
+    document.getElementById('prev-overlay').classList.add('ativo');
+    return;
+  }}
+
+  // Estatísticas por dia
+  const perDay  = datas.map(d => hist.filter(r=>r.data===d).length);
+  const mean    = perDay.reduce((s,n)=>s+n,0) / nDias;
+  const stdDev  = Math.sqrt(perDay.reduce((s,n)=>s+Math.pow(n-mean,2),0)/nDias);
+  const minExp  = Math.max(0, Math.round(mean-stdDev));
+  const maxExp  = Math.round(mean+stdDev);
+
+  // Turno atual e próximo
+  const h = now.getHours();
+  const turnoAtual   = h>=6&&h<=11?'Manhã':h>=12&&h<=17?'Tarde':h>=18&&h<=23?'Noite':'Madrugada';
+  const PROX_TURNO   = {{Madrugada:'Manhã',Manhã:'Tarde',Tarde:'Noite',Noite:'Madrugada'}};
+  const turnoProximo = PROX_TURNO[turnoAtual];
+  const ORDEM_TURNO  = ['Madrugada','Manhã','Tarde','Noite'];
+  const turnoCnt     = {{}};
+  ORDEM_TURNO.forEach(t => turnoCnt[t] = hist.filter(r=>r.turno===t).length);
+  const totalTurnos  = hist.length || 1;
+  const topTurno     = ORDEM_TURNO.reduce((b,t)=>turnoCnt[t]>turnoCnt[b]?t:b, ORDEM_TURNO[0]);
+
+  // Contagens
+  const cntF = (arr,f) => {{
+    const m={{}};
+    arr.forEach(r=>{{ if(r[f]) m[r[f]]=(m[r[f]]||0)+1; }});
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+  }};
+  const bairros = cntF(hist,'bairro');
+  const tipos   = cntF(hist,'tipo');
+  const ruas    = cntF(hist,'endereco');
+  const maxB    = bairros[0]?bairros[0][1]:1;
+
+  // Tendência: comparar metade inicial vs. final
+  let trendStr='Estável', trendColor='#555', trendIcon='→', trendDiff=0;
+  if (datas.length >= 4) {{
+    const mid  = Math.floor(datas.length/2);
+    const avg1 = datas.slice(0,mid).reduce((s,d)=>s+hist.filter(r=>r.data===d).length,0)/mid;
+    const avg2 = datas.slice(mid).reduce((s,d)=>s+hist.filter(r=>r.data===d).length,0)/(datas.length-mid);
+    trendDiff  = avg2-avg1;
+    if (trendDiff>1.5)       {{ trendStr='Crescente';  trendColor='#D13438'; trendIcon='↗'; }}
+    else if (trendDiff<-1.5) {{ trendStr='Decrescente';trendColor='#107C10'; trendIcon='↘'; }}
+  }} else {{
+    trendStr='Poucos dados'; trendColor='#888'; trendIcon='–';
+  }}
+
+  // Nível de risco geral
+  let riskScore = 0;
+  if (mean > 8) riskScore+=2; else if (mean>4) riskScore+=1;
+  if (trendIcon==='↗') riskScore+=2;
+  if (turnoCnt[turnoAtual]/totalTurnos > 0.35) riskScore+=1;
+  const riskLevel = riskScore>=4?'ALTO':riskScore>=2?'MÉDIO':'BAIXO';
+  const riskCl    = riskLevel==='ALTO'?'risco-alto':riskLevel==='MÉDIO'?'risco-medio':'risco-baixo';
+  const riskBg    = riskLevel==='ALTO'?'#fff0f0':riskLevel==='MÉDIO'?'#fffbe6':'#f0fff4';
+  const riskColor = riskLevel==='ALTO'?'#D13438':riskLevel==='MÉDIO'?'#E07B00':'#107C10';
+
+  // HTML dos turnos com barra de risco
+  const turnoRowsHtml = ORDEM_TURNO.map(t => {{
+    const n   = turnoCnt[t]||0;
+    const pct = Math.round(n/totalTurnos*100);
+    const isAtual  = t===turnoAtual;
+    const isProx   = t===turnoProximo;
+    const barColor = isAtual?'#E07B00':isProx?'#5C2D91':'#0078D4';
+    const rowBg    = isAtual?'background:#fff3cd;font-weight:700':isProx?'background:#f5f0ff':'';
+    return `<tr style="${{rowBg}}">
+      <td>${{isAtual?'▶ ':isProx?'⏱ ':''}}${{t}}</td>
+      <td style="text-align:center">${{n}}</td>
+      <td style="text-align:center">${{pct}}%</td>
+      <td><div class="risco-bar-wrap"><div class="risco-bar-fill"
+        style="background:${{barColor}};width:${{pct}}%"></div></div></td>
+      <td style="font-size:10px">${{isAtual?'🔴 AGORA':isProx?'⏳ Próximo':''}}</td>
+    </tr>`;
+  }}).join('');
+
+  // HTML dos bairros com badge de risco
+  const bairroRowsHtml = bairros.slice(0,8).map((e,i) => {{
+    const score = e[1]/maxB;
+    const nivel = score>0.6?'ALTO':score>0.3?'MÉDIO':'BAIXO';
+    const cl    = score>0.6?'risco-alto':score>0.3?'risco-medio':'risco-baixo';
+    return `<tr>
+      <td>${{i+1}}. ${{e[0]}}</td>
+      <td style="text-align:center">${{e[1]}}</td>
+      <td><span class="${{cl}}">${{nivel}}</span></td>
+    </tr>`;
+  }}).join('');
+
+  // HTML dos tipos
+  const tipoRowsHtml = tipos.slice(0,6).map((e,i) => {{
+    const pct = hist.length?Math.round(e[1]/hist.length*100):0;
+    const bar = `<div class="risco-bar-wrap"><div class="risco-bar-fill"
+      style="background:#D13438;width:${{pct}}%"></div></div>`;
+    return `<tr><td>${{i+1}}. ${{e[0]}}</td><td>${{e[1]}}</td><td>${{pct}}%</td><td>${{bar}}</td></tr>`;
+  }}).join('');
+
+  // Tendência por data (mini-histórico)
+  const tendRowsHtml = datas.map(d => {{
+    const n   = hist.filter(r=>r.data===d).length;
+    const pts = d.split('-');
+    const fmt = pts[2]+'/'+pts[1];
+    const pct = maxExp>0?Math.round(n/maxExp*100):0;
+    const cl  = n>mean+stdDev?'risco-alto':n>mean?'risco-medio':'risco-baixo';
+    return `<tr>
+      <td>${{fmt}}</td>
+      <td style="text-align:center">${{n}}</td>
+      <td><div class="risco-bar-wrap" style="width:100px">
+        <div class="risco-bar-fill" style="background:#0078D4;width:${{pct}}%"></div>
+      </div></td>
+      <td><span class="${{cl}}" style="font-size:9px">${{n>mean+stdDev?'ACIMA':n<mean-stdDev?'ABAIXO':'NORMAL'}}</span></td>
+    </tr>`;
+  }}).join('');
+
+  // Orientações preventivas
+  const ori = [];
+  if (bairros[0]&&bairros[0][0]!=='–')
+    ori.push(`Reforçar guarnição no <strong>${{bairros[0][0]}}</strong> — bairro historicamente mais afetado em ${{plural}}.`);
+  if (ruas[0]&&ruas[0][0]!=='–')
+    ori.push(`Estabelecer ronda na <strong>${{ruas[0][0]}}</strong> — logradouro de maior risco em ${{plural}}.`);
+  const oriTurno={{
+    Madrugada:`Atenção especial ao turno da <strong>Madrugada (00h–05h)</strong> — concentra ${{Math.round(turnoCnt.Madrugada/totalTurnos*100)}}% das ocorrências em ${{plural}}.`,
+    'Manhã':  `Turno <strong>Matutino (06h–11h)</strong> é crítico em ${{plural}} (${{Math.round(turnoCnt['Manhã']/totalTurnos*100)}}%). Ampliar presença nos bairros de risco.`,
+    Tarde:    `Período <strong>Vespertino (12h–17h)</strong> de alto risco em ${{plural}} (${{Math.round(turnoCnt.Tarde/totalTurnos*100)}}%). Atenção à movimentação urbana.`,
+    Noite:    `Turno <strong>Noturno (18h–23h)</strong> concentra ${{Math.round(turnoCnt.Noite/totalTurnos*100)}}% dos crimes em ${{plural}}. Coordenar blitz nas vias principais.`
+  }};
+  if (oriTurno[topTurno]) ori.push(oriTurno[topTurno]);
+  if (tipos[0]) ori.push(`Crime mais frequente em ${{plural}}: <strong>${{tipos[0][0]}}</strong>. Orientar guarnições com abordagem preventiva específica.`);
+  if (trendIcon==='↗') ori.push(`⚠️ <strong>Tendência crescente detectada</strong> em ${{plural}} (+${{trendDiff.toFixed(1)}} oc./semana). Considerar reforço de efetivo.`);
+  ori.push(`Compartilhar esta previsão com todas as guarnições antes do início do turno.`);
+
+  const mkTable = (rows,headers) =>
+    `<table class="analise-table"><thead><tr>${{headers.map(h=>`<th>${{h}}</th>`).join('')}}</tr></thead><tbody>${{rows}}</tbody></table>`;
+
+  const corpo = `
+  <div style="background:${{riskBg}};border:2px solid ${{riskColor}};border-radius:8px;
+    padding:14px 16px;margin-bottom:14px;">
+    <div style="font-size:10px;color:#555;font-weight:700;text-transform:uppercase;margin-bottom:8px">
+      Previsão para hoje — ${{nowDayBR}}, ${{nowDateBR}} | Gerado às ${{horaBR}}
+    </div>
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:16px;align-items:center">
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#555;text-transform:uppercase;margin-bottom:4px">Risco geral</div>
+        <span class="${{riskCl}}" style="font-size:16px;padding:5px 14px">${{riskLevel}}</span>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#555;text-transform:uppercase">Previsão</div>
+        <div style="font-size:20px;font-weight:800;color:#1A1A2E">${{minExp}}–${{maxExp}}</div>
+        <div style="font-size:9px;color:#888">ocorrências</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#555;text-transform:uppercase">Tendência</div>
+        <div style="font-size:18px;font-weight:800;color:${{trendColor}}">${{trendIcon}}</div>
+        <div style="font-size:10px;color:${{trendColor}};font-weight:600">${{trendStr}}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#555;text-transform:uppercase">Base histórica</div>
+        <div style="font-size:20px;font-weight:800;color:#1A1A2E">${{nDias}}</div>
+        <div style="font-size:9px;color:#888">${{plural}} analisados</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="analise-section">
+    <h3>⏰ Risco por Turno em ${{plural}} — Turno atual: <span style="color:#E07B00">${{turnoAtual}}</span></h3>
+    ${{mkTable(turnoRowsHtml,['Turno','Total','%','Intensidade',''])}}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:12px">
+    <div class="analise-section">
+      <h3>📍 Bairros em Alerta em ${{plural}}</h3>
+      ${{mkTable(bairroRowsHtml,['Bairro','Ocorrências','Risco'])}}
+    </div>
+    <div class="analise-section">
+      <h3>🔴 Crimes Mais Prováveis</h3>
+      ${{mkTable(tipoRowsHtml,['Tipo','Total','%',''])}}
+    </div>
+  </div>
+
+  <div class="analise-section">
+    <h3>📊 Histórico de ${{plural}} — Ocorrências por dia</h3>
+    ${{mkTable(tendRowsHtml,['Data','Qtd','Volume','Status'])}}
+    <div style="font-size:10px;color:#888;margin-top:6px">
+      Média: <strong>${{mean.toFixed(1)}}</strong> oc./dia &nbsp;|&nbsp;
+      Intervalo esperado hoje: <strong>${{minExp}}–${{maxExp}}</strong> ocorrências
+    </div>
+  </div>
+
+  <div class="analise-section">
+    <h3>🎯 Orientações Preventivas para Hoje</h3>
+    <ol class="analise-rec-ol">${{ori.map(o=>`<li>${{o}}</li>`).join('')}}</ol>
+  </div>
+
+  <div style="border-top:1px solid #ddd;margin-top:12px;padding-top:8px;color:#888;font-size:10px;text-align:center">
+    Secretaria de Segurança e Ordem Pública de Balneário Camboriú — Guarda Municipal
+  </div>`;
+
+  const waLnsPrev = [
+    `📈 *PREVISÃO DE RISCO — ${{plural.toUpperCase()}} — GUARDA MUNICIPAL BC*`,
+    `📅 ${{nowDayBR}}, ${{nowDateBR}} | Gerado às ${{horaBR}}`,
+    ``,
+    `*🚨 NÍVEL DE RISCO GERAL: ${{riskLevel}}*`,
+    `Previsão: *${{minExp}}–${{maxExp}}* ocorrências esperadas`,
+    `Tendência: *${{trendStr}} ${{trendIcon}}*`,
+    `Base histórica: *${{nDias}}* ${{plural}} analisados`,
+    ``,
+    `*⏰ RISCO POR TURNO*`,
+    ...ORDEM_TURNO.map(t=>{{
+      const n=turnoCnt[t]||0;
+      const pct=Math.round(n/totalTurnos*100);
+      const mark=t===turnoAtual?' ◀ AGORA':t===turnoProximo?' ⏳ Próximo':'';
+      return `• ${{t}}: ${{n}} oc. (${{pct}}%)${{mark}}`;
+    }}),
+    ``,
+    `*📍 BAIRROS EM ALERTA*`,
+    ...bairros.slice(0,5).map((e,i)=>{{
+      const score=e[1]/maxB;
+      const nivel=score>0.6?'🔴 ALTO':score>0.3?'🟡 MÉDIO':'🟢 BAIXO';
+      return `${{i+1}}. ${{e[0]}}: ${{e[1]}} oc. — ${{nivel}}`;
+    }}),
+    ``,
+    `*🔴 CRIMES MAIS PROVÁVEIS*`,
+    ...tipos.slice(0,5).map((e,i)=>{{
+      const pct=hist.length?Math.round(e[1]/hist.length*100):0;
+      return `${{i+1}}. ${{e[0]}}: ${{e[1]}} (${{pct}}%)`;
+    }}),
+    ``,
+    `*🎯 ORIENTAÇÕES PREVENTIVAS*`,
+    ...ori.map((o,i)=>`${{i+1}}. ${{o.replace(/<[^>]+>/g,'')}}`),
+    ``,
+    `_Guarda Municipal de Balneário Camboriú_`,
+    `_Secretaria de Segurança e Ordem Pública_`
+  ];
+  _prevTextoWA = waLnsPrev.join('\\n');
+
+  document.getElementById('prev-corpo').innerHTML = corpo;
+  document.getElementById('prev-overlay').classList.add('ativo');
+}}
+
+function fecharPrevisao() {{
+  document.getElementById('prev-overlay').classList.remove('ativo');
+}}
+
+function imprimirPrevisao() {{
+  const corpo = document.getElementById('prev-corpo').innerHTML;
+  const titulo = document.getElementById('prev-titulo').textContent;
+  const w = window.open('','_blank','width=860,height=720');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>Previsão de Risco — Guarda Municipal BC</title>
+    <style>
+      *{{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+      body{{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;padding:24px;margin:0;}}
+      h2{{color:#1A1A2E;font-size:15px;border-bottom:3px solid #C05700;padding-bottom:6px;margin-bottom:14px;}}
+      h3{{font-size:11px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #0078D4;
+          padding-bottom:3px;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;}}
+      table{{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}}
+      th{{background:#1A1A2E!important;color:white!important;padding:4px 8px;text-align:left;}}
+      td{{padding:4px 8px;border-bottom:1px solid #eee;}}
+      tr:nth-child(even){{background:#f7f8fa!important;}}
+      ol{{padding-left:18px;margin:0;}} li{{margin-bottom:6px;line-height:1.55;}}
+      .risco-alto{{background:#D13438!important;color:white!important;border-radius:3px;padding:1px 6px;font-size:9px;font-weight:700;}}
+      .risco-medio{{background:#E07B00!important;color:white!important;border-radius:3px;padding:1px 6px;font-size:9px;font-weight:700;}}
+      .risco-baixo{{background:#107C10!important;color:white!important;border-radius:3px;padding:1px 6px;font-size:9px;font-weight:700;}}
+      .risco-bar-wrap{{background:#eee!important;height:8px;border-radius:4px;width:70px;display:inline-block;vertical-align:middle;}}
+      .risco-bar-fill{{height:8px;border-radius:4px;}}
+    </style>
+  </head><body>
+    <h2>${{titulo}}</h2>
+    ${{corpo}}
+  </body></html>`);
+  w.document.close(); w.focus();
+  setTimeout(()=>w.print(), 500);
+}}
+
+function imprimirAnalise() {{
+  const corpo = document.getElementById('analise-corpo').innerHTML;
+  const w = window.open('','_blank','width=860,height=720');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>Análise Diária — Guarda Municipal BC</title>
+    <style>
+      *{{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}}
+      body{{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;padding:24px;margin:0;}}
+      h2{{color:#1A1A2E;font-size:16px;border-bottom:3px solid #0078D4;padding-bottom:6px;margin-bottom:16px;}}
+      h3{{font-size:11px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #0078D4;
+          padding-bottom:3px;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;}}
+      table{{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}}
+      th{{background:#1A1A2E!important;color:white!important;padding:4px 8px;text-align:left;font-weight:600;}}
+      td{{padding:4px 8px;border-bottom:1px solid #eee;}}
+      tr:nth-child(even){{background:#f7f8fa!important;}}
+      ol{{padding-left:18px;margin:0;}} li{{margin-bottom:6px;line-height:1.55;}}
+      .badge-resumo{{display:inline-block;background:#0078D4!important;color:white!important;
+        border-radius:4px;padding:1px 9px;font-weight:700;margin-left:4px;font-size:13px;}}
+      [style*="background:#1A1A2E"]{{background:#1A1A2E!important;color:white!important;}}
+      [style*="background:#0078D4"]{{background:#0078D4!important;color:white!important;}}
+      [style*="background:#107C10"]{{background:#107C10!important;color:white!important;}}
+      [style*="background:#5C2D91"]{{background:#5C2D91!important;color:white!important;}}
+      [style*="background:linear-gradient"]{{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+    </style>
+  </head><body>
+    <h2 id="analise-titulo">📊 Análise por Dia da Semana — Guarda Municipal BC</h2>
+    ${{corpo}}
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 500);
+}}
+
+function enviarWhatsApp() {{
+  if(!_analiseTextoWA) return;
+  window.open('https://wa.me/?text=' + encodeURIComponent(_analiseTextoWA), '_blank');
+}}
+
+function enviarWhatsAppPrevisao() {{
+  if(!_prevTextoWA) return;
+  window.open('https://wa.me/?text=' + encodeURIComponent(_prevTextoWA), '_blank');
+}}
+
+// ── RELATÓRIO DIÁRIO ──────────────────────────────────────────────────────────
+let _relTextoWA = '';
+
+function relatorioDiario() {{
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  document.getElementById('rel-data-ini').value = today;
+  document.getElementById('rel-data-fim').value = today;
+  document.getElementById('rel-titulo').textContent = '📅 Relatório de Ocorrências — Guarda Municipal BC';
+  document.getElementById('rel-corpo').innerHTML =
+    '<div style="color:#888;text-align:center;padding:40px;font-style:italic">Selecione o período e clique em <strong>Gerar Relatório</strong>.</div>';
+  document.getElementById('rel-overlay').classList.add('ativo');
+}}
+
+function fecharRelatorio() {{
+  document.getElementById('rel-overlay').classList.remove('ativo');
+}}
+
+function gerarRelatorio() {{
+  const ini = document.getElementById('rel-data-ini').value;
+  const fim = document.getElementById('rel-data-fim').value;
+  const corpo = document.getElementById('rel-corpo');
+  if (!ini || !fim) {{
+    corpo.innerHTML = '<div style="color:#D13438;text-align:center;padding:20px;font-weight:600">⚠️ Selecione as datas de início e fim.</div>';
+    return;
+  }}
+  if (ini > fim) {{
+    corpo.innerHTML = '<div style="color:#D13438;text-align:center;padding:20px;font-weight:600">⚠️ A data inicial não pode ser maior que a data final.</div>';
+    return;
+  }}
+
+  const data = RAW.filter(r => r.data && r.data >= ini && r.data <= fim);
+
+  const now = new Date();
+  const horaBR    = now.toLocaleTimeString('pt-BR', {{hour:'2-digit',minute:'2-digit'}});
+  const nowDateBR = now.toLocaleDateString('pt-BR');
+  const fmtDate   = d => d.split('-').reverse().join('/');
+  const periodoLabel = ini === fim ? fmtDate(ini) : `${{fmtDate(ini)}} a ${{fmtDate(fim)}}`;
+
+  document.getElementById('rel-titulo').textContent = `📅 Relatório — ${{periodoLabel}} — Guarda Municipal BC`;
+
+  if (data.length === 0) {{
+    corpo.innerHTML = `<div style="color:#888;text-align:center;padding:40px;font-style:italic">⚠️ Nenhuma ocorrência registrada no período <strong>${{periodoLabel}}</strong>.</div>`;
+    _relTextoWA = '';
+    return;
+  }}
+
+  const cntF = (arr, f) => {{
+    const m = {{}};
+    arr.forEach(r => {{ if(r[f]) m[r[f]] = (m[r[f]]||0)+1; }});
+    return Object.entries(m).sort((a,b) => b[1]-a[1]);
+  }};
+
+  const total   = data.length;
+  const furtos  = data.filter(r=>r.tipo==='Furto').length;
+  const roubos  = data.filter(r=>r.tipo==='Roubo').length;
+  const arrom   = data.filter(r=>r.tipo==='Arrombamento').length;
+
+  const tipos   = cntF(data,'tipo');
+  const bairros = cntF(data,'bairro');
+  const turnos  = cntF(data,'turno');
+  const itens   = cntF(data,'item');
+  const ruas    = cntF(data,'endereco').filter(e=>e[0]);
+
+  const pct = n => total ? ((n/total)*100).toFixed(0)+'%' : '0%';
+
+  const mkTable = (rows, headers) =>
+    `<table class="analise-table"><thead><tr>${{headers.map(h=>`<th>${{h}}</th>`).join('')}}</tr></thead><tbody>${{rows}}</tbody></table>`;
+
+  const tiposRows = tipos.map((e,i) =>
+    `<tr><td>${{i+1}}. ${{e[0]}}</td><td style="text-align:center">${{e[1]}}</td><td style="text-align:center">${{pct(e[1])}}</td></tr>`
+  ).join('');
+
+  const bairrosRows = bairros.slice(0,10).map((e,i) =>
+    `<tr><td>${{i+1}}. ${{e[0]}}</td><td style="text-align:center">${{e[1]}}</td><td style="text-align:center">${{pct(e[1])}}</td></tr>`
+  ).join('');
+
+  const ORDEM_TURNO = ['Madrugada','Manhã','Tarde','Noite'];
+  const turnoMap = {{}};
+  turnos.forEach(e => turnoMap[e[0]] = e[1]);
+  const turnosRows = ORDEM_TURNO.map(t =>
+    `<tr><td>${{t}}</td><td style="text-align:center">${{turnoMap[t]||0}}</td><td style="text-align:center">${{pct(turnoMap[t]||0)}}</td></tr>`
+  ).join('');
+
+  const itensRows = itens.slice(0,10).map((e,i) =>
+    `<tr><td>${{i+1}}. ${{e[0]}}</td><td style="text-align:center">${{e[1]}}</td><td style="text-align:center">${{pct(e[1])}}</td></tr>`
+  ).join('');
+
+  const ruasRows = ruas.slice(0,10).map((e,i) =>
+    `<tr><td>${{i+1}}. ${{e[0]}}</td><td style="text-align:center">${{e[1]}}</td><td style="text-align:center">${{pct(e[1])}}</td></tr>`
+  ).join('');
+
+  const sorted = [...data].sort((a,b) =>
+    ((a.data||'')+' '+(a.hora||'')).localeCompare((b.data||'')+' '+(b.hora||''))
+  );
+  const boRows = sorted.map(r => `
+    <tr>
+      <td>${{r.data ? r.data.slice(8)+'/'+r.data.slice(5,7)+'/'+r.data.slice(0,4) : ''}}</td>
+      <td>${{r.hora}}</td>
+      <td>${{r.turno}}</td>
+      <td style="font-size:9px">${{r.bo}}</td>
+      <td><span style="background:${{TIPO_COLORS[r.tipo]||'#888'}};color:white;border-radius:3px;padding:1px 5px;font-size:9px">${{r.tipo}}</span></td>
+      <td>${{r.item}}</td>
+      <td>${{r.bairro}}</td>
+      <td style="font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis">${{r.endereco}}</td>
+    </tr>`).join('');
+
+  const html = `
+  <div style="text-align:center;background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:8px;
+    padding:12px;margin-bottom:14px;border-left:4px solid #0078D4;">
+    <div style="font-weight:800;font-size:15px;color:#1A1A2E">📅 Relatório de Ocorrências</div>
+    <div style="color:#555;font-size:11px;margin-top:4px">
+      Guarda Municipal de Balneário Camboriú<br>
+      Período: <strong>${{periodoLabel}}</strong> &nbsp;|&nbsp; Gerado em: <strong>${{nowDateBR}}</strong> às <strong>${{horaBR}}</strong>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+    <div style="background:#1A1A2E;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Total</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1">${{total}}</div>
+      <div style="font-size:9px;opacity:.65">ocorrências</div>
+    </div>
+    <div style="background:#E07B00;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Furtos</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1">${{furtos}}</div>
+      <div style="font-size:9px;opacity:.65">${{pct(furtos)}}</div>
+    </div>
+    <div style="background:#D13438;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Roubos</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.1">${{roubos}}</div>
+      <div style="font-size:9px;opacity:.65">${{pct(roubos)}}</div>
+    </div>
+    <div style="background:#795548;color:white;border-radius:6px;padding:10px;text-align:center;">
+      <div style="font-size:9px;opacity:.75;text-transform:uppercase">Arrombamentos</div>
+      <div style="font-size:22px;font-weight:800;line-height:1.3;margin-top:2px">${{arrom}}</div>
+      <div style="font-size:9px;opacity:.65">${{pct(arrom)}}</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="analise-section">
+      <h3>🔴 Tipos de Ocorrência</h3>
+      ${{mkTable(tiposRows, ['Tipo','Total','%'])}}
+    </div>
+    <div class="analise-section">
+      <h3>⏰ Distribuição por Turno</h3>
+      ${{mkTable(turnosRows, ['Turno','Total','%'])}}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="analise-section">
+      <h3>📍 Bairros Afetados</h3>
+      ${{mkTable(bairrosRows, ['Bairro','Total','%'])}}
+    </div>
+    <div class="analise-section">
+      <h3>📦 Itens Furtados / Roubados</h3>
+      ${{mkTable(itensRows, ['Item','Total','%'])}}
+    </div>
+  </div>
+
+  <div class="analise-section" style="margin-bottom:14px">
+    <h3>🛣️ Logradouros com Mais Ocorrências</h3>
+    ${{mkTable(ruasRows, ['Logradouro','Total','%'])}}
+  </div>
+
+  <div class="analise-section">
+    <h3>📋 Lista Detalhada — ${{total}} Ocorrência(s)</h3>
+    <div style="overflow-x:auto">
+      <table class="analise-table">
+        <thead><tr>
+          <th>Data</th><th>Hora</th><th>Turno</th><th>B.O.</th>
+          <th>Tipo</th><th>Item</th><th>Bairro</th><th>Endereço</th>
+        </tr></thead>
+        <tbody>${{boRows}}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="border-top:1px solid #ddd;margin-top:12px;padding-top:8px;color:#888;font-size:10px;text-align:center;">
+    Secretaria de Segurança e Ordem Pública de Balneário Camboriú — Guarda Municipal
+  </div>`;
+
+  corpo.innerHTML = html;
+
+  const waLines = [
+    `📅 *RELATÓRIO DE OCORRÊNCIAS — GUARDA MUNICIPAL BC*`,
+    `Período: *${{periodoLabel}}*`,
+    `🕐 Gerado em: ${{nowDateBR}} às ${{horaBR}}`,
+    ``,
+    `*📊 RESUMO*`,
+    `Total: *${{total}}* ocorrências`,
+    `Furtos: *${{furtos}}* (${{pct(furtos)}})`,
+    `Roubos: *${{roubos}}* (${{pct(roubos)}})`,
+    `Arrombamentos: *${{arrom}}* (${{pct(arrom)}})`,
+    ``,
+    `*🔴 TIPOS*`,
+    ...tipos.map((e,i) => `${{i+1}}. ${{e[0]}}: ${{e[1]}} (${{pct(e[1])}})`),
+    ``,
+    `*📍 BAIRROS*`,
+    ...bairros.slice(0,5).map((e,i) => `${{i+1}}. ${{e[0]}}: ${{e[1]}} (${{pct(e[1])}})`),
+    ``,
+    `*⏰ TURNOS*`,
+    ...ORDEM_TURNO.map(t => `• ${{t}}: ${{turnoMap[t]||0}} (${{pct(turnoMap[t]||0)}})`),
+    ``,
+    `*📦 ITENS*`,
+    ...itens.slice(0,5).map((e,i) => `${{i+1}}. ${{e[0]}}: ${{e[1]}} (${{pct(e[1])}})`),
+    ``,
+    `*🛣️ LOGRADOUROS*`,
+    ...ruas.slice(0,5).map((e,i) => `${{i+1}}. ${{e[0]}}: ${{e[1]}}`),
+    ``,
+    `_Guarda Municipal de Balneário Camboriú_`,
+    `_Secretaria de Segurança e Ordem Pública_`
+  ];
+  _relTextoWA = waLines.join('\\n');
+}}
+
+function imprimirRelatorio() {{
+  const corpoEl = document.getElementById('rel-corpo');
+  if (!_relTextoWA) {{ alert('Gere o relatório primeiro.'); return; }}
+  const titulo = document.getElementById('rel-titulo').textContent;
+  const w = window.open('','_blank','width=900,height=720');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>${{titulo}}</title>
+    <style>
+      *{{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+      body{{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;padding:24px;margin:0;}}
+      h2{{color:#1A1A2E;font-size:15px;border-bottom:3px solid #0097A7;padding-bottom:6px;margin-bottom:14px;}}
+      h3{{font-size:11px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #0078D4;
+          padding-bottom:3px;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px;}}
+      table{{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}}
+      th{{background:#1A1A2E!important;color:white!important;padding:4px 8px;text-align:left;}}
+      td{{padding:4px 8px;border-bottom:1px solid #eee;}}
+      tr:nth-child(even){{background:#f7f8fa!important;}}
+      [style*="background:#1A1A2E"]{{background:#1A1A2E!important;color:white!important;}}
+      [style*="background:#E07B00"]{{background:#E07B00!important;color:white!important;}}
+      [style*="background:#D13438"]{{background:#D13438!important;color:white!important;}}
+      [style*="background:#795548"]{{background:#795548!important;color:white!important;}}
+      [style*="background:#0078D4"]{{background:#0078D4!important;color:white!important;}}
+    </style>
+  </head><body>
+    <h2>${{titulo}}</h2>
+    ${{corpoEl.innerHTML}}
+  </body></html>`);
+  w.document.close(); w.focus();
+  setTimeout(()=>w.print(), 500);
+}}
+
+function enviarWhatsAppRelatorio() {{
+  if (!_relTextoWA) {{ alert('Gere o relatório primeiro.'); return; }}
+  window.open('https://wa.me/?text=' + encodeURIComponent(_relTextoWA), '_blank');
 }}
 
 // ── SIDEBAR DINÂMICA ──────────────────────────────────────────────────────────
@@ -1580,6 +2551,26 @@ function filterSearch(key, q) {{
   const el = document.getElementById(map[key]);
   if(el) el.dataset.search = q;
   buildSidebar();
+}}
+
+function filterImei(q) {{
+  imeiQ = q.trim();
+  renderAll();
+}}
+
+function filterMarca(q) {{
+  marcaQ = q.trim();
+  renderAll();
+}}
+
+function filterPlaca(q) {{
+  placaQ = q.trim();
+  renderAll();
+}}
+
+function filterNumeroSerie(q) {{
+  numeroSerieQ = q.trim();
+  renderAll();
 }}
 
 function buildSidebar() {{
@@ -2011,6 +3002,79 @@ else {{ window.addEventListener('load', init); }}
   box-shadow:0 -2px 8px rgba(0,0,0,.3);">
   Desenvolvido por <strong style="color:white">Ronaldo Eliseu Barbosa</strong> — Guarda Municipal
 </footer>
+<!-- ── LOGIN ── -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card" id="login-card">
+    <div class="login-shield"><img src="data:image/png;base64,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" style="width:120px;height:120px;border-radius:50%;display:block;margin:0 auto 6px;box-shadow:0 4px 16px rgba(0,0,0,0.25)"></div>
+    <div class="login-title">Secretaria de Segurança e Ordem Pública</div>
+    <div class="login-sub">Guarda Municipal de Balneário Camboriú<br>
+      <strong>Acesso restrito — uso interno</strong></div>
+    <div class="login-input-wrap">
+      <input type="password" class="login-input" id="login-senha"
+        placeholder="Digite a senha de acesso"
+        onkeydown="if(event.key==='Enter')verificarSenha()">
+      <button class="login-eye" onclick="toggleSenha()" tabindex="-1" title="Mostrar/ocultar senha">👁</button>
+    </div>
+    <button class="login-btn" onclick="verificarSenha()">🔐 Entrar</button>
+    <div class="login-error" id="login-erro"></div>
+  </div>
+</div>
+<!-- ── MODAL PREVISÃO ── -->
+<div class="analise-overlay" id="prev-overlay" onclick="if(event.target===this)fecharPrevisao()">
+  <div class="analise-box">
+    <div class="analise-header">
+      <h2 id="prev-titulo">📈 Previsão de Risco — Guarda Municipal BC</h2>
+      <button class="analise-close" onclick="fecharPrevisao()" title="Fechar">✕</button>
+    </div>
+    <div class="analise-corpo" id="prev-corpo"></div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharPrevisao()">✕ Fechar</button>
+      <button class="btn-pdf" onclick="imprimirPrevisao()">🖨️ Salvar PDF</button>
+      <button class="btn-analise" onclick="enviarWhatsAppPrevisao()">📱 Enviar WhatsApp</button>
+    </div>
+  </div>
+</div>
+<!-- ── MODAL RELATÓRIO DIÁRIO ── -->
+<div class="analise-overlay" id="rel-overlay" onclick="if(event.target===this)fecharRelatorio()">
+  <div class="analise-box" style="width:min(960px,97vw)">
+    <div class="analise-header">
+      <h2 id="rel-titulo">📅 Relatório de Ocorrências — Guarda Municipal BC</h2>
+      <button class="analise-close" onclick="fecharRelatorio()" title="Fechar">✕</button>
+    </div>
+    <div class="rel-date-bar">
+      <label>Data Inicial:</label>
+      <input type="date" id="rel-data-ini" class="rel-date-input">
+      <label>Data Final:</label>
+      <input type="date" id="rel-data-fim" class="rel-date-input">
+      <button class="rel-gerar-btn" onclick="gerarRelatorio()">🔍 Gerar Relatório</button>
+    </div>
+    <div class="analise-corpo" id="rel-corpo">
+      <div style="color:#888;text-align:center;padding:40px;font-style:italic">
+        Selecione o período e clique em <strong>Gerar Relatório</strong>.
+      </div>
+    </div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharRelatorio()">✕ Fechar</button>
+      <button class="btn-pdf" onclick="imprimirRelatorio()">🖨️ Salvar PDF</button>
+      <button class="btn-analise" onclick="enviarWhatsAppRelatorio()">📱 Enviar WhatsApp</button>
+    </div>
+  </div>
+</div>
+<!-- ── MODAL ANÁLISE DIÁRIA ── -->
+<div class="analise-overlay" id="analise-overlay" onclick="if(event.target===this)fecharAnalise()">
+  <div class="analise-box">
+    <div class="analise-header">
+      <h2 id="analise-titulo">📊 Análise por Dia da Semana — Guarda Municipal BC</h2>
+      <button class="analise-close" onclick="fecharAnalise()" title="Fechar">✕</button>
+    </div>
+    <div class="analise-corpo" id="analise-corpo"></div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharAnalise()">✕ Fechar</button>
+      <button class="btn-pdf" onclick="imprimirAnalise()">🖨️ Salvar PDF</button>
+      <button class="btn-analise" onclick="enviarWhatsApp()">📱 Enviar WhatsApp</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>"""
 
