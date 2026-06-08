@@ -768,18 +768,18 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <div class="header">
-  <div style="display:flex;align-items:center;gap:10px">
+  <div style="flex:1;display:flex;align-items:center">
     <button class="menu-toggle" onclick="toggleSidebar()" title="Filtros">☰</button>
-    <div>
-      <h1>🛡️ Secretaria de Segurança e Ordem Pública de Balneário Camboriú (Guarda Municipal)</h1>
-    </div>
   </div>
-  <div class="header-right">
-    <button class="btn-reset" onclick="resetFilters()">⟳ Limpar Filtros</button>
-    <button class="btn-pdf" onclick="gerarPDF()">🖨️ Gerar PDF</button>
-    <button class="btn-analise" onclick="analiseDiaria()">📋 Análise Diária</button>
+  <div style="flex:2;text-align:center">
+    <h1>🛡️ Secretaria de Segurança e Ordem Pública de Balneário Camboriú — GMBC</h1>
+  </div>
+  <div class="header-right" style="flex:1;justify-content:flex-end">
+    <button class="btn-reset" onclick="resetFilters()">⟳ Limpar</button>
+    <button class="btn-pdf" onclick="gerarPDF()">🖨️ PDF</button>
+    <button class="btn-analise" onclick="analiseDiaria()">📋 Análise</button>
     <button class="btn-prev" onclick="previsao()">📈 Previsão</button>
-    <button class="btn-relatorio" onclick="relatorioDiario()">📅 Relatório Diário</button>
+    <button class="btn-relatorio" onclick="relatorioDiario()">📅 Relatório</button>
     <button class="btn-sair" onclick="sair()">🔒 Sair</button>
   </div>
 </div>
@@ -1041,7 +1041,8 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
             <tr>
               <th>Data</th><th>Hora</th><th>Turno</th><th>Dia</th>
               <th>B.O.</th><th>Tipificação</th><th>Item</th>
-              <th>Marca/Modelo</th><th>Qtd</th><th>Bairro</th><th>Endereço</th><th>Referência</th>
+              <th>Marca/Modelo</th><th>IMEI</th><th>Placa</th><th>Nº Série</th>
+              <th>Bairro</th><th>Endereço</th><th>Referência</th>
             </tr>
           </thead>
           <tbody id="tabela-body"></tbody>
@@ -1392,7 +1393,9 @@ function renderTabela(data) {{
         border-radius:3px;padding:1px 5px;font-size:9px">${{r.tipo}}</span></td>
       <td>${{r.item}}</td>
       <td>${{r.marca}}</td>
-      <td style="text-align:center">${{r.qnt}}</td>
+      <td style="font-size:10px">${{r.imei}}</td>
+      <td style="font-size:10px">${{r.placa}}</td>
+      <td style="font-size:10px">${{r.numero_serie}}</td>
       <td>${{r.bairro}}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${{r.endereco}}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;font-size:10px">${{r.ref}}</td>
