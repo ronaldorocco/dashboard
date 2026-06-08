@@ -50,16 +50,25 @@ Write-Host "      OK" -ForegroundColor Green
 # 5. Aguardar Vercel e atualizar alias
 Write-Host ""
 Write-Host "[5/5] Atualizando alias gmbcdashboard.vercel.app..." -ForegroundColor Yellow
-Start-Sleep -Seconds 15
+Write-Host "      Aguardando Vercel processar o deploy (30s)..." -ForegroundColor Gray
+Start-Sleep -Seconds 30
 $ErrorActionPreference = "Continue"
-$deploy = npx vercel ls gmbcdashboard 2>&1 | Select-String "Ready.*Production" | Select-Object -First 1
-if ($deploy) {
-    $url = [regex]::Match($deploy, 'https://[^\s]+').Value
-    if ($url) {
-        npx vercel alias set $url gmbcdashboard.vercel.app 2>&1 | Out-Null
-        Write-Host "      OK — alias atualizado" -ForegroundColor Green
+$tentativas = 0
+$aliasOk = $false
+while ($tentativas -lt 5 -and -not $aliasOk) {
+    $tentativas++
+    $deploy = npx vercel ls gmbcdashboard 2>&1 | Select-String "Ready.*Production" | Select-Object -First 1
+    if ($deploy) {
+        $url = [regex]::Match($deploy, 'https://[^\s]+').Value
+        if ($url) {
+            npx vercel alias set $url gmbcdashboard.vercel.app 2>&1 | Out-Null
+            Write-Host "      OK — alias atualizado: $url" -ForegroundColor Green
+            $aliasOk = $true
+        }
     }
+    if (-not $aliasOk) { Start-Sleep -Seconds 10 }
 }
+if (-not $aliasOk) { Write-Host "      AVISO: alias nao atualizado. Tente rodar o script novamente." -ForegroundColor DarkYellow }
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
