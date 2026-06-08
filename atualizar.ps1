@@ -44,6 +44,7 @@ else { Write-Host "      OK — $mensagem" -ForegroundColor Green }
 Write-Host ""
 Write-Host "[4/5] Enviando para GitHub..." -ForegroundColor Yellow
 git push origin master:main
+git push origin master
 if ($LASTEXITCODE -ne 0) { Write-Host "ERRO ao fazer push." -ForegroundColor Red; pause; exit 1 }
 Write-Host "      OK" -ForegroundColor Green
 
