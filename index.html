@@ -1588,16 +1588,15 @@ function toggleSenha() {
   }
 }
 
-async function verificarSenha() {
+function verificarSenha() {
   const inp    = document.getElementById('login-senha');
   const erroEl = document.getElementById('login-erro');
   const cardEl = document.getElementById('login-card');
   const input  = inp ? inp.value : '';
   if (!input) { if(erroEl) erroEl.textContent = 'Digite a senha.'; return; }
   try {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-    const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    if (hex === 'daf9ae3f780d286ffe5a0a12fa65417f339255e3c0b82c8fb2456c89168e693e') {
+    const encoded = btoa(unescape(encodeURIComponent(input)));
+    if (encoded === 'R3VhcmRhQkMyMDI2') {
       sessionStorage.setItem('gmbc_auth', '1');
       const ov = document.getElementById('login-overlay');
       if (ov) ov.style.display = 'none';
@@ -1607,8 +1606,7 @@ async function verificarSenha() {
       if (inp) { inp.value = ''; inp.focus(); }
     }
   } catch(e) {
-    if (erroEl) erroEl.textContent = '⚠️ Erro: use Chrome ou Firefox atualizado.';
-    console.error('Login error:', e);
+    if (erroEl) erroEl.textContent = '⚠️ Erro inesperado. Tente novamente.';
   }
 }
 

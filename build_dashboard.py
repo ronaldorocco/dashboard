@@ -12,6 +12,8 @@ warnings.filterwarnings('ignore')
 # ╚══════════════════════════════════════════════════════╝
 SENHA_DASHBOARD = "GuardaBC2026"
 _senha_hash = hashlib.sha256(SENHA_DASHBOARD.encode('utf-8')).hexdigest()
+import base64 as _b64
+_senha_b64 = _b64.b64encode(SENHA_DASHBOARD.encode('utf-8')).decode('ascii')
 
 # ── Baixar/embedar bibliotecas JS/CSS ─────────────────────────────────────────
 LIBS_DIR = 'libs'
@@ -1804,16 +1806,15 @@ function toggleSenha() {{
   }}
 }}
 
-async function verificarSenha() {{
+function verificarSenha() {{
   const inp    = document.getElementById('login-senha');
   const erroEl = document.getElementById('login-erro');
   const cardEl = document.getElementById('login-card');
   const input  = inp ? inp.value : '';
   if (!input) {{ if(erroEl) erroEl.textContent = 'Digite a senha.'; return; }}
   try {{
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-    const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    if (hex === '{_senha_hash}') {{
+    const encoded = btoa(unescape(encodeURIComponent(input)));
+    if (encoded === '{_senha_b64}') {{
       sessionStorage.setItem('gmbc_auth', '1');
       const ov = document.getElementById('login-overlay');
       if (ov) ov.style.display = 'none';
@@ -1823,8 +1824,7 @@ async function verificarSenha() {{
       if (inp) {{ inp.value = ''; inp.focus(); }}
     }}
   }} catch(e) {{
-    if (erroEl) erroEl.textContent = '⚠️ Erro: use Chrome ou Firefox atualizado.';
-    console.error('Login error:', e);
+    if (erroEl) erroEl.textContent = '⚠️ Erro inesperado. Tente novamente.';
   }}
 }}
 
