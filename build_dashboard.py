@@ -828,9 +828,7 @@ function sair(){{
   </div>
   <div class="header-right">
     <button class="btn-reset" onclick="resetFilters()">⟳<span class="btxt"> Limpar</span></button>
-    <button class="btn-pdf" onclick="gerarPDF()">🖨️<span class="btxt"> PDF</span></button>
-    <button class="btn-wa-dash" onclick="compartilharWA()">📱<span class="btxt"> WhatsApp</span></button>
-    <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
+<button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
     <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
     <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
     <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
