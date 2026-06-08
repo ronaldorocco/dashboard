@@ -1825,7 +1825,7 @@ function compartilharWA() {{
     ``,
     `_Secretaria de Segurança e Ordem Pública — Guarda Municipal BC_`
   ];
-  window.open('https://wa.me/?text='+encodeURIComponent(lines.join('\n')), '_blank');
+  window.open('https://wa.me/?text='+encodeURIComponent(lines.join('\\n')), '_blank');
 }}
 
 // ── ANÁLISE DIÁRIA ────────────────────────────────────────────────────────────
