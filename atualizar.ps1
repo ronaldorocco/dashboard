@@ -30,7 +30,7 @@ Write-Host "      OK" -ForegroundColor Green
 # 3. Commit
 Write-Host ""
 Write-Host "[3/5] Fazendo commit..." -ForegroundColor Yellow
-git add dashboard_interativo.html index.html build_dashboard.py
+git add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py geocache.json
 
 if ($mensagem -eq "") {
     $data = Get-Date -Format "dd/MM/yyyy HH:mm"
@@ -47,35 +47,15 @@ git push origin master:main
 if ($LASTEXITCODE -ne 0) { Write-Host "ERRO ao fazer push." -ForegroundColor Red; pause; exit 1 }
 Write-Host "      OK" -ForegroundColor Green
 
-# 5. Aguardar Vercel e atualizar alias
+# 5. Concluido
 Write-Host ""
-Write-Host "[5/5] Atualizando alias gmbcdashboard.vercel.app..." -ForegroundColor Yellow
-Write-Host "      Aguardando Vercel processar o deploy (30s)..." -ForegroundColor Gray
-Start-Sleep -Seconds 30
-$ErrorActionPreference = "Continue"
-$tentativas = 0
-$aliasOk = $false
-while ($tentativas -lt 5 -and -not $aliasOk) {
-    $tentativas++
-    $deploy = npx vercel ls gmbcdashboard 2>&1 | Select-String "Ready.*Production" | Select-Object -First 1
-    if ($deploy) {
-        $url = [regex]::Match($deploy, 'https://[^\s]+').Value
-        if ($url) {
-            npx vercel alias set $url gmbcdashboard.vercel.app 2>&1 | Out-Null
-            Write-Host "      OK — alias atualizado: $url" -ForegroundColor Green
-            $aliasOk = $true
-        }
-    }
-    if (-not $aliasOk) { Start-Sleep -Seconds 10 }
-}
-if (-not $aliasOk) { Write-Host "      AVISO: alias nao atualizado. Tente rodar o script novamente." -ForegroundColor DarkYellow }
-$ErrorActionPreference = "Stop"
+Write-Host "[5/5] Deploy enviado para a Vercel..." -ForegroundColor Yellow
+Write-Host "      A Vercel atualiza automaticamente em ~1 minuto." -ForegroundColor Gray
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  Concluido! Acesse:" -ForegroundColor Cyan
-Write-Host "  https://gmbcdashboard.vercel.app" -ForegroundColor White
-Write-Host "  https://gmbcdashboard.com.br" -ForegroundColor White
+Write-Host "  Concluido! Acesse em ~1 minuto:" -ForegroundColor Cyan
+Write-Host "  https://dashboardgmbc.com.br" -ForegroundColor White
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 pause
