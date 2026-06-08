@@ -241,9 +241,8 @@ for _, r in df.iterrows():
         'link': str(r['LINK']).strip() if 'LINK' in df.columns and pd.notna(r['LINK']) and str(r['LINK']).strip() not in ('', 'nan') else '',
     })
 
-data_json = json.dumps(records, ensure_ascii=False)
+data_json = json.dumps(records, ensure_ascii=True)
 data_json = data_json.replace('</', '<\\/')            # impede </script> fechar a tag
-data_json = data_json.replace(' ', '\\u2028').replace(' ', '\\u2029')  # separadores de linha JS
 
 # ── Template HTML ─────────────────────────────────────────────────────────────
 html = f"""<!DOCTYPE html>
