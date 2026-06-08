@@ -55,9 +55,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
   justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.3);
   position:sticky;top:0;z-index:100;
 }
-.header h1{font-size:17px;font-weight:700;letter-spacing:.3px;}
+.header h1{font-size:16px;font-weight:700;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .header .sub{font-size:11px;opacity:.8;margin-top:2px;}
-.header-right{display:flex;gap:10px;align-items:center;}
+.header-right{display:flex;gap:7px;align-items:center;flex-shrink:0;}
+.btxt{}
+.btn-wa-dash{background:#25D366;color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
+.btn-wa-dash:hover{background:#1DA851;}
 .badge{background:rgba(255,255,255,.2);border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;}
 /* ── LOGIN ── */
 .login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;
@@ -321,10 +325,11 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
   body{font-size:13px;}
 
   /* Header */
-  .header{padding:10px 14px;flex-wrap:wrap;gap:8px;}
-  .header h1{font-size:14px;}
+  .header{padding:8px 12px;flex-wrap:wrap;gap:6px;}
+  .header h1{font-size:13px;white-space:normal;}
   .header .sub{font-size:10px;}
-  .header-right{gap:6px;}
+  .header-right{width:100%;gap:4px;flex-wrap:wrap;justify-content:flex-start;}
+  .header-right button{padding:5px 8px;font-size:10px;}
   .badge{display:none;}
   .menu-toggle{display:block;}
   .sidebar-close{display:block;}
@@ -392,12 +397,13 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
 /* Telas muito pequenas (≤480px) */
 @media(max-width:480px){
   .header h1{font-size:12px;}
+  .header-right button{padding:5px 7px;font-size:11px;}
+  .btxt{display:none;}
   .kpi-row{grid-template-columns:repeat(2,1fr);gap:6px;}
   .kpi-val{font-size:20px;}
   .kpi-label{font-size:9px;}
   .content{padding:8px;}
   .rec-text{font-size:11.5px;}
-  .btn-pdf,.btn-reset{font-size:10px;padding:4px 8px;}
   .badge{font-size:10px;padding:2px 7px;}
 }
 
@@ -551,19 +557,18 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <div class="header">
-  <div style="flex:1;display:flex;align-items:center">
+  <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
     <button class="menu-toggle" onclick="toggleSidebar()" title="Filtros">☰</button>
-  </div>
-  <div style="flex:2;text-align:center">
     <h1>🛡️ Secretaria de Segurança e Ordem Pública de Balneário Camboriú — GMBC</h1>
   </div>
-  <div class="header-right" style="flex:1;justify-content:flex-end">
-    <button class="btn-reset" onclick="resetFilters()">⟳ Limpar</button>
-    <button class="btn-pdf" onclick="gerarPDF()">🖨️ PDF</button>
-    <button class="btn-analise" onclick="analiseDiaria()">📋 Análise</button>
-    <button class="btn-prev" onclick="previsao()">📈 Previsão</button>
-    <button class="btn-relatorio" onclick="relatorioDiario()">📅 Relatório</button>
-    <button class="btn-sair" onclick="sair()">🔒 Sair</button>
+  <div class="header-right">
+    <button class="btn-reset" onclick="resetFilters()">⟳<span class="btxt"> Limpar</span></button>
+    <button class="btn-pdf" onclick="gerarPDF()">🖨️<span class="btxt"> PDF</span></button>
+    <button class="btn-wa-dash" onclick="compartilharWA()">📱<span class="btxt"> WhatsApp</span></button>
+    <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
+    <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
+    <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
+    <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
   </div>
 </div>
 
@@ -1494,6 +1499,62 @@ function resetFilters() {
 function gerarPDF() {
   if(mapaInst) mapaInst.invalidateSize();
   setTimeout(() => window.print(), 300);
+}
+
+// ── COMPARTILHAR VIA WHATSAPP ─────────────────────────────────────────────────
+function compartilharWA() {
+  const data = filtered();
+  const total  = data.length;
+  const furtos = data.filter(r=>r.tipo==='Furto').length;
+  const roubos = data.filter(r=>r.tipo==='Roubo').length;
+  const arrom  = data.filter(r=>r.tipo==='Arrombamento').length;
+
+  const bairros  = count(data,'bairro');
+  const turnos   = count(data,'turno');
+  const itens    = count(data,'item');
+  const enderecos= count(data,'endereco');
+  const topBairro= sortedEntries(bairros)[0]||['–',0];
+  const topTurno = sortedEntries(turnos)[0]||['–',0];
+  const topItem  = sortedEntries(itens)[0]||['–',0];
+  const topRua   = sortedEntries(enderecos).filter(e=>e[0])[0]||['–',0];
+
+  const now = new Date();
+  const dataBR = now.toLocaleDateString('pt-BR');
+  const horaBR = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const pct = (n,t) => t ? ' ('+((n/t)*100).toFixed(0)+'%)' : '';
+
+  const filtros = [];
+  if(state.mes.size)        filtros.push('Mês: '+[...state.mes].join(', '));
+  if(state.turno.size)      filtros.push('Turno: '+[...state.turno].join(', '));
+  if(state.tipo.size)       filtros.push('Tipo: '+[...state.tipo].join(', '));
+  if(state.bairro.size)     filtros.push('Bairro: '+[...state.bairro].join(', '));
+  if(state.item.size)       filtros.push('Item: '+[...state.item].join(', '));
+  if(state.dia.size)        filtros.push('Dia: '+[...state.dia].join(', '));
+  if(state.logradouro.size) filtros.push('Logradouro: '+[...state.logradouro].join(', '));
+  if(imeiQ)        filtros.push('IMEI: '+imeiQ);
+  if(marcaQ)       filtros.push('Marca: '+marcaQ);
+  if(placaQ)       filtros.push('Placa: '+placaQ);
+  if(numeroSerieQ) filtros.push('Nº Série: '+numeroSerieQ);
+
+  const lines = [
+    `🛡️ *DASHBOARD GMBC — Resumo Operacional*`,
+    `📅 ${dataBR} às ${horaBR}`,
+    filtros.length ? `🔍 Filtros: ${filtros.join(' | ')}` : `📊 Todos os registros`,
+    ``,
+    `*📊 OCORRÊNCIAS: ${total}*`,
+    `🔵 Furtos: *${furtos}*${pct(furtos,total)}`,
+    `🔴 Roubos: *${roubos}*${pct(roubos,total)}`,
+    `🟠 Arrombamentos: *${arrom}*${pct(arrom,total)}`,
+    ``,
+    `*📍 Bairro mais afetado:* ${topBairro[0]} — ${topBairro[1]} casos`,
+    `*⏰ Turno mais crítico:* ${topTurno[0]} — ${topTurno[1]} casos`,
+    `*📦 Item mais furtado:* ${topItem[0]} — ${topItem[1]} casos`,
+    `*🛣️ Rua mais crítica:* ${topRua[0]} — ${topRua[1]} casos`,
+    ``,
+    `_Secretaria de Segurança e Ordem Pública — Guarda Municipal BC_`
+  ];
+  window.open('https://wa.me/?text='+encodeURIComponent(lines.join('
+')), '_blank');
 }
 
 // ── ANÁLISE DIÁRIA ────────────────────────────────────────────────────────────
