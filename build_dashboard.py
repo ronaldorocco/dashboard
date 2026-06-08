@@ -548,7 +548,7 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
   .header h1{{font-size:13px;white-space:normal;}}
   .header .sub{{font-size:10px;}}
   .header-right{{width:100%;gap:4px;flex-wrap:wrap;justify-content:flex-start;}}
-  .header-right button{{padding:5px 8px;font-size:10px;}}
+  .header-right button{{padding:6px 10px;font-size:11px;flex:1;min-width:0;}}
   .badge{{display:none;}}
   .menu-toggle{{display:block;}}
   .sidebar-close{{display:block;}}
@@ -616,8 +616,8 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
 /* Telas muito pequenas (≤480px) */
 @media(max-width:480px){{
   .header h1{{font-size:12px;}}
-  .header-right button{{padding:5px 7px;font-size:11px;}}
-  .btxt{{display:none;}}
+  .header-right button{{padding:5px 8px;font-size:10px;flex:1;min-width:0;}}
+  .btxt{{display:inline;}}
   .kpi-row{{grid-template-columns:repeat(2,1fr);gap:6px;}}
   .kpi-val{{font-size:20px;}}
   .kpi-label{{font-size:9px;}}
