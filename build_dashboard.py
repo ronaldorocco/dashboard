@@ -1793,33 +1793,38 @@ function sair() {{
 
 function toggleSenha() {{
   const inp = document.getElementById('login-senha');
-  const btn = inp.nextElementSibling;
+  const btn = document.querySelector('.login-eye');
+  if (!inp) return;
   if (inp.type === 'password') {{
     inp.type = 'text';
-    btn.textContent = '🙈';
+    if (btn) btn.textContent = '🙈';
   }} else {{
     inp.type = 'password';
-    btn.textContent = '👁';
+    if (btn) btn.textContent = '👁';
   }}
 }}
 
 async function verificarSenha() {{
-  const input  = document.getElementById('login-senha').value;
+  const inp    = document.getElementById('login-senha');
   const erroEl = document.getElementById('login-erro');
   const cardEl = document.getElementById('login-card');
-  if (!input) {{ erroEl.textContent = 'Digite a senha.'; return; }}
-  const buf    = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-  const hex    = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  if (hex === '{_senha_hash}') {{
-    sessionStorage.setItem('gmbc_auth', '1');
-    document.getElementById('login-overlay').style.display = 'none';
-  }} else {{
-    erroEl.textContent = '❌ Senha incorreta. Tente novamente.';
-    cardEl.classList.remove('login-shake');
-    void cardEl.offsetWidth;
-    cardEl.classList.add('login-shake');
-    document.getElementById('login-senha').value = '';
-    document.getElementById('login-senha').focus();
+  const input  = inp ? inp.value : '';
+  if (!input) {{ if(erroEl) erroEl.textContent = 'Digite a senha.'; return; }}
+  try {{
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+    const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    if (hex === '{_senha_hash}') {{
+      sessionStorage.setItem('gmbc_auth', '1');
+      const ov = document.getElementById('login-overlay');
+      if (ov) ov.style.display = 'none';
+    }} else {{
+      if (erroEl) erroEl.textContent = '❌ Senha incorreta. Tente novamente.';
+      if (cardEl) {{ cardEl.classList.remove('login-shake'); void cardEl.offsetWidth; cardEl.classList.add('login-shake'); }}
+      if (inp) {{ inp.value = ''; inp.focus(); }}
+    }}
+  }} catch(e) {{
+    if (erroEl) erroEl.textContent = '⚠️ Erro: use Chrome ou Firefox atualizado.';
+    console.error('Login error:', e);
   }}
 }}
 
@@ -3076,7 +3081,7 @@ else {{ window.addEventListener('load', init); }}
       <input type="password" class="login-input" id="login-senha"
         placeholder="Digite a senha de acesso"
         onkeydown="if(event.key==='Enter')verificarSenha()">
-      <button class="login-eye" onclick="toggleSenha()" tabindex="-1" title="Mostrar/ocultar senha">👁</button>
+      <button type="button" class="login-eye" onclick="toggleSenha()" tabindex="-1" title="Mostrar/ocultar senha">👁</button>
     </div>
     <button class="login-btn" onclick="verificarSenha()">🔐 Entrar</button>
     <div class="login-error" id="login-erro"></div>
