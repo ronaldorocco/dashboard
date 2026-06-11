@@ -36,7 +36,7 @@ git add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py 
 
 if ($mensagem -eq "") {
     $data = Get-Date -Format "dd/MM/yyyy HH:mm"
-    $mensagem = "Atualizar dashboard - $data"
+    $mensagem = "Atualizar dashboard - $data [skip ci]"
 }
 git commit -m $mensagem
 if ($LASTEXITCODE -ne 0) {
