@@ -1,24 +1,26 @@
-# ──────────────────────────────────────────────────
-#  Atualizar Dashboard — Guarda Municipal BC
-#  Uso: .\atualizar.ps1
-#  Ou com mensagem: .\atualizar.ps1 "sua mensagem"
-# ──────────────────────────────────────────────────
+# Atualizar Dashboard - Guarda Municipal BC
+# Uso: .\atualizar.ps1
+# Ou com mensagem: .\atualizar.ps1 "sua mensagem"
 
 param([string]$mensagem = "")
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 Set-Location $PSScriptRoot
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  Dashboard Seguranca BC — Atualizando..." -ForegroundColor Cyan
+Write-Host "  Dashboard Seguranca BC - Atualizando..." -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 
 # 1. Gerar HTML
 Write-Host ""
 Write-Host "[1/5] Gerando dashboard HTML..." -ForegroundColor Yellow
 python build_dashboard.py
-if ($LASTEXITCODE -ne 0) { Write-Host "ERRO ao gerar o dashboard." -ForegroundColor Red; pause; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERRO ao gerar o dashboard. Verifique o Python." -ForegroundColor Red
+    pause
+    exit 1
+}
 Write-Host "      OK" -ForegroundColor Green
 
 # 2. Copiar para index.html
@@ -34,18 +36,25 @@ git add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py 
 
 if ($mensagem -eq "") {
     $data = Get-Date -Format "dd/MM/yyyy HH:mm"
-    $mensagem = "Atualizar dashboard — $data"
+    $mensagem = "Atualizar dashboard - $data"
 }
 git commit -m $mensagem
-if ($LASTEXITCODE -ne 0) { Write-Host "      Nada novo para commitar." -ForegroundColor DarkYellow }
-else { Write-Host "      OK — $mensagem" -ForegroundColor Green }
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "      Nada novo para commitar (ou ja commitado)." -ForegroundColor DarkYellow
+} else {
+    Write-Host "      OK - $mensagem" -ForegroundColor Green
+}
 
 # 4. Push para GitHub
 Write-Host ""
 Write-Host "[4/5] Enviando para GitHub..." -ForegroundColor Yellow
 git push origin master:main
 git push origin master
-if ($LASTEXITCODE -ne 0) { Write-Host "ERRO ao fazer push." -ForegroundColor Red; pause; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERRO ao fazer push. Verifique a conexao com o GitHub." -ForegroundColor Red
+    pause
+    exit 1
+}
 Write-Host "      OK" -ForegroundColor Green
 
 # 5. Concluido
