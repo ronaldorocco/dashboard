@@ -509,10 +509,9 @@ def validar_config():
 # Para grupos o ID começa com - (ex: "-1001234567890").
 # Para obter um ID: python enviar_relatorio.py --get-chat-id
 DESTINATARIOS = [
-    CHAT_ID,          # ID principal já configurado acima
+    CHAT_ID,          # Grupo Alertas GMBC (-1003944282147)
     "1726984088",     # ID GM Rafaela
     "7515770228",     # ID Minha Linda
-    "-1003944282147", # ID Bot Grupo Alertas GMBC
 ]
 # ─────────────────────────────────────────────────────────────────────────────
 
