@@ -198,6 +198,8 @@ df['BO']       = df['B.O.'].fillna('').astype(str)
 df['ENDERECO'] = df['ENDEREÇO'].fillna('').astype(str)
 df['REF']      = df['PONTO_REFERENCIA'].fillna('').astype(str)
 df['MAPA_URL'] = df['MAPA'].fillna('').astype(str)
+_desc_col = next((c for c in df.columns if 'DESCRI' in c.upper()), None)
+df['DESCRICAO'] = df[_desc_col].fillna('').astype(str).apply(lambda x: '' if x.lower() == 'nan' else x) if _desc_col else pd.Series('', index=df.index)
 def clean_text_cell(row, col):
     if col not in df.columns or pd.isna(row[col]):
         return ''
@@ -227,11 +229,10 @@ for _, r in df.iterrows():
         'bo': r['BO'],
         'tipo': r['TIPIFICACAO'],
         'item': r['ITEM'],
+        'descricao': r['DESCRICAO'],
         'marca': str(r['MARCA_MODELO']) if 'MARCA_MODELO' in df.columns and pd.notna(r['MARCA_MODELO']) else '',
-        'qnt': str(r['QNT']) if 'QNT' in df.columns and pd.notna(r['QNT']) else '',
         'imei': clean_text_cell(r, 'IMEI'),
         'placa': clean_text_cell(r, 'PLACA'),
-        'numero_serie': clean_text_cell(r, 'NUMERO_SERIE'),
         'endereco': r['ENDERECO'],
         'bairro': r['BAIRRO'],
         'ref': r['REF'],
@@ -1089,10 +1090,10 @@ function sair(){{
         <table>
           <thead>
             <tr>
-              <th>Data</th><th>Hora</th><th>Turno</th><th>Dia</th>
-              <th>B.O.</th><th>Tipificação</th><th>Item</th>
-              <th>Marca/Modelo</th><th>IMEI</th><th>Placa</th><th>Nº Série</th>
-              <th>Bairro</th><th>Endereço</th><th>Referência</th>
+              <th>Data</th><th>Mês</th><th>Ano</th><th>Hora</th><th>Turno</th><th>Dia</th>
+              <th>B.O.</th><th>Tipificação</th><th>Item</th><th>Descrição</th>
+              <th>Marca/Modelo</th><th>Endereço</th><th>Bairro</th><th>Referência</th>
+              <th>IMEI</th><th>Placa</th>
             </tr>
           </thead>
           <tbody id="tabela-body"></tbody>
@@ -1434,6 +1435,8 @@ function renderTabela(data) {{
   tbody.innerHTML = show.map(r => `
     <tr>
       <td>${{r.data ? r.data.slice(8)+'/'+r.data.slice(5,7)+'/'+r.data.slice(0,4) : ''}}</td>
+      <td>${{r.mes}}</td>
+      <td>${{r.ano}}</td>
       <td>${{r.hora}}</td>
       <td>${{r.turno}}</td>
       <td>${{r.dia}}</td>
@@ -1449,13 +1452,13 @@ function renderTabela(data) {{
       <td><span style="background:${{TIPO_COLORS[r.tipo]||'#888'}};color:white;
         border-radius:3px;padding:1px 5px;font-size:9px">${{r.tipo}}</span></td>
       <td>${{r.item}}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${{r.descricao||''}}</td>
       <td>${{r.marca}}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${{r.endereco}}</td>
+      <td>${{r.bairro}}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;font-size:10px">${{r.ref}}</td>
       <td style="font-size:10px">${{r.imei}}</td>
       <td style="font-size:10px">${{r.placa}}</td>
-      <td style="font-size:10px">${{r.numero_serie}}</td>
-      <td>${{r.bairro}}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${{r.endereco}}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;font-size:10px">${{r.ref}}</td>
     </tr>`).join('');
 }}
 
