@@ -577,12 +577,63 @@ def gerar_previsao(records):
     return '\n'.join(linhas)
 
 
+def gerar_relatorio_diario(records):
+    now = datetime.now(BRT)
+    hora_atual = now.strftime('%H:%M')
+
+    datas_disponiveis = sorted(set(r['data'] for r in records if r['data']), reverse=True)
+    if not datas_disponiveis:
+        return "⚠️ Nenhuma ocorrência registrada na base."
+
+    hoje = now.strftime('%Y-%m-%d')
+    data_ref = hoje if hoje in datas_disponiveis else datas_disponiveis[0]
+    registros_dia = [r for r in records if r['data'] == data_ref]
+
+    ano, mes, dia = data_ref.split('-')
+    d = datetime.strptime(data_ref, '%Y-%m-%d')
+    DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo']
+    dia_semana = DIAS[d.weekday()]
+    label_data = f"{dia}/{mes}/{ano}"
+
+    total = len(registros_dia)
+    tipos   = Counter(r['tipo']    for r in registros_dia if r['tipo']).most_common(5)
+    bairros = Counter(r['bairro']  for r in registros_dia if r['bairro']).most_common(5)
+    turnos  = Counter(r['turno']   for r in registros_dia if r['turno']).most_common()
+
+    tipos_linhas   = '\n'.join(f"  • {t} — {pct(n, total)}" for t, n in tipos)
+    bairros_linhas = '\n'.join(f"  • {b} — {n} oc." for b, n in bairros)
+    turnos_linhas  = '\n'.join(f"  • {t} — {n} oc. ({pct(n, total)})" for t, n in turnos)
+
+    linhas = [
+        f"📋 *RELATÓRIO DO DIA — GMBC*",
+        f"📅 {dia_semana}, {label_data} · {hora_atual}",
+    ]
+    if data_ref != hoje:
+        linhas.append(f"_⚠️ Sem registros hoje — último dia com dados: {label_data}_")
+    linhas += [
+        "",
+        f"📌 *{total} ocorrências* registradas no dia",
+        "",
+        f"🔴 *Tipificação:*",
+        tipos_linhas,
+        "",
+        f"📍 *Bairros afetados:*",
+        bairros_linhas,
+        "",
+        f"⏰ *Por turno:*",
+        turnos_linhas,
+        "",
+        f"🌐 dashboardgmbc.com.br",
+    ]
+    return '\n'.join(linhas)
+
+
 AJUDA = (
     "*🛡️ Bot GMBC — Consulta de Ocorrências*\n\n"
     "*📊 Resumos rápidos:*\n"
-    "  `Analise` → análise do dia da semana\n"
+    "  `Analise` → análise histórica do dia da semana\n"
     "  `Previsao` → previsão de risco para hoje\n"
-    "  `Relatorio` → análise + previsão juntos\n\n"
+    "  `Relatorio` → boletim do dia (hoje ou último com dados)\n\n"
     "*Busca livre — digite qualquer palavra:*\n"
     "  `bicicleta`, `celular`, `centro`, `furto`, `noite`...\n\n"
     "*Comandos específicos:*\n"
@@ -649,7 +700,7 @@ def processar(text, chat_id, records):
     if tl_sa in ('previsao', '/previsao'):
         return send_message(chat_id, gerar_previsao(records))
     if tl_sa in ('relatorio', '/relatorio'):
-        return send_message(chat_id, gerar_analise_diaria(records) + '\n\n' + gerar_previsao(records))
+        return send_message(chat_id, gerar_relatorio_diario(records))
 
     # Busca universal em todos os campos
     return send_message(chat_id, busca_universal(records, t))
