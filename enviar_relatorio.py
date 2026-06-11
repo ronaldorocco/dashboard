@@ -48,7 +48,7 @@ import os as _os
 # .strip() remove qualquer espaço ou quebra de linha acidental
 BOT_TOKEN       = _os.environ.get('BOT_TOKEN',       "8971067969:AAF73XtvvHyhkb_KX0dC3Tny6DQ6DtRdjjM").strip()
 GOOGLE_DRIVE_ID = _os.environ.get('GOOGLE_DRIVE_ID', "1w_4WgORfWrxonI-tL6uKOkoCZJQ9K5VN").strip()
-CHAT_ID = _os.environ.get('CHAT_ID', "-1009876543210").strip()  # ID do grupo
+CHAT_ID = _os.environ.get('CHAT_ID', "-1003944282147").strip()  # ID do grupo Alertas GMBC
 
 
 ARQUIVO_EXCEL = "secretario.xlsx"   # Usado apenas se GOOGLE_DRIVE_ID estiver vazio
