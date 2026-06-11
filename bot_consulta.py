@@ -465,19 +465,25 @@ def gerar_analise_diaria(records):
     top_bairro = bairros[0] if bairros else ('–', 0)
     top_turno  = max(turnos_c, key=turnos_c.get)
 
-    tipos_str   = ' · '.join(f"{t} ({pct(n, total)})" for t, n in tipos)
-    bairros_str = ' · '.join(f"{b} ({n})" for b, n in bairros)
+    tipos_linhas   = '\n'.join(f"  • {t} — {pct(n, total)}" for t, n in tipos)
+    bairros_linhas = '\n'.join(f"  • {b} — {n} oc." for b, n in bairros)
 
     return '\n'.join([
         f"📊 *ANÁLISE — {plural} — GMBC*",
-        f"📅 {dia_semana}, {data_atual} às {hora_atual}",
+        f"📅 {dia_semana}, {data_atual} · {hora_atual}",
         "",
-        f"Total histórico: *{total} oc.* em {nDias} {plural} | Média: *{media}/dia*",
-        f"🔴 Crimes: {tipos_str}",
-        f"📍 Bairros: {bairros_str}",
-        f"⏰ Turno crítico: *{top_turno}* ({pct(turnos_c[top_turno], total)})",
+        f"📌 *{total} ocorrências* em {nDias} {plural}",
+        f"📈 Média histórica: *{media} oc./dia*",
         "",
-        f"🌐 Relatório completo: dashboardgmbc.com.br",
+        f"🔴 *Crimes mais frequentes:*",
+        tipos_linhas,
+        "",
+        f"📍 *Bairros com mais ocorrências:*",
+        bairros_linhas,
+        "",
+        f"⏰ *Turno crítico:* {top_turno} ({pct(turnos_c[top_turno], total)})",
+        "",
+        f"🌐 dashboardgmbc.com.br",
     ])
 
 
@@ -538,36 +544,37 @@ def gerar_previsao(records):
     risk_level = 'ALTO' if risk_score >= 4 else 'MÉDIO' if risk_score >= 2 else 'BAIXO'
     risk_emoji = '🔴' if risk_level == 'ALTO' else '🟡' if risk_level == 'MÉDIO' else '🟢'
 
-    turno_agora  = f"{t_atual} ({pct(turnos_c[t_atual], total_t)}) ◀ AGORA"
-    turno_proximo = f"{t_proximo} ({pct(turnos_c[t_proximo], total_t)}) ⏳ Próximo"
-
     bairros_linhas = []
     for i, (nome, qtd) in enumerate(bairros):
         score = qtd / max_b
         nivel = '🔴' if score > 0.6 else '🟡' if score > 0.3 else '🟢'
-        bairros_linhas.append(f"  {i+1}. {nome} ({qtd} oc.) {nivel}")
+        bairros_linhas.append(f"  {nivel} {i+1}. {nome} — {qtd} oc.")
 
-    tipos_str = ' · '.join(f"{t} ({pct(n, total_t)})" for t, n in tipos)
+    tipos_linhas = '\n'.join(f"  • {t} — {pct(n, total_t)}" for t, n in tipos)
 
-    alerta_tendencia = f"\n⚠️ Tendência *crescente* (+{round(trend_diff,1)} oc./semana)" if trend_icon == '↗' else ''
-
-    return '\n'.join([
+    linhas = [
         f"📈 *PREVISÃO — {plural} — GMBC*",
-        f"📅 {dia_semana}, {data_atual} | {hora_atual}",
+        f"📅 {dia_semana}, {data_atual} · {hora_atual}",
         "",
-        f"*{risk_emoji} RISCO: {risk_level}* | Previsão: *{min_exp}–{max_exp} oc.* | Tendência: {trend_str} {trend_icon}{alerta_tendencia}",
-        f"Base: {nDias} {plural} | Média: {round(mean,1)}/dia",
+        f"{risk_emoji} *RISCO {risk_level}* — Previsão: *{min_exp}–{max_exp} oc.*",
+        f"📊 Tendência: {trend_str} {trend_icon} · Base: {nDias} {plural} · Média: {round(mean,1)}/dia",
+    ]
+    if trend_icon == '↗':
+        linhas.append(f"⚠️ *Atenção:* Tendência *crescente* (+{round(trend_diff,1)} oc./semana)")
+    linhas += [
         "",
-        f"⏰ {turno_agora}",
-        f"⏰ {turno_proximo}",
+        f"⏱ *Turno atual:* {t_atual} ({pct(turnos_c[t_atual], total_t)}) ◀",
+        f"⏱ *Próximo turno:* {t_proximo} ({pct(turnos_c[t_proximo], total_t)})",
         "",
-        f"*📍 Bairros em alerta:*",
+        f"📍 *Bairros em alerta:*",
         *bairros_linhas,
         "",
-        f"🔴 Crimes: {tipos_str}",
+        f"⚠️ *Crimes esperados:*",
+        tipos_linhas,
         "",
-        f"🌐 Relatório completo: dashboardgmbc.com.br",
-    ])
+        f"🌐 dashboardgmbc.com.br",
+    ]
+    return '\n'.join(linhas)
 
 
 AJUDA = (
