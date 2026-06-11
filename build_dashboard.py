@@ -1083,9 +1083,17 @@ function sair(){{
 
     <!-- Tabela -->
     <div class="chart-card" style="margin-bottom:8px">
-      <div class="chart-title" style="margin-bottom:8px">
-        <span class="icon">📋</span> Registros Detalhados
-        <span style="font-size:10px;color:#888;font-weight:400;margin-left:8px" id="tabela-count"></span>
+      <div class="chart-title" style="margin-bottom:8px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="icon">📋</span> Registros Detalhados
+          <span style="font-size:10px;color:#888;font-weight:400;margin-left:4px" id="tabela-count"></span>
+        </div>
+        <button onclick="exportarTabelaPDF()" style="
+          background:#107C10;color:white;border:none;border-radius:4px;
+          padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;
+          font-family:inherit;white-space:nowrap;flex-shrink:0">
+          🖨️ Exportar PDF
+        </button>
       </div>
       <div class="table-wrap">
         <table>
@@ -1461,6 +1469,60 @@ function renderTabela(data) {{
       <td style="font-size:10px">${{r.imei}}</td>
       <td style="font-size:10px">${{r.placa}}</td>
     </tr>`).join('');
+}}
+
+// ── EXPORTAR TABELA PDF ───────────────────────────────────────────────────────
+function exportarTabelaPDF() {{
+  const rows = document.querySelectorAll('#tabela-body tr');
+  if (!rows.length) {{
+    alert('Nenhum registro para exportar.');
+    return;
+  }}
+  const countEl = document.getElementById('tabela-count');
+  const countTxt = countEl ? countEl.textContent : '';
+  const filtrosEl = document.getElementById('active-filters-text');
+  const filtrosTxt = filtrosEl ? filtrosEl.textContent : '';
+  const agora = new Date().toLocaleString('pt-BR');
+
+  const headers = ['Data','Mes','Ano','Hora','Turno','Dia','B.O.','Tipificacao','Item',
+    'Descricao','Marca/Modelo','Endereco','Bairro','Referencia','IMEI','Placa'];
+
+  let rowsHTML = '';
+  rows.forEach((tr, i) => {{
+    const tds = tr.querySelectorAll('td');
+    const cells = Array.from(tds).map(td => `<td>${{td.innerText.trim()}}</td>`).join('');
+    const bg = i % 2 === 0 ? '#fff' : '#f5f7fa';
+    rowsHTML += `<tr style="background:${{bg}}">${{cells}}</tr>`;
+  }});
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Registros Detalhados - GMBC</title>
+<style>
+  body{{font-family:'Segoe UI',Arial,sans-serif;font-size:10px;margin:0;padding:16px;color:#1A1A2E}}
+  h1{{font-size:14px;margin:0 0 2px;color:#1A1A2E}}
+  .sub{{font-size:10px;color:#666;margin-bottom:12px}}
+  table{{width:100%;border-collapse:collapse;font-size:9.5px}}
+  thead th{{background:#1A1A2E;color:white;padding:5px 7px;text-align:left;font-weight:600;white-space:nowrap}}
+  tbody td{{padding:4px 7px;border-bottom:1px solid #eee;white-space:nowrap}}
+  .footer{{margin-top:12px;font-size:9px;color:#999;border-top:1px solid #ddd;padding-top:6px}}
+  @media print{{
+    body{{padding:8px}}
+    @page{{margin:10mm;size:A4 landscape}}
+  }}
+</style>
+</head><body>
+<h1>Secretaria de Seguranca e Ordem Publica de Balneario Camboriu - GMBC</h1>
+<div class="sub">Registros Detalhados &nbsp;|&nbsp; ${{countTxt}} &nbsp;|&nbsp; Gerado em: ${{agora}}</div>
+<table>
+  <thead><tr>${{headers.map(h=>`<th>${{h}}</th>`).join('')}}</tr></thead>
+  <tbody>${{rowsHTML}}</tbody>
+</table>
+<div class="footer">Dashboard GMBC - Guarda Municipal de Balneario Camboriu - gerado automaticamente</div>
+<script>window.onload=function(){{window.print();}}<\/script>
+</body></html>`);
+  w.document.close();
 }}
 
 // ── DIAGNÓSTICO DINÂMICO ─────────────────────────────────────────────────────
