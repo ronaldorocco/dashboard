@@ -184,16 +184,34 @@ def get_updates(offset=None):
         print(f"Erro getUpdates: {e}"); return []
 
 def send_message(chat_id, text):
-    url  = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    data = json.dumps({"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}).encode('utf-8')
-    req  = urllib.request.Request(url, data=data, headers={'Content-Type':'application/json'})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read().decode())
-            if result.get('ok'): print(f"  Resposta enviada para {chat_id}")
-            else: print(f"  ERRO Telegram: {result.get('description')}")
-    except Exception as e:
-        print(f"  ERRO ao enviar: {e}")
+    MAX = 4000  # Telegram limita 4096; deixamos margem
+    chunks = []
+    lines = text.split('\n')
+    current = []
+    current_len = 0
+    for line in lines:
+        # +1 para o '\n'
+        if current_len + len(line) + 1 > MAX and current:
+            chunks.append('\n'.join(current))
+            current = [line]
+            current_len = len(line) + 1
+        else:
+            current.append(line)
+            current_len += len(line) + 1
+    if current:
+        chunks.append('\n'.join(current))
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    for chunk in chunks:
+        data = json.dumps({"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"}).encode('utf-8')
+        req  = urllib.request.Request(url, data=data, headers={'Content-Type':'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = json.loads(resp.read().decode())
+                if result.get('ok'): print(f"  Resposta enviada para {chat_id}")
+                else: print(f"  ERRO Telegram: {result.get('description')}")
+        except Exception as e:
+            print(f"  ERRO ao enviar: {e}")
 
 
 # ── Consultas ─────────────────────────────────────────────────────────────────
@@ -432,62 +450,35 @@ def gerar_analise_diaria(records):
 
     if nDias == 0:
         return (
-            f"📊 *ANÁLISE DE {plural.upper()} — GUARDA MUNICIPAL BC*\n"
+            f"📊 *ANÁLISE — {plural} — GMBC*\n"
             f"📅 {dia_semana}, {data_atual} às {hora_atual}\n\n"
-            f"⚠️ Nenhuma ocorrência registrada em {plural} até o momento."
+            f"⚠️ Nenhuma ocorrência registrada em {plural} até o momento.\n\n"
+            f"🌐 dashboardgmbc.com.br"
         )
 
     total      = len(hist)
     media      = round(total / nDias, 1)
-    tipos      = top_n(hist, 'tipo', 6)
-    bairros    = top_n(hist, 'bairro', 5)
-    ruas       = top_n(hist, 'endereco', 3)
+    tipos      = top_n(hist, 'tipo', 3)
+    bairros    = top_n(hist, 'bairro', 3)
     turnos_c   = {t: sum(1 for r in hist if r['turno'] == t) for t in ORDEM_TURNO}
     top_tipo   = tipos[0]   if tipos   else ('–', 0)
     top_bairro = bairros[0] if bairros else ('–', 0)
     top_turno  = max(turnos_c, key=turnos_c.get)
-    datas_fmt  = ', '.join(d[8:10]+'/'+d[5:7] for d in datas[-5:])
 
-    linhas = [
-        f"📊 *ANÁLISE DE {plural.upper()} — GUARDA MUNICIPAL BC*",
+    tipos_str   = ' · '.join(f"{t} ({pct(n, total)})" for t, n in tipos)
+    bairros_str = ' · '.join(f"{b} ({n})" for b, n in bairros)
+
+    return '\n'.join([
+        f"📊 *ANÁLISE — {plural} — GMBC*",
         f"📅 {dia_semana}, {data_atual} às {hora_atual}",
         "",
-        f"*📋 RESUMO HISTÓRICO DE {plural.upper()}*",
-        f"Total de ocorrências: *{total}*",
-        f"{plural} com dados: *{nDias}* | Média: *{media}* oc./dia",
-        f"Tipo mais frequente: *{top_tipo[0]}* ({top_tipo[1]} — {pct(top_tipo[1], total)})",
-        f"Bairro mais afetado: *{top_bairro[0]}* ({top_bairro[1]} oc.)",
-        f"Turno crítico: *{top_turno}* ({turnos_c[top_turno]} oc. — {pct(turnos_c[top_turno], total)})",
+        f"Total histórico: *{total} oc.* em {nDias} {plural} | Média: *{media}/dia*",
+        f"🔴 Crimes: {tipos_str}",
+        f"📍 Bairros: {bairros_str}",
+        f"⏰ Turno crítico: *{top_turno}* ({pct(turnos_c[top_turno], total)})",
         "",
-        f"*🔴 TIPOS EM {plural.upper()}*",
-        *[f"• {e[0]}: {e[1]} total ({pct(e[1], total)}) | média {round(e[1]/nDias,1)}/dia" for e in tipos],
-        "",
-        f"*📍 BAIRROS EM {plural.upper()}*",
-        *[f"{i+1}. {e[0]}: {e[1]} oc. ({pct(e[1], total)})" for i, e in enumerate(bairros)],
-        "",
-        f"*⏰ TURNOS EM {plural.upper()}*",
-        *[f"• {t}: {turnos_c[t]} ({pct(turnos_c[t], total)}) | média {round(turnos_c[t]/nDias,1)}/dia" for t in ORDEM_TURNO],
-        "",
-        "*🎯 RECOMENDAÇÕES*",
-    ]
-
-    recs = []
-    if bairros:
-        recs.append(f"Reforçar guarnição no {bairros[0][0]} — bairro mais afetado em {plural}.")
-    if ruas:
-        recs.append(f"Atenção especial a {ruas[0][0]} — logradouro de maior risco.")
-    recs.append(f"Turno crítico: {top_turno} concentra {pct(turnos_c[top_turno], total)} das ocorrências.")
-    if tipos:
-        recs.append(f"Crime mais frequente: {tipos[0][0]}. Orientar guarnições para abordagem preventiva.")
-
-    linhas += [f"{i+1}. {r}" for i, r in enumerate(recs)]
-    linhas += [
-        "",
-        f"_{plural} analisados: {datas_fmt}_",
-        "_Guarda Municipal de Balneário Camboriú_",
-        "_Secretaria de Segurança e Ordem Pública_",
-    ]
-    return '\n'.join(linhas)
+        f"🌐 Relatório completo: dashboardgmbc.com.br",
+    ])
 
 
 def gerar_previsao(records):
@@ -508,9 +499,10 @@ def gerar_previsao(records):
 
     if nDias == 0:
         return (
-            f"📈 *PREVISÃO DE {plural.upper()} — GUARDA MUNICIPAL BC*\n"
+            f"📈 *PREVISÃO — {plural} — GMBC*\n"
             f"📅 {dia_semana}, {data_atual} às {hora_atual}\n\n"
-            f"⚠️ Nenhuma ocorrência registrada em {plural} até o momento."
+            f"⚠️ Nenhuma ocorrência registrada em {plural} até o momento.\n\n"
+            f"🌐 dashboardgmbc.com.br"
         )
 
     per_day   = [len([r for r in hist if r['data'] == d]) for d in datas]
@@ -521,12 +513,11 @@ def gerar_previsao(records):
     turnos_c  = {t: sum(1 for r in hist if r['turno'] == t) for t in ORDEM_TURNO}
     total_t   = len(hist) or 1
     top_turno = max(turnos_c, key=turnos_c.get)
-    tipos     = top_n(hist, 'tipo', 5)
-    bairros   = top_n(hist, 'bairro', 5)
-    ruas      = top_n(hist, 'endereco', 2)
+    tipos     = top_n(hist, 'tipo', 3)
+    bairros   = top_n(hist, 'bairro', 3)
     max_b     = bairros[0][1] if bairros else 1
 
-    trend_str = 'Estável'
+    trend_str  = 'Estável'
     trend_icon = '→'
     trend_diff = 0.0
     if len(datas) >= 4:
@@ -547,90 +538,50 @@ def gerar_previsao(records):
     risk_level = 'ALTO' if risk_score >= 4 else 'MÉDIO' if risk_score >= 2 else 'BAIXO'
     risk_emoji = '🔴' if risk_level == 'ALTO' else '🟡' if risk_level == 'MÉDIO' else '🟢'
 
-    linhas = [
-        f"📈 *PREVISÃO DE RISCO — {plural.upper()} — GUARDA MUNICIPAL BC*",
-        f"📅 {dia_semana}, {data_atual} | Gerado às {hora_atual}",
-        "",
-        f"*{risk_emoji} NÍVEL DE RISCO GERAL: {risk_level}*",
-        f"Previsão: *{min_exp}–{max_exp}* ocorrências esperadas",
-        f"Tendência: *{trend_str} {trend_icon}*",
-        f"Base histórica: *{nDias}* {plural} analisados | Média: *{round(mean,1)}* oc./dia",
-        "",
-        "*⏰ RISCO POR TURNO*",
-    ]
+    turno_agora  = f"{t_atual} ({pct(turnos_c[t_atual], total_t)}) ◀ AGORA"
+    turno_proximo = f"{t_proximo} ({pct(turnos_c[t_proximo], total_t)}) ⏳ Próximo"
 
-    for t in ORDEM_TURNO:
-        n    = turnos_c[t]
-        p    = pct(n, total_t)
-        mark = ' ◀ AGORA' if t == t_atual else ' ⏳ Próximo' if t == t_proximo else ''
-        linhas.append(f"• {t}: {n} oc. ({p}){mark}")
-
-    linhas += ["", "*📍 BAIRROS EM ALERTA*"]
+    bairros_linhas = []
     for i, (nome, qtd) in enumerate(bairros):
         score = qtd / max_b
-        nivel = '🔴 ALTO' if score > 0.6 else '🟡 MÉDIO' if score > 0.3 else '🟢 BAIXO'
-        linhas.append(f"{i+1}. {nome}: {qtd} oc. — {nivel}")
+        nivel = '🔴' if score > 0.6 else '🟡' if score > 0.3 else '🟢'
+        bairros_linhas.append(f"  {i+1}. {nome} ({qtd} oc.) {nivel}")
 
-    linhas += ["", "*🔴 CRIMES MAIS PROVÁVEIS*"]
-    for i, (tipo, qtd) in enumerate(tipos):
-        linhas.append(f"{i+1}. {tipo}: {qtd} ({pct(qtd, len(hist))})")
+    tipos_str = ' · '.join(f"{t} ({pct(n, total_t)})" for t, n in tipos)
 
-    linhas += ["", "*📊 HISTÓRICO POR DIA*"]
-    for d in datas:
-        n   = len([r for r in hist if r['data'] == d])
-        fmt = d[8:10] + '/' + d[5:7]
-        st  = 'ACIMA' if n > mean + std_dev else 'ABAIXO' if n < mean - std_dev else 'NORMAL'
-        linhas.append(f"• {fmt}: {n} oc. — {st}")
+    alerta_tendencia = f"\n⚠️ Tendência *crescente* (+{round(trend_diff,1)} oc./semana)" if trend_icon == '↗' else ''
 
-    ori = []
-    if bairros:
-        ori.append(f"Reforçar guarnição no {bairros[0][0]} — bairro historicamente mais afetado em {plural}.")
-    if ruas:
-        ori.append(f"Estabelecer ronda em {ruas[0][0]} — logradouro de maior risco em {plural}.")
-    turno_pcts = {
-        'Madrugada': f"Atenção ao turno da Madrugada (00h–05h) — concentra {pct(turnos_c['Madrugada'], total_t)} das ocorrências em {plural}.",
-        'Manhã':     f"Turno Matutino (06h–11h) é crítico em {plural} ({pct(turnos_c['Manhã'], total_t)}). Ampliar presença.",
-        'Tarde':     f"Período Vespertino (12h–17h) de alto risco em {plural} ({pct(turnos_c['Tarde'], total_t)}). Atenção à movimentação.",
-        'Noite':     f"Turno Noturno (18h–23h) concentra {pct(turnos_c['Noite'], total_t)} dos crimes em {plural}. Coordenar blitz.",
-    }
-    ori.append(turno_pcts[top_turno])
-    if tipos:
-        ori.append(f"Crime mais frequente: {tipos[0][0]}. Orientar guarnições com abordagem preventiva.")
-    if trend_icon == '↗':
-        ori.append(f"⚠️ Tendência crescente detectada em {plural} (+{round(trend_diff,1)} oc./semana). Considerar reforço de efetivo.")
-    ori.append("Compartilhar esta previsão com todas as guarnições antes do início do turno.")
-
-    linhas += ["", "*🎯 ORIENTAÇÕES PREVENTIVAS*"]
-    linhas += [f"{i+1}. {o}" for i, o in enumerate(ori)]
-    linhas += [
+    return '\n'.join([
+        f"📈 *PREVISÃO — {plural} — GMBC*",
+        f"📅 {dia_semana}, {data_atual} | {hora_atual}",
         "",
-        "_Guarda Municipal de Balneário Camboriú_",
-        "_Secretaria de Segurança e Ordem Pública_",
-    ]
-    return '\n'.join(linhas)
+        f"*{risk_emoji} RISCO: {risk_level}* | Previsão: *{min_exp}–{max_exp} oc.* | Tendência: {trend_str} {trend_icon}{alerta_tendencia}",
+        f"Base: {nDias} {plural} | Média: {round(mean,1)}/dia",
+        "",
+        f"⏰ {turno_agora}",
+        f"⏰ {turno_proximo}",
+        "",
+        f"*📍 Bairros em alerta:*",
+        *bairros_linhas,
+        "",
+        f"🔴 Crimes: {tipos_str}",
+        "",
+        f"🌐 Relatório completo: dashboardgmbc.com.br",
+    ])
 
 
 AJUDA = (
     "*🛡️ Bot GMBC — Consulta de Ocorrências*\n\n"
-    "*📊 Relatórios do dashboard:*\n"
-    "  `Analise` → análise histórica do dia da semana\n"
-    "  `Previsão` → previsão de risco e orientações\n"
-    "  `Relatorio` → análise + previsão completas\n\n"
+    "*📊 Resumos rápidos:*\n"
+    "  `Analise` → análise do dia da semana\n"
+    "  `Previsao` → previsão de risco para hoje\n"
+    "  `Relatorio` → análise + previsão juntos\n\n"
     "*Busca livre — digite qualquer palavra:*\n"
-    "  `bicicleta` → todas as ocorrências com bicicleta\n"
-    "  `celular` → todas com celular\n"
-    "  `centro` → todas no bairro Centro\n"
-    "  `furto` → todas por furto\n"
-    "  `noite` → todas no turno noite\n"
-    "  `r. 2500` → todas na Rua 2500\n\n"
+    "  `bicicleta`, `celular`, `centro`, `furto`, `noite`...\n\n"
     "*Comandos específicos:*\n"
-    "  `/bairro centro` → estatísticas do bairro\n"
-    "  `/tipo furto` → análise por tipo de crime\n"
-    "  `/turno noite` → análise por turno\n"
-    "  `/resumo` → resumo geral\n"
-    "  `/bairros` → lista todos os bairros\n"
-    "  `/tipos` → lista todos os tipos de crime\n"
-    "  `/ajuda` → este menu\n\n"
+    "  `/bairro centro` · `/tipo furto` · `/turno noite`\n"
+    "  `/resumo` · `/bairros` · `/tipos` · `/ajuda`\n\n"
+    "🌐 *Relatório completo:* dashboardgmbc.com.br\n"
     "_Resposta em até 5 minutos._"
 )
 
@@ -691,8 +642,7 @@ def processar(text, chat_id, records):
     if tl_sa in ('previsao', '/previsao'):
         return send_message(chat_id, gerar_previsao(records))
     if tl_sa in ('relatorio', '/relatorio'):
-        send_message(chat_id, gerar_analise_diaria(records))
-        return send_message(chat_id, gerar_previsao(records))
+        return send_message(chat_id, gerar_analise_diaria(records) + '\n\n' + gerar_previsao(records))
 
     # Busca universal em todos os campos
     return send_message(chat_id, busca_universal(records, t))
