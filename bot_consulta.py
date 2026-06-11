@@ -650,33 +650,57 @@ def processar(text, chat_id, records):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    print("Bot GMBC — verificando mensagens...")
+    import time
+
+    print("Bot GMBC iniciado...")
     print("Carregando dados...")
     records = carregar_dados()
     print(f"  {len(records)} registros carregados.")
 
-    updates = get_updates()
-    if not updates:
-        print("Nenhuma mensagem nova.")
-    else:
-        print(f"{len(updates)} mensagem(ns) encontrada(s).")
-        last_id = None
-        for upd in updates:
-            last_id = upd['update_id']
-            msg = upd.get('message') or upd.get('edited_message')
-            if not msg:
-                continue
-            text = msg.get('text', '').strip()
-            if not text:
-                continue
-            cid  = str(msg['chat']['id'])
-            nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
-            now  = datetime.now(BRT).strftime('%H:%M:%S')
-            print(f"[{now}] [{nome}] '{text}'")
-            processar(text, cid, records)
+    ultima_carga = time.time()
+    INTERVALO_RECARGA = 30 * 60  # recarrega planilha a cada 30 min
 
-        # Confirma mensagens processadas para não repetir na próxima execução
-        if last_id is not None:
-            get_updates(offset=last_id + 1)
+    offset = None
+    print("Aguardando mensagens...\n")
 
-    print("Concluído.")
+    while True:
+        try:
+            if time.time() - ultima_carga > INTERVALO_RECARGA:
+                print("Recarregando dados da planilha...")
+                records = carregar_dados()
+                print(f"  {len(records)} registros.")
+                ultima_carga = time.time()
+
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=30"
+            if offset:
+                url += f"&offset={offset}"
+
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=40) as resp:
+                    updates = json.loads(resp.read().decode()).get('result', [])
+            except Exception as e:
+                print(f"Erro polling: {e}")
+                time.sleep(5)
+                continue
+
+            for upd in updates:
+                offset = upd['update_id'] + 1
+                msg = upd.get('message') or upd.get('edited_message')
+                if not msg:
+                    continue
+                text = msg.get('text', '').strip()
+                if not text:
+                    continue
+                cid  = str(msg['chat']['id'])
+                nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
+                now  = datetime.now(BRT).strftime('%H:%M:%S')
+                print(f"[{now}] [{nome}] '{text}'")
+                processar(text, cid, records)
+
+        except KeyboardInterrupt:
+            print("\nBot encerrado.")
+            break
+        except Exception as e:
+            print(f"Erro inesperado: {e}")
+            time.sleep(5)
