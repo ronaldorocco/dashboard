@@ -710,82 +710,42 @@ def processar(text, chat_id, records):
 if __name__ == '__main__':
     import time
 
-    print("Bot GMBC iniciado...")
+    print("Bot GMBC - verificando mensagens...")
     print("Carregando dados...")
     records = carregar_dados()
     print(f"  {len(records)} registros carregados.")
 
-    ultima_carga = time.time()
-    INTERVALO_RECARGA = 30 * 60  # recarrega planilha a cada 30 min
+    updates = get_updates()
+    if not updates:
+        print("Nenhuma mensagem pendente.")
+        sys.exit(0)
 
-    # Descarta todas as mensagens pendentes ao iniciar (evita reprocessar mensagens antigas)
-    print("Descartando mensagens antigas...")
-    try:
-        _url_flush = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=0"
-        _req = urllib.request.Request(_url_flush, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(_req, timeout=15) as _resp:
-            _old = json.loads(_resp.read().decode()).get('result', [])
-        if _old:
-            _offset_flush = _old[-1]['update_id'] + 1
-            # Confirma leitura das mensagens antigas
-            urllib.request.urlopen(
-                f"{_url_flush}&offset={_offset_flush}", timeout=10
-            )
-            print(f"  {len(_old)} mensagens antigas ignoradas.")
-        else:
-            _offset_flush = None
-            print("  Nenhuma mensagem antiga encontrada.")
-        offset = _offset_flush
-    except Exception as _e:
-        print(f"  Aviso ao limpar mensagens antigas: {_e}")
-        offset = None
+    now_unix = time.time()
+    processed = 0
+    last_offset = None
 
-    print("Aguardando mensagens novas...\n")
+    for upd in updates:
+        last_offset = upd['update_id'] + 1
+        msg = upd.get('message') or upd.get('edited_message')
+        if not msg:
+            continue
+        msg_time = msg.get('date', 0)
+        age_min = int((now_unix - msg_time) / 60)
+        if now_unix - msg_time > 600:
+            print(f"  [ignorado] Mensagem antiga ({age_min} min atrás)")
+            continue
+        text = msg.get('text', '').strip()
+        if not text:
+            continue
+        cid  = str(msg['chat']['id'])
+        nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
+        now_str = datetime.now(BRT).strftime('%H:%M:%S')
+        print(f"[{now_str}] [{nome}] '{text}'")
+        processar(text, cid, records)
+        processed += 1
 
-    while True:
-        try:
-            if time.time() - ultima_carga > INTERVALO_RECARGA:
-                print("Recarregando dados da planilha...")
-                records = carregar_dados()
-                print(f"  {len(records)} registros.")
-                ultima_carga = time.time()
+    # Marca todas as atualizações como lidas
+    if last_offset:
+        get_updates(offset=last_offset)
 
-            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=30"
-            if offset:
-                url += f"&offset={offset}"
-
-            try:
-                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=40) as resp:
-                    updates = json.loads(resp.read().decode()).get('result', [])
-            except Exception as e:
-                print(f"Erro polling: {e}")
-                time.sleep(5)
-                continue
-
-            now_unix = time.time()
-            for upd in updates:
-                offset = upd['update_id'] + 1
-                msg = upd.get('message') or upd.get('edited_message')
-                if not msg:
-                    continue
-                # Ignora mensagens com mais de 10 minutos (segurança extra)
-                msg_time = msg.get('date', 0)
-                if now_unix - msg_time > 600:
-                    print(f"  [ignorado] Mensagem antiga ({int((now_unix-msg_time)/60)} min atrás)")
-                    continue
-                text = msg.get('text', '').strip()
-                if not text:
-                    continue
-                cid  = str(msg['chat']['id'])
-                nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
-                now_str = datetime.now(BRT).strftime('%H:%M:%S')
-                print(f"[{now_str}] [{nome}] '{text}'")
-                processar(text, cid, records)
-
-        except KeyboardInterrupt:
-            print("\nBot encerrado.")
-            break
-        except Exception as e:
-            print(f"Erro inesperado: {e}")
-            time.sleep(5)
+    print(f"\nConcluído. {processed} mensagem(ns) processada(s).")
