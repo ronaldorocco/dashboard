@@ -761,12 +761,58 @@ def processar(text, chat_id, records):
     return send_message(chat_id, busca_universal(records, t))
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-if __name__ == '__main__':
+# ── Modo Railway: long-polling contínuo ───────────────────────────────────────
+def run_continuo():
     import time
+    print("Bot GMBC iniciado (modo Railway - resposta instantanea)")
+    records = carregar_dados()
+    print(f"  {len(records)} registros carregados.")
+    offset = None
+    ultima_carga = time.time()
 
+    while True:
+        # Recarrega dados a cada 2 horas
+        if time.time() - ultima_carga > 7200:
+            print("Recarregando dados...")
+            records = carregar_dados()
+            print(f"  {len(records)} registros carregados.")
+            ultima_carga = time.time()
+
+        # Long-polling: aguarda até 30s por novas mensagens
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=30"
+        if offset:
+            url += f"&offset={offset}"
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=40) as resp:
+                updates = json.loads(resp.read().decode()).get('result', [])
+        except Exception as e:
+            print(f"Erro polling: {e}")
+            time.sleep(5)
+            continue
+
+        now_unix = time.time()
+        for upd in updates:
+            offset = upd['update_id'] + 1
+            msg = upd.get('message') or upd.get('edited_message')
+            if not msg:
+                continue
+            if now_unix - msg.get('date', 0) > 300:
+                continue
+            text = msg.get('text', '').strip()
+            if not text:
+                continue
+            cid  = str(msg['chat']['id'])
+            nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
+            print(f"[{datetime.now(BRT).strftime('%H:%M:%S')}] [{nome}] '{text}'")
+            processar(text, cid, records)
+
+
+# ── Modo GitHub Actions: one-shot ─────────────────────────────────────────────
+def run_once():
+    import time
     print("Bot GMBC - verificando mensagens...")
-    close_other_sessions()  # Encerra long-polling concorrentes (HTTP 409)
+    close_other_sessions()
     print("Carregando dados...")
     records = carregar_dados()
     print(f"  {len(records)} registros carregados.")
@@ -785,20 +831,30 @@ if __name__ == '__main__':
         msg = upd.get('message') or upd.get('edited_message')
         if not msg:
             continue
-        msg_time = msg.get('date', 0)
-        age_min = int((now_unix - msg_time) / 60)
-        if now_unix - msg_time > 3600:
-            print(f"  [ignorado] Mensagem muito antiga ({age_min} min atrás)")
+        if now_unix - msg.get('date', 0) > 3600:
             continue
         text = msg.get('text', '').strip()
         if not text:
             continue
         cid  = str(msg['chat']['id'])
         nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
-        now_str = datetime.now(BRT).strftime('%H:%M:%S')
-        print(f"[{now_str}] [{nome}] '{text}'")
+        print(f"[{datetime.now(BRT).strftime('%H:%M:%S')}] [{nome}] '{text}'")
         processar(text, cid, records)
         processed += 1
+
+    if last_offset:
+        get_updates(offset=last_offset)
+    print(f"\nConcluido. {processed} mensagem(ns) processada(s).")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+if __name__ == '__main__':
+    # Railway define RAILWAY_ENVIRONMENT ou RAILWAY_PROJECT_ID automaticamente
+    is_railway = bool(_os.environ.get('RAILWAY_ENVIRONMENT') or _os.environ.get('RAILWAY_PROJECT_ID'))
+    if is_railway:
+        run_continuo()
+    else:
+        run_once()
 
     # Marca todas as atualizações como lidas
     if last_offset:
