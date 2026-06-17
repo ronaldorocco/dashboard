@@ -614,35 +614,55 @@ def gerar_relatorio_diario(records):
     label_data = f"{dia}/{mes}/{ano}"
 
     total = len(registros_dia)
-    tipos   = Counter(r['tipo']    for r in registros_dia if r['tipo']).most_common(5)
-    bairros = Counter(r['bairro']  for r in registros_dia if r['bairro']).most_common(5)
-    turnos  = Counter(r['turno']   for r in registros_dia if r['turno']).most_common()
+    tipos   = Counter(r['tipo']   for r in registros_dia if r['tipo']).most_common(8)
+    bairros = Counter(r['bairro'] for r in registros_dia if r['bairro']).most_common(5)
+    itens   = Counter(r['item']   for r in registros_dia if r.get('item')).most_common(5)
 
-    tipos_linhas   = '\n'.join(f"  • {t} — {pct(n, total)}" for t, n in tipos)
-    bairros_linhas = '\n'.join(f"  • {b} — {n} oc." for b, n in bairros)
-    turnos_linhas  = '\n'.join(f"  • {t} — {n} oc. ({pct(n, total)})" for t, n in turnos)
+    ORDEM_T = ['Madrugada', 'Manhã', 'Tarde', 'Noite']
+    turnos_cnt = Counter(r['turno'] for r in registros_dia if r['turno'])
+    turnos = [(t, turnos_cnt.get(t, 0)) for t in ORDEM_T]
+
+    # Totais por tipo principal
+    furtos    = sum(n for t, n in tipos if 'Furto' in t and 'Tentativa' not in t)
+    roubos    = sum(n for t, n in tipos if 'Roubo' in t and 'Tentativa' not in t)
+    arrombs   = sum(n for t, n in tipos if 'Arrombamento' in t)
+    tent_f    = sum(n for t, n in tipos if 'Tentativa de Furto' in t)
+    tent_r    = sum(n for t, n in tipos if 'Tentativa de Roubo' in t)
+
+    def pp(n): return f"{round(n/total*100)}%" if total else "0%"
 
     linhas = [
-        f"📋 *RELATÓRIO DO DIA — GMBC*",
-        f"📅 {dia_semana}, {label_data} · {hora_atual}",
+        "📋 *RELATÓRIO DO DIA — GMBC*",
+        f"📅 {dia_semana}, {label_data} | {hora_atual}",
     ]
     if data_ref != hoje:
         linhas.append(f"_⚠️ Sem registros hoje — último dia com dados: {label_data}_")
+
     linhas += [
         "",
-        f"📌 *{total} ocorrências* registradas no dia",
+        f"📌 *Total: {total} ocorrências*",
+        f"  🔴 Furtos: {furtos} ({pp(furtos)})  |  Roubos: {roubos} ({pp(roubos)})",
+        f"  🟠 Arromb.: {arrombs} ({pp(arrombs)})  |  T.Furto: {tent_f} ({pp(tent_f)})" + (f"  |  T.Roubo: {tent_r} ({pp(tent_r)})" if tent_r else ""),
         "",
-        f"🔴 *Tipificação:*",
-        tipos_linhas,
-        "",
-        f"📍 *Bairros afetados:*",
-        bairros_linhas,
-        "",
-        f"⏰ *Por turno:*",
-        turnos_linhas,
-        "",
-        f"🌐 dashboardgmbc.com.br",
+        "🔴 *Tipos de ocorrência:*",
     ]
+    for t, n in tipos:
+        linhas.append(f"  • {t}: {n} ({pp(n)})")
+
+    linhas += ["", "⏰ *Por turno:*"]
+    for t, n in turnos:
+        linhas.append(f"  • {t}: {n} ({pp(n)})")
+
+    linhas += ["", "📍 *Bairros afetados:*"]
+    for b, n in bairros:
+        linhas.append(f"  • {b}: {n} oc. ({pp(n)})")
+
+    if itens:
+        linhas += ["", "📦 *Itens furtados/roubados:*"]
+        for it, n in itens:
+            linhas.append(f"  • {it}: {n} ({pp(n)})")
+
+    linhas += ["", "🌐 dashboardgmbc.com.br"]
     return '\n'.join(linhas)
 
 
