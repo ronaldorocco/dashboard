@@ -27,7 +27,8 @@ jobs:
 
       - name: Verificar e responder mensagens
         env:
-          BOT_TOKEN:       ${{ secrets.BOT_TOKEN }}
-          CHAT_ID:         ${{ secrets.CHAT_ID }}
-          GOOGLE_DRIVE_ID: ${{ secrets.GOOGLE_DRIVE_ID }}
-        run: python bot_consulta.py
+          BOT_TOKEN:         ${{ secrets.BOT_TOKEN }}
+          CHAT_ID:           ${{ secrets.CHAT_ID }}
+          GOOGLE_DRIVE_ID:   ${{ secrets.GOOGLE_DRIVE_ID }}
+          PYTHONUNBUFFERED: "1"
+        run: python -u bot_consulta.py
