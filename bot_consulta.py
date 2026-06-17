@@ -718,8 +718,29 @@ if __name__ == '__main__':
     ultima_carga = time.time()
     INTERVALO_RECARGA = 30 * 60  # recarrega planilha a cada 30 min
 
-    offset = None
-    print("Aguardando mensagens...\n")
+    # Descarta todas as mensagens pendentes ao iniciar (evita reprocessar mensagens antigas)
+    print("Descartando mensagens antigas...")
+    try:
+        _url_flush = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=0"
+        _req = urllib.request.Request(_url_flush, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(_req, timeout=15) as _resp:
+            _old = json.loads(_resp.read().decode()).get('result', [])
+        if _old:
+            _offset_flush = _old[-1]['update_id'] + 1
+            # Confirma leitura das mensagens antigas
+            urllib.request.urlopen(
+                f"{_url_flush}&offset={_offset_flush}", timeout=10
+            )
+            print(f"  {len(_old)} mensagens antigas ignoradas.")
+        else:
+            _offset_flush = None
+            print("  Nenhuma mensagem antiga encontrada.")
+        offset = _offset_flush
+    except Exception as _e:
+        print(f"  Aviso ao limpar mensagens antigas: {_e}")
+        offset = None
+
+    print("Aguardando mensagens novas...\n")
 
     while True:
         try:
@@ -742,18 +763,24 @@ if __name__ == '__main__':
                 time.sleep(5)
                 continue
 
+            now_unix = time.time()
             for upd in updates:
                 offset = upd['update_id'] + 1
                 msg = upd.get('message') or upd.get('edited_message')
                 if not msg:
+                    continue
+                # Ignora mensagens com mais de 10 minutos (segurança extra)
+                msg_time = msg.get('date', 0)
+                if now_unix - msg_time > 600:
+                    print(f"  [ignorado] Mensagem antiga ({int((now_unix-msg_time)/60)} min atrás)")
                     continue
                 text = msg.get('text', '').strip()
                 if not text:
                     continue
                 cid  = str(msg['chat']['id'])
                 nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
-                now  = datetime.now(BRT).strftime('%H:%M:%S')
-                print(f"[{now}] [{nome}] '{text}'")
+                now_str = datetime.now(BRT).strftime('%H:%M:%S')
+                print(f"[{now_str}] [{nome}] '{text}'")
                 processar(text, cid, records)
 
         except KeyboardInterrupt:

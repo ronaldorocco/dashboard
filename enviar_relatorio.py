@@ -445,6 +445,86 @@ def gerar_previsao(records):
     return '\n'.join(linhas)
 
 
+def gerar_relatorio_ultimo_dia(records):
+    if not records:
+        return None, None
+
+    # Encontra o último dia com dados
+    ultima_data = max(r['data'] for r in records if r['data'])
+    dia_records = [r for r in records if r['data'] == ultima_data]
+
+    if not dia_records:
+        return None, None
+
+    # Formata data para exibição: "2026-06-16" -> "16/06/2026"
+    partes = ultima_data.split('-')
+    data_fmt = f"{partes[2]}/{partes[1]}/{partes[0]}"
+
+    total = len(dia_records)
+
+    # Contagem por tipo
+    tipo_count = Counter(r['tipo'] for r in dia_records if r['tipo'])
+
+    furtos        = tipo_count.get('Furto', 0)
+    roubos        = tipo_count.get('Roubo', 0)
+    arrombamentos = tipo_count.get('Arrombamento', 0)
+    tent_furto    = tipo_count.get('Tentativa de Furto', 0)
+    tent_roubo    = tipo_count.get('Tentativa de Roubo', 0)
+
+    # Contagem por turno
+    turno_count = {t: sum(1 for r in dia_records if r['turno'] == t) for t in ORDEM_TURNO}
+
+    # Tipos ordenados por quantidade
+    tipos_ord = sorted(tipo_count.items(), key=lambda x: x[1], reverse=True)
+
+    linhas = [
+        f"📋 *RELATÓRIO DE OCORRÊNCIAS — {data_fmt}*",
+        f"🏛 Guarda Municipal de Balneário Camboriú",
+        f"🕐 Gerado em: {datetime.now(BRT).strftime('%d/%m/%Y às %H:%M')}",
+        "",
+        f"*📊 RESUMO DO DIA*",
+        f"Total de ocorrências: *{total}*",
+        "",
+        f"• Furtos: *{furtos}* ({pct(furtos, total)})",
+        f"• Roubos: *{roubos}* ({pct(roubos, total)})",
+        f"• Arrombamentos: *{arrombamentos}* ({pct(arrombamentos, total)})",
+        f"• Tent. Furto: *{tent_furto}* ({pct(tent_furto, total)})",
+    ]
+
+    if tent_roubo:
+        linhas.append(f"• Tent. Roubo: *{tent_roubo}* ({pct(tent_roubo, total)})")
+
+    linhas += [
+        "",
+        "*🔴 TIPOS DE OCORRÊNCIA*",
+    ]
+    for i, (tipo, qtd) in enumerate(tipos_ord, 1):
+        linhas.append(f"{i}. {tipo}: {qtd} ({pct(qtd, total)})")
+
+    linhas += [
+        "",
+        "*⏰ DISTRIBUIÇÃO POR TURNO*",
+    ]
+    for t in ORDEM_TURNO:
+        n = turno_count[t]
+        linhas.append(f"• {t}: {n} ({pct(n, total)})")
+
+    # Bairros mais afetados
+    bairros = top_n(dia_records, 'bairro', 5)
+    if bairros:
+        linhas += ["", "*📍 BAIRROS AFETADOS*"]
+        for i, (bairro, qtd) in enumerate(bairros, 1):
+            linhas.append(f"{i}. {bairro}: {qtd} oc.")
+
+    linhas += [
+        "",
+        "_Guarda Municipal de Balneário Camboriú_",
+        "_Secretaria de Segurança e Ordem Pública_",
+    ]
+
+    return ultima_data, '\n'.join(linhas)
+
+
 def enviar_telegram(token, chat_id, texto):
     url  = f"https://api.telegram.org/bot{token}/sendMessage"
     data = json.dumps({
@@ -512,6 +592,7 @@ DESTINATARIOS = [
     CHAT_ID,          # Grupo Alertas GMBC (-1003944282147)
     "1726984088",     # ID GM Rafaela
     "7515770228",     # ID Minha Linda
+    "8621387351",     # ID GM Rambo
 ]
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -545,7 +626,15 @@ if __name__ == '__main__':
     records = carregar_dados()
     print(f"  {len(records)} registros carregados.")
 
-    print("\nGerando Analise Diaria...")
+    print("\nGerando Relatorio do Ultimo Dia...")
+    ultima_data, texto_relatorio = gerar_relatorio_ultimo_dia(records)
+    if ultima_data:
+        partes = ultima_data.split('-')
+        print(f"  Ultimo dia encontrado: {partes[2]}/{partes[1]}/{partes[0]}")
+    else:
+        print("  Nenhum dado encontrado para relatorio.")
+
+    print("Gerando Analise Diaria...")
     texto_analise = gerar_analise_diaria(records)
 
     print("Gerando Previsao de Risco...")
@@ -554,6 +643,8 @@ if __name__ == '__main__':
     print("\nEnviando para o Telegram...")
     for dest in DESTINATARIOS:
         print(f"  -> Enviando para {dest}...")
+        if texto_relatorio:
+            enviar_telegram(BOT_TOKEN, dest, texto_relatorio)
         enviar_telegram(BOT_TOKEN, dest, texto_analise)
         enviar_telegram(BOT_TOKEN, dest, texto_previsao)
 
