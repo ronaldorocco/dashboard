@@ -849,8 +849,12 @@ def run_once():
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
-    # Railway define RAILWAY_ENVIRONMENT ou RAILWAY_PROJECT_ID automaticamente
-    is_railway = bool(_os.environ.get('RAILWAY_ENVIRONMENT') or _os.environ.get('RAILWAY_PROJECT_ID'))
+    # Railway define estas variáveis automaticamente
+    is_railway = bool(
+        _os.environ.get('RAILWAY_ENVIRONMENT_NAME') or
+        _os.environ.get('RAILWAY_PROJECT_NAME') or
+        _os.environ.get('RAILWAY_SERVICE_NAME')
+    )
     if is_railway:
         run_continuo()
     else:
