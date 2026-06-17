@@ -203,15 +203,24 @@ def send_message(chat_id, text):
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     for chunk in chunks:
-        data = json.dumps({"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"}).encode('utf-8')
-        req  = urllib.request.Request(url, data=data, headers={'Content-Type':'application/json'})
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                result = json.loads(resp.read().decode())
-                if result.get('ok'): print(f"  Resposta enviada para {chat_id}")
-                else: print(f"  ERRO Telegram: {result.get('description')}")
-        except Exception as e:
-            print(f"  ERRO ao enviar: {e}")
+        # Tenta com Markdown; se falhar, reenvia sem formatação
+        for parse_mode in ("Markdown", None):
+            payload = {"chat_id": chat_id, "text": chunk}
+            if parse_mode:
+                payload["parse_mode"] = parse_mode
+            data = json.dumps(payload).encode('utf-8')
+            req  = urllib.request.Request(url, data=data, headers={'Content-Type':'application/json'})
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    result = json.loads(resp.read().decode())
+                    if result.get('ok'):
+                        print(f"  Resposta enviada para {chat_id} (parse_mode={parse_mode})")
+                        break  # Sucesso — não precisa retry
+                    else:
+                        print(f"  ERRO Telegram (parse_mode={parse_mode}): {result.get('description')}")
+            except Exception as e:
+                print(f"  ERRO ao enviar (parse_mode={parse_mode}): {e}")
+                break
 
 
 # ── Consultas ─────────────────────────────────────────────────────────────────
@@ -695,12 +704,20 @@ def processar(text, chat_id, records):
 
     # Palavras-chave do dashboard
     tl_sa = sem_acento(tl)
+    print(f"  [debug] tl='{tl}' tl_sa='{tl_sa}'")
     if tl_sa in ('analise', '/analise'):
+        print("  [debug] handler: ANALISE")
         return send_message(chat_id, gerar_analise_diaria(records))
     if tl_sa in ('previsao', '/previsao'):
+        print("  [debug] handler: PREVISAO")
         return send_message(chat_id, gerar_previsao(records))
     if tl_sa in ('relatorio', '/relatorio'):
-        return send_message(chat_id, gerar_relatorio_diario(records))
+        print("  [debug] handler: RELATORIO")
+        try:
+            return send_message(chat_id, gerar_relatorio_diario(records))
+        except Exception as e:
+            print(f"  [debug] ERRO em gerar_relatorio_diario: {e}")
+            return send_message(chat_id, f"⚠️ Erro ao gerar relatório: {e}")
 
     # Busca universal em todos os campos
     return send_message(chat_id, busca_universal(records, t))
