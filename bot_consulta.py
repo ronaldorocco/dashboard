@@ -681,8 +681,14 @@ def gerar_relatorio_diario(records):
     linhas += [
         "",
         f"📌 *Total: {total} ocorrências*",
-        f"  🔴 Furtos: {furtos} ({pp(furtos)})  |  Roubos: {roubos} ({pp(roubos)})",
-        f"  🟠 Arromb.: {arrombs} ({pp(arrombs)})  |  T.Furto: {tent_f} ({pp(tent_f)})" + (f"  |  T.Roubo: {tent_r} ({pp(tent_r)})" if tent_r else ""),
+        f"  🔴 Furtos: {furtos} ({pp(furtos)})",
+        f"  🔴 Roubos: {roubos} ({pp(roubos)})",
+        f"  🟠 Arromb.: {arrombs} ({pp(arrombs)})",
+        f"  🟠 T.Furto: {tent_f} ({pp(tent_f)})",
+    ]
+    if tent_r:
+        linhas.append(f"  🟠 T.Roubo: {tent_r} ({pp(tent_r)})")
+    linhas += [
         "",
         "🔴 *Tipos de ocorrência:*",
     ]
