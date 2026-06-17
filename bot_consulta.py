@@ -115,17 +115,26 @@ def carregar_dados():
     except ImportError:
         print("ERRO: pandas nao instalado."); sys.exit(1)
 
-    url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_DRIVE_ID}/export?format=xlsx"
-    req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = resp.read()
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-        tmp.write(data); tmp.close()
-        df = pd.read_excel(tmp.name, sheet_name='DADOS', engine='openpyxl')
-        os.unlink(tmp.name)
-    except Exception as e:
-        print(f"ERRO ao baixar planilha: {e}"); sys.exit(1)
+    excel_local = 'secretario.xlsx'
+    if os.path.exists(excel_local):
+        print(f"  Lendo {excel_local} local...")
+        try:
+            df = pd.read_excel(excel_local, sheet_name='DADOS', engine='openpyxl')
+        except Exception as e:
+            print(f"ERRO ao ler planilha local: {e}"); sys.exit(1)
+    else:
+        print(f"  Baixando planilha do Google Drive...")
+        url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_DRIVE_ID}/export?format=xlsx"
+        req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = resp.read()
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+            tmp.write(data); tmp.close()
+            df = pd.read_excel(tmp.name, sheet_name='DADOS', engine='openpyxl')
+            os.unlink(tmp.name)
+        except Exception as e:
+            print(f"ERRO ao baixar planilha: {e}"); sys.exit(1)
 
     df['TIPIFICACAO'] = df['TIPIFICACAO'].apply(norm_tipo)
     df['DIA_SEMANA']  = df['DIA_SEMANA'].apply(lambda v: norm(v, DIA_MAP))
