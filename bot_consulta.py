@@ -115,24 +115,48 @@ def carregar_dados():
     except ImportError:
         print("ERRO: pandas nao instalado."); sys.exit(1)
 
+    GITHUB_URL = 'https://github.com/ronaldorocco/relatorio-gmbc/raw/refs/heads/master/secretario.xlsx'
+
+    def _baixar_xlsx(url, nome):
+        print(f"  Baixando planilha de {nome}...")
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read()
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        tmp.write(data); tmp.close()
+        return tmp.name
+
+    df = None
+    # 1) Arquivo local (sempre presente no deployment do Railway)
     excel_local = 'secretario.xlsx'
     if os.path.exists(excel_local):
         print(f"  Lendo {excel_local} local...")
         try:
             df = pd.read_excel(excel_local, sheet_name='DADOS', engine='openpyxl')
+            print("  OK: dados carregados do arquivo local.")
         except Exception as e:
-            print(f"ERRO ao ler planilha local: {e}"); sys.exit(1)
-    else:
-        print(f"  Baixando planilha do Google Drive...")
-        url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_DRIVE_ID}/export?format=xlsx"
-        req = urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
+            print(f"  Falha ao ler local: {e}")
+
+    # 2) Google Drive (fallback)
+    if df is None and GOOGLE_DRIVE_ID:
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                data = resp.read()
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-            tmp.write(data); tmp.close()
-            df = pd.read_excel(tmp.name, sheet_name='DADOS', engine='openpyxl')
-            os.unlink(tmp.name)
+            tmp_path = _baixar_xlsx(
+                f"https://docs.google.com/spreadsheets/d/{GOOGLE_DRIVE_ID}/export?format=xlsx",
+                'Google Drive'
+            )
+            df = pd.read_excel(tmp_path, sheet_name='DADOS', engine='openpyxl')
+            os.unlink(tmp_path)
+            print("  OK: dados carregados do Google Drive.")
+        except Exception as e:
+            print(f"  Falha ao baixar do Google Drive: {e}")
+
+    # 3) GitHub relatorio-gmbc (fallback final)
+    if df is None:
+        try:
+            tmp_path = _baixar_xlsx(GITHUB_URL, 'GitHub')
+            df = pd.read_excel(tmp_path, sheet_name='DADOS', engine='openpyxl')
+            os.unlink(tmp_path)
+            print("  OK: dados carregados do GitHub.")
         except Exception as e:
             print(f"ERRO ao baixar planilha: {e}"); sys.exit(1)
 
