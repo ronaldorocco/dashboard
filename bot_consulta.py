@@ -731,8 +731,8 @@ if __name__ == '__main__':
             continue
         msg_time = msg.get('date', 0)
         age_min = int((now_unix - msg_time) / 60)
-        if now_unix - msg_time > 600:
-            print(f"  [ignorado] Mensagem antiga ({age_min} min atrás)")
+        if now_unix - msg_time > 3600:
+            print(f"  [ignorado] Mensagem muito antiga ({age_min} min atrás)")
             continue
         text = msg.get('text', '').strip()
         if not text:
