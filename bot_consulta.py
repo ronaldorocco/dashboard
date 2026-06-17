@@ -616,11 +616,17 @@ def gerar_relatorio_diario(records):
     data_ref = hoje if hoje in datas_disponiveis else datas_disponiveis[0]
     registros_dia = [r for r in records if r['data'] == data_ref]
 
-    ano, mes, dia = data_ref.split('-')
-    d = datetime.strptime(data_ref, '%Y-%m-%d')
     DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo']
-    dia_semana = DIAS[d.weekday()]
-    label_data = f"{dia}/{mes}/{ano}"
+
+    # Data de hoje para o cabeçalho
+    d_hoje = datetime.strptime(hoje, '%Y-%m-%d')
+    ano_h, mes_h, dia_h = hoje.split('-')
+    dia_semana = DIAS[d_hoje.weekday()]
+    label_hoje = f"{dia_h}/{mes_h}/{ano_h}"
+
+    # Data de referência dos dados (pode ser diferente de hoje)
+    ano_r, mes_r, dia_r = data_ref.split('-')
+    label_data = f"{dia_r}/{mes_r}/{ano_r}"
 
     total = len(registros_dia)
     tipos   = Counter(r['tipo']   for r in registros_dia if r['tipo']).most_common(8)
@@ -642,7 +648,7 @@ def gerar_relatorio_diario(records):
 
     linhas = [
         "📋 *RELATÓRIO DO DIA — GMBC*",
-        f"📅 {dia_semana}, {label_data} | {hora_atual}",
+        f"📅 {dia_semana}, {label_hoje} | {hora_atual}",
     ]
     if data_ref != hoje:
         linhas.append(f"_⚠️ Sem registros hoje — último dia com dados: {label_data}_")
