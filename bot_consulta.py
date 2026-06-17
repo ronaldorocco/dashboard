@@ -127,18 +127,8 @@ def carregar_dados():
         return tmp.name
 
     df = None
-    # 1) Arquivo local (sempre presente no deployment do Railway)
-    excel_local = 'secretario.xlsx'
-    if os.path.exists(excel_local):
-        print(f"  Lendo {excel_local} local...")
-        try:
-            df = pd.read_excel(excel_local, sheet_name='DADOS', engine='openpyxl')
-            print("  OK: dados carregados do arquivo local.")
-        except Exception as e:
-            print(f"  Falha ao ler local: {e}")
-
-    # 2) Google Drive (fallback)
-    if df is None and GOOGLE_DRIVE_ID:
+    # 1) Google Drive (fonte principal — você atualiza aqui)
+    if GOOGLE_DRIVE_ID:
         try:
             tmp_path = _baixar_xlsx(
                 f"https://docs.google.com/spreadsheets/d/{GOOGLE_DRIVE_ID}/export?format=xlsx",
@@ -150,7 +140,18 @@ def carregar_dados():
         except Exception as e:
             print(f"  Falha ao baixar do Google Drive: {e}")
 
-    # 3) GitHub relatorio-gmbc (fallback final)
+    # 2) Arquivo local do deployment (fallback)
+    if df is None:
+        excel_local = 'secretario.xlsx'
+        if os.path.exists(excel_local):
+            print(f"  Lendo {excel_local} local...")
+            try:
+                df = pd.read_excel(excel_local, sheet_name='DADOS', engine='openpyxl')
+                print("  OK: dados carregados do arquivo local.")
+            except Exception as e:
+                print(f"  Falha ao ler local: {e}")
+
+    # 3) GitHub relatorio-gmbc (último recurso)
     if df is None:
         try:
             tmp_path = _baixar_xlsx(GITHUB_URL, 'GitHub')
