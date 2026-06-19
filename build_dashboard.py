@@ -233,6 +233,8 @@ for _, r in df.iterrows():
         'marca': str(r['MARCA_MODELO']) if 'MARCA_MODELO' in df.columns and pd.notna(r['MARCA_MODELO']) else '',
         'imei': clean_text_cell(r, 'IMEI'),
         'placa': clean_text_cell(r, 'PLACA'),
+        'numero_serie': clean_text_cell(r, 'NUMERO_SERIE'),
+        'recuperado': clean_text_cell(r, 'RECUPERADO'),
         'endereco': r['ENDERECO'],
         'bairro': r['BAIRRO'],
         'ref': r['REF'],
@@ -902,6 +904,15 @@ function sair(){{
       <span class="filter-label">Número de Série</span>
       <input id="filter-nserie-input" class="filter-search" type="text" placeholder="Buscar número de série..." oninput="filterNumeroSerie(this.value)">
     </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Recuperado</span>
+      <select id="filter-recuperado-select" class="filter-search" onchange="filterRecuperado(this.value)">
+        <option value="">Todos</option>
+        <option value="sim">Sim</option>
+        <option value="não">Não</option>
+      </select>
+    </div>
   </div>
 
   <!-- CONTENT -->
@@ -1102,7 +1113,7 @@ function sair(){{
               <th>Data</th><th>Mês</th><th>Ano</th><th>Hora</th><th>Turno</th><th>Dia</th>
               <th>B.O.</th><th>Tipificação</th><th>Item</th><th>Descrição</th>
               <th>Marca/Modelo</th><th>Endereço</th><th>Bairro</th><th>Referência</th>
-              <th>IMEI</th><th>Placa</th>
+              <th>IMEI</th><th>Placa</th><th>Número de Série</th><th>Recuperado</th>
             </tr>
           </thead>
           <tbody id="tabela-body"></tbody>
@@ -1130,7 +1141,7 @@ const state = {{
   mes: new Set(), turno: new Set(), tipo: new Set(),
   bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set()
 }};
-let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '';
+let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '', recuperadoQ = '';
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
 const COLORS = {{
@@ -1171,6 +1182,7 @@ function filtered() {{
     (marcaQ === '' || (r.marca && r.marca.toLowerCase().includes(marcaQ.toLowerCase()))) &&
     (placaQ === '' || (r.placa && r.placa.toLowerCase().includes(placaQ.toLowerCase()))) &&
     (numeroSerieQ === '' || (r.numero_serie && r.numero_serie.toLowerCase().includes(numeroSerieQ.toLowerCase()))) &&
+    (recuperadoQ === '' || (r.recuperado && r.recuperado.toLowerCase().includes(recuperadoQ.toLowerCase()))) &&
     (state.dia.size        === 0 || state.dia.has(r.dia))        &&
     (state.logradouro.size === 0 || state.logradouro.has(r.endereco))
   );
@@ -1468,6 +1480,8 @@ function renderTabela(data) {{
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;font-size:10px">${{r.ref}}</td>
       <td style="font-size:10px">${{r.imei}}</td>
       <td style="font-size:10px">${{r.placa}}</td>
+      <td style="font-size:10px">${{r.numero_serie||''}}</td>
+      <td style="font-size:10px">${{r.recuperado||''}}</td>
     </tr>`).join('');
 }}
 
@@ -1525,7 +1539,7 @@ function gerarPdfTabela() {{
   }});
 
   const headers = ['Data','Mes','Ano','Hora','Turno','Dia','B.O.','Tipificacao','Item',
-    'Descricao','Marca/Modelo','Endereco','Bairro','Referencia','IMEI','Placa'];
+    'Descricao','Marca/Modelo','Endereco','Bairro','Referencia','IMEI','Placa','Nº Série','Recuperado'];
 
   const TIPO_CSS = {{
     'Furto':'background:#0078D4;color:white',
@@ -1557,6 +1571,8 @@ function gerarPdfTabela() {{
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:8.5px">${{r.ref||''}}</td>
       <td style="font-size:8.5px">${{r.imei||''}}</td>
       <td style="font-size:8.5px">${{r.placa||''}}</td>
+      <td style="font-size:8.5px">${{r.numero_serie||''}}</td>
+      <td style="font-size:8.5px">${{r.recuperado||''}}</td>
     </tr>`;
   }}).join('');
 
@@ -1902,7 +1918,7 @@ function toggleFilter(key, val) {{
 // ── RESET ─────────────────────────────────────────────────────────────────────
 function resetFilters() {{
   for(const k of Object.keys(state)) state[k].clear();
-  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = '';
+  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = ''; recuperadoQ = '';
   const imeiInput = document.querySelector('#filter-imei-input');
   if(imeiInput) imeiInput.value = '';
   const marcaInput = document.querySelector('#filter-marca-input');
@@ -1911,6 +1927,8 @@ function resetFilters() {{
   if(placaInput) placaInput.value = '';
   const nSerieInput = document.querySelector('#filter-nserie-input');
   if(nSerieInput) nSerieInput.value = '';
+  const recuperadoSelect = document.querySelector('#filter-recuperado-select');
+  if(recuperadoSelect) recuperadoSelect.value = '';
   renderAll();
 }}
 
@@ -1954,6 +1972,7 @@ function compartilharWA() {{
   if(marcaQ)       filtros.push('Marca: '+marcaQ);
   if(placaQ)       filtros.push('Placa: '+placaQ);
   if(numeroSerieQ) filtros.push('Nº Série: '+numeroSerieQ);
+  if(recuperadoQ)  filtros.push('Recuperado: '+recuperadoQ);
 
   const lines = [
     `🛡️ *DASHBOARD GMBC — Resumo Operacional*`,
@@ -2852,6 +2871,11 @@ function filterPlaca(q) {{
 
 function filterNumeroSerie(q) {{
   numeroSerieQ = q.trim();
+  renderAll();
+}}
+
+function filterRecuperado(q) {{
+  recuperadoQ = q.trim();
   renderAll();
 }}
 
