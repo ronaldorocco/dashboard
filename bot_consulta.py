@@ -717,7 +717,8 @@ AJUDA = (
     "*📊 Resumos rápidos:*\n"
     "  `Analise` → análise histórica do dia da semana\n"
     "  `Previsao` → previsão de risco para hoje\n"
-    "  `Relatorio` → boletim do dia (hoje ou último com dados)\n\n"
+    "  `Relatorio` → boletim do dia (hoje ou último com dados)\n"
+    "  `Recarregar` → força atualização dos dados da planilha\n\n"
     "*Busca livre — digite qualquer palavra:*\n"
     "  `bicicleta`, `celular`, `centro`, `furto`, `noite`...\n\n"
     "*Comandos específicos:*\n"
@@ -799,6 +800,8 @@ def processar(text, chat_id, records):
 
 
 # ── Modo Railway: long-polling contínuo ───────────────────────────────────────
+RELOAD_INTERVAL = 1800  # recarrega a cada 30 minutos
+
 def run_continuo():
     import time
     print("Bot GMBC iniciado (modo Railway - resposta instantanea)")
@@ -806,14 +809,16 @@ def run_continuo():
     print(f"  {len(records)} registros carregados.")
     offset = None
     ultima_carga = time.time()
+    force_reload = False
 
     while True:
-        # Recarrega dados a cada 2 horas
-        if time.time() - ultima_carga > 7200:
+        # Recarrega dados a cada 30 minutos ou quando forçado
+        if force_reload or time.time() - ultima_carga > RELOAD_INTERVAL:
             print("Recarregando dados...")
             records = carregar_dados()
             print(f"  {len(records)} registros carregados.")
             ultima_carga = time.time()
+            force_reload = False
 
         # Long-polling: aguarda até 30s por novas mensagens
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=30"
@@ -842,7 +847,11 @@ def run_continuo():
             cid  = str(msg['chat']['id'])
             nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
             print(f"[{datetime.now(BRT).strftime('%H:%M:%S')}] [{nome}] '{text}'")
-            processar(text, cid, records)
+            if sem_acento(text.strip().lower()) in ('recarregar', '/recarregar'):
+                force_reload = True
+                send_message(cid, "♻️ Recarregando dados da planilha...")
+            else:
+                processar(text, cid, records)
 
 
 # ── Modo GitHub Actions: one-shot ─────────────────────────────────────────────
