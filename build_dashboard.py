@@ -907,11 +907,7 @@ function sair(){{
 
     <div class="filter-group">
       <span class="filter-label">Recuperado</span>
-      <select id="filter-recuperado-select" class="filter-search" onchange="filterRecuperado(this.value)">
-        <option value="">Todos</option>
-        <option value="sim">Sim</option>
-        <option value="não">Não</option>
-      </select>
+      <div class="filter-scroll" id="filter-recuperado"></div>
     </div>
   </div>
 
@@ -1139,9 +1135,10 @@ try {{
 // ── ESTADO DOS FILTROS ────────────────────────────────────────────────────────
 const state = {{
   mes: new Set(), turno: new Set(), tipo: new Set(),
-  bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set()
+  bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set(),
+  recuperado: new Set()
 }};
-let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '', recuperadoQ = '';
+let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '';
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
 const COLORS = {{
@@ -1182,7 +1179,7 @@ function filtered() {{
     (marcaQ === '' || (r.marca && r.marca.toLowerCase().includes(marcaQ.toLowerCase()))) &&
     (placaQ === '' || (r.placa && r.placa.toLowerCase().includes(placaQ.toLowerCase()))) &&
     (numeroSerieQ === '' || (r.numero_serie && r.numero_serie.toLowerCase().includes(numeroSerieQ.toLowerCase()))) &&
-    (recuperadoQ === '' || (r.recuperado && r.recuperado.toLowerCase().includes(recuperadoQ.toLowerCase()))) &&
+    (state.recuperado.size === 0 || state.recuperado.has(r.recuperado)) &&
     (state.dia.size        === 0 || state.dia.has(r.dia))        &&
     (state.logradouro.size === 0 || state.logradouro.has(r.endereco))
   );
@@ -1892,7 +1889,7 @@ function renderAll() {{
 }}
 
 // ── CHIPS DE FILTROS ATIVOS ───────────────────────────────────────────────────
-const FILTER_LABELS = {{mes:'Mês',turno:'Turno',tipo:'Tipo',bairro:'Bairro',item:'Item',dia:'Dia',logradouro:'Logradouro'}};
+const FILTER_LABELS = {{mes:'Mês',turno:'Turno',tipo:'Tipo',bairro:'Bairro',item:'Item',dia:'Dia',logradouro:'Logradouro',recuperado:'Recuperado'}};
 function renderChips() {{
   const div = document.getElementById('active-filters');
   const chips = [];
@@ -1918,7 +1915,7 @@ function toggleFilter(key, val) {{
 // ── RESET ─────────────────────────────────────────────────────────────────────
 function resetFilters() {{
   for(const k of Object.keys(state)) state[k].clear();
-  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = ''; recuperadoQ = '';
+  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = '';
   const imeiInput = document.querySelector('#filter-imei-input');
   if(imeiInput) imeiInput.value = '';
   const marcaInput = document.querySelector('#filter-marca-input');
@@ -1927,8 +1924,6 @@ function resetFilters() {{
   if(placaInput) placaInput.value = '';
   const nSerieInput = document.querySelector('#filter-nserie-input');
   if(nSerieInput) nSerieInput.value = '';
-  const recuperadoSelect = document.querySelector('#filter-recuperado-select');
-  if(recuperadoSelect) recuperadoSelect.value = '';
   renderAll();
 }}
 
@@ -1972,7 +1967,7 @@ function compartilharWA() {{
   if(marcaQ)       filtros.push('Marca: '+marcaQ);
   if(placaQ)       filtros.push('Placa: '+placaQ);
   if(numeroSerieQ) filtros.push('Nº Série: '+numeroSerieQ);
-  if(recuperadoQ)  filtros.push('Recuperado: '+recuperadoQ);
+  if(state.recuperado.size) filtros.push('Recuperado: '+[...state.recuperado].join(', '));
 
   const lines = [
     `🛡️ *DASHBOARD GMBC — Resumo Operacional*`,
@@ -2874,22 +2869,19 @@ function filterNumeroSerie(q) {{
   renderAll();
 }}
 
-function filterRecuperado(q) {{
-  recuperadoQ = q.trim();
-  renderAll();
-}}
 
 function buildSidebar() {{
   const all = filtered();
   const allCounts = k => count(RAW,k);
 
-  const meses       = [...new Set(RAW.map(r=>r.mes))].sort();
-  const turnos      = ['Manhã','Tarde','Noite','Madrugada'];
-  const tipos       = [...new Set(RAW.map(r=>r.tipo))].sort();
-  const bairros     = sortedEntries(count(RAW,'bairro')).map(e=>e[0]);
-  const itens       = sortedEntries(count(RAW,'item')).map(e=>e[0]);
-  const dias        = DIA_ORDER.filter(d=>RAW.some(r=>r.dia===d));
-  const logradouros = [...new Set(RAW.map(r=>r.endereco).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const meses        = [...new Set(RAW.map(r=>r.mes))].sort();
+  const turnos       = ['Manhã','Tarde','Noite','Madrugada'];
+  const tipos        = [...new Set(RAW.map(r=>r.tipo))].sort();
+  const bairros      = sortedEntries(count(RAW,'bairro')).map(e=>e[0]);
+  const itens        = sortedEntries(count(RAW,'item')).map(e=>e[0]);
+  const dias         = DIA_ORDER.filter(d=>RAW.some(r=>r.dia===d));
+  const logradouros  = [...new Set(RAW.map(r=>r.endereco).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const recuperados  = sortedEntries(count(RAW,'recuperado')).map(e=>e[0]).filter(Boolean);
 
   buildCheckboxes('filter-mes',        'mes',        meses,       allCounts('mes'));
   buildCheckboxes('filter-turno',      'turno',      turnos,      allCounts('turno'));
@@ -2898,6 +2890,7 @@ function buildSidebar() {{
   buildCheckboxes('filter-item',       'item',        itens,      allCounts('item'));
   buildCheckboxes('filter-dia',        'dia',         dias,       allCounts('dia'));
   buildCheckboxes('filter-logradouro', 'logradouro', logradouros, count(RAW,'endereco'));
+  buildCheckboxes('filter-recuperado', 'recuperado', recuperados, allCounts('recuperado'));
 }}
 
 // ── RUAS ─────────────────────────────────────────────────────────────────────
