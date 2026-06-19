@@ -3434,5 +3434,8 @@ html = html.replace('__CLUSTER_JS__',   _embed_js(cluster_js))
 with open('dashboard_interativo.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
-print("Dashboard interativo salvo: dashboard_interativo.html")
+with open('index.html', 'w', encoding='utf-8') as f:
+    f.write(html)
+
+print("Dashboard interativo salvo: dashboard_interativo.html + index.html")
 print(f"Tamanho: {len(html)//1024} KB")
