@@ -33,13 +33,14 @@ Write-Host "      OK" -ForegroundColor Green
 Write-Host ""
 Write-Host "[3/5] Fazendo commit..." -ForegroundColor Yellow
 git config gc.auto 0
-git add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py geocache.json
+git config gc.autoPackLimit 0
+git -c gc.auto=0 -c gc.autoPackLimit=0 add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py geocache.json
 
 if ($mensagem -eq "") {
     $data = Get-Date -Format "dd/MM/yyyy HH:mm"
     $mensagem = "Atualizar dashboard - $data [skip ci]"
 }
-git commit -m $mensagem
+git -c gc.auto=0 -c gc.autoPackLimit=0 commit -m $mensagem
 if ($LASTEXITCODE -ne 0) {
     Write-Host "      Nada novo para commitar (ou ja commitado)." -ForegroundColor DarkYellow
 } else {
@@ -49,8 +50,8 @@ if ($LASTEXITCODE -ne 0) {
 # 4. Push para GitHub
 Write-Host ""
 Write-Host "[4/5] Enviando para GitHub..." -ForegroundColor Yellow
-git push origin master:main
-git push origin master
+git -c gc.auto=0 -c gc.autoPackLimit=0 push origin master:main
+git -c gc.auto=0 -c gc.autoPackLimit=0 push origin master
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERRO ao fazer push. Verifique a conexao com o GitHub." -ForegroundColor Red
     pause
