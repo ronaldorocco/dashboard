@@ -32,6 +32,7 @@ Write-Host "      OK" -ForegroundColor Green
 # 3. Commit
 Write-Host ""
 Write-Host "[3/5] Fazendo commit..." -ForegroundColor Yellow
+git config gc.auto 0
 git add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py geocache.json
 
 if ($mensagem -eq "") {
