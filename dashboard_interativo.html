@@ -541,6 +541,21 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
 .mapa-leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:white;}
 .mapa-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.5);}
 .mapa-stat{font-size:11px;color:rgba(255,255,255,.8);}
+/* ── COMPARAÇÃO ANUAL ── */
+.comp-ano-btn{
+  border:none;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.comp-ano-btn.ativo{opacity:1;color:white;box-shadow:0 2px 8px rgba(0,0,0,.22);}
+.comp-kpi-delta{
+  background:white;border-radius:8px;padding:12px 14px;
+  box-shadow:0 2px 6px rgba(0,0,0,.07);text-align:center;min-width:0;
+}
+.comp-delta-val{font-size:24px;font-weight:800;margin:4px 0;line-height:1;}
+.comp-delta-label{font-size:10px;color:#666;margin-top:3px;line-height:1.4;font-weight:600;}
+.delta-up{color:#D13438;}
+.delta-down{color:#107C10;}
+.delta-eq{color:#888;}
 .leaflet-popup-content{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;min-width:200px;}
 .popup-tipo{display:inline-block;border-radius:4px;padding:2px 8px;
   font-size:10px;font-weight:700;color:white;margin-bottom:6px;}
@@ -624,6 +639,11 @@ function sair(){
     <div class="sidebar-topbar">
       <span>🔎 Filtros</span>
       <button class="sidebar-close" onclick="toggleSidebar()" title="Fechar filtros">✕</button>
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Ano</span>
+      <div id="filter-ano"></div>
     </div>
 
     <div class="filter-group">
@@ -827,6 +847,47 @@ function sair(){
       </div>
     </div>
 
+    <!-- COMPARAÇÃO ANUAL -->
+    <div class="section-header">📊 Comparação Anual
+      <span id="comp-anos-label" style="font-size:10px;font-weight:400;color:#888;margin-left:8px"></span>
+      <span style="font-size:10px;font-weight:400;color:#aaa;margin-left:4px">(atualiza com os filtros)</span>
+    </div>
+    <div id="comp-anos-selector" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;
+      padding:10px 14px;background:#f5f7fa;border-radius:8px;border:1px solid #e0e6f0">
+      <span style="font-size:11px;color:#555;font-weight:700;align-self:center">Selecione os anos:</span>
+    </div>
+    <div class="kpi-row" id="comp-kpi-row" style="display:none;margin-bottom:12px"></div>
+    <div class="row row2">
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">📅</span> Total por Mês — Comparativo Anual</div>
+        <div id="comp-chart-mes" style="height:240px"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">📊</span> Por Tipificação — Comparativo Anual</div>
+        <div id="comp-chart-tipo" style="height:240px"></div>
+      </div>
+    </div>
+    <div class="row row2">
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">📍</span> Por Bairro — Top 10 Comparativo</div>
+        <div id="comp-chart-bairro" style="height:300px"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">🕐</span> Por Turno — Comparativo Anual</div>
+        <div id="comp-chart-turno" style="height:300px"></div>
+      </div>
+    </div>
+    <div class="row row2">
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">📆</span> Dia da Semana — Comparativo Anual</div>
+        <div id="comp-chart-dia" style="height:240px"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">🛣️</span> Top 10 Ruas — Comparativo Anual</div>
+        <div id="comp-chart-ruas" style="height:360px"></div>
+      </div>
+    </div>
+
     <!-- ANALISTA DE SEGURANÇA -->
     <div class="section-header">👮 Plano de Distribuição Policial <span style="font-size:10px;font-weight:400;color:#888">(gerado automaticamente com base nos dados)</span></div>
     <div id="plano-policial"></div>
@@ -913,6 +974,7 @@ try {
 
 // ── ESTADO DOS FILTROS ────────────────────────────────────────────────────────
 const state = {
+  ano: new Set(),
   mes: new Set(), turno: new Set(), tipo: new Set(),
   bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set(),
   recuperado: new Set()
@@ -960,7 +1022,8 @@ function filtered() {
     (numeroSerieQ === '' || (r.numero_serie && r.numero_serie.toLowerCase().includes(numeroSerieQ.toLowerCase()))) &&
     (state.recuperado.size === 0 || state.recuperado.has(r.recuperado)) &&
     (state.dia.size        === 0 || state.dia.has(r.dia))        &&
-    (state.logradouro.size === 0 || state.logradouro.has(r.endereco))
+    (state.logradouro.size === 0 || state.logradouro.has(r.endereco)) &&
+    (state.ano.size        === 0 || state.ano.has(String(r.ano)))
   );
 }
 
@@ -1657,6 +1720,7 @@ function renderAll() {
   renderRefs(data);
   renderHeatmap(data);
   renderHora(data);
+  renderComparacao(data);
   renderPlanoPolicial(data);
   renderDiagnostico(data);
   renderRecomendacoes(data);
@@ -1668,7 +1732,7 @@ function renderAll() {
 }
 
 // ── CHIPS DE FILTROS ATIVOS ───────────────────────────────────────────────────
-const FILTER_LABELS = {mes:'Mês',turno:'Turno',tipo:'Tipo',bairro:'Bairro',item:'Item',dia:'Dia',logradouro:'Logradouro',recuperado:'Recuperado'};
+const FILTER_LABELS = {ano:'Ano',mes:'Mês',turno:'Turno',tipo:'Tipo',bairro:'Bairro',item:'Item',dia:'Dia',logradouro:'Logradouro',recuperado:'Recuperado'};
 function renderChips() {
   const div = document.getElementById('active-filters');
   const chips = [];
@@ -2653,6 +2717,8 @@ function buildSidebar() {
   const all = filtered();
   const allCounts = k => count(RAW,k);
 
+  const anos         = [...new Set(RAW.map(r=>String(r.ano)))].sort((a,b)=>a-b);
+  const anoCnts      = {}; RAW.forEach(r=>{ const k=String(r.ano); anoCnts[k]=(anoCnts[k]||0)+1; });
   const meses        = [...new Set(RAW.map(r=>r.mes))].sort();
   const turnos       = ['Manhã','Tarde','Noite','Madrugada'];
   const tipos        = [...new Set(RAW.map(r=>r.tipo))].sort();
@@ -2662,6 +2728,7 @@ function buildSidebar() {
   const logradouros  = [...new Set(RAW.map(r=>r.endereco).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const recuperados  = sortedEntries(count(RAW,'recuperado')).map(e=>e[0]).filter(Boolean);
 
+  buildCheckboxes('filter-ano',        'ano',        anos,        anoCnts);
   buildCheckboxes('filter-mes',        'mes',        meses,       allCounts('mes'));
   buildCheckboxes('filter-turno',      'turno',      turnos,      allCounts('turno'));
   buildCheckboxes('filter-tipo',       'tipo',        tipos,      allCounts('tipo'));
@@ -2782,6 +2849,206 @@ function renderHora(data) {
     ],
   };
   Plotly.react('chart-hora',trace,layout,CONFIG);
+}
+
+// ── COMPARAÇÃO ANUAL ─────────────────────────────────────────────────────────
+const ANO_PALETTE = ['#0078D4','#E07B00','#107C10','#8764B8','#D13438','#0097A7'];
+let compAnosAtivos = new Set();
+
+function _anoColor(ano, anosAll) {
+  const i = anosAll.indexOf(ano);
+  return ANO_PALETTE[i >= 0 ? i % ANO_PALETTE.length : 0];
+}
+
+function initCompAnos(anosAll) {
+  // Primeira chamada: ativa todos os anos disponíveis
+  if (compAnosAtivos.size === 0) anosAll.forEach(a => compAnosAtivos.add(a));
+  const sel = document.getElementById('comp-anos-selector');
+  if (!sel) return;
+  const spanTitle = '<span style="font-size:11px;color:#555;font-weight:700;align-self:center">Selecione os anos:</span>';
+  const btns = anosAll.map((a, i) => {
+    const cor   = ANO_PALETTE[i % ANO_PALETTE.length];
+    const ativo = compAnosAtivos.has(a);
+    return `<button class="comp-ano-btn${ativo?' ativo':''}"
+      style="background:${ativo?cor:'#e8ecf0'};color:${ativo?'white':cor};border:2px solid ${cor}"
+      onclick="toggleCompAno(${a})">${a}</button>`;
+  }).join('');
+  sel.innerHTML = spanTitle + btns;
+  const label = document.getElementById('comp-anos-label');
+  if (label) {
+    const ativos = [...compAnosAtivos].sort();
+    label.textContent = ativos.length > 1 ? '— ' + ativos.join(' vs ') : ativos.length === 1 ? '— ' + ativos[0] : '';
+  }
+}
+
+function toggleCompAno(ano) {
+  if (compAnosAtivos.has(ano)) {
+    if (compAnosAtivos.size > 1) compAnosAtivos.delete(ano);
+  } else {
+    compAnosAtivos.add(ano);
+  }
+  renderComparacao(filtered());
+}
+
+function renderComparacao(data) {
+  if (typeof Plotly === 'undefined') return;
+  const anosAll = [...new Set(RAW.map(r => r.ano))].sort();
+  if (anosAll.length === 0) return;
+  initCompAnos(anosAll);
+  const vis = anosAll.filter(a => compAnosAtivos.has(a));
+  if (vis.length === 0) return;
+
+  const LCOMP = {
+    ...LAYOUT_BASE,
+    barmode:'group',
+    showlegend:true,
+    legend:{orientation:'h',x:0,y:1.18,font:{size:11}},
+  };
+
+  // ── KPI Deltas (2 anos mais recentes visíveis) ────────────────────────────
+  const kpiRow = document.getElementById('comp-kpi-row');
+  if (kpiRow && vis.length >= 2) {
+    const aA = vis[vis.length-2], aB = vis[vis.length-1];
+    const dA = data.filter(r => r.ano === aA), dB = data.filter(r => r.ano === aB);
+    const corB = _anoColor(aB, anosAll);
+    function mkDelta(vA, vB, label) {
+      const diff = vB - vA;
+      const pct  = vA > 0 ? ((diff/vA)*100).toFixed(0) : (diff > 0 ? '+∞' : '0');
+      const seta = diff > 0 ? '▲' : diff < 0 ? '▼' : '=';
+      const cls  = diff > 0 ? 'delta-up' : diff < 0 ? 'delta-down' : 'delta-eq';
+      const col  = diff > 0 ? '#D13438' : diff < 0 ? '#107C10' : '#888';
+      return `<div class="comp-kpi-delta" style="border-top:4px solid ${corB}">
+        <div style="font-size:9px;color:#aaa;margin-bottom:2px;font-weight:600;text-transform:uppercase">${aA} → ${aB}</div>
+        <div class="comp-delta-val ${cls}">${seta} ${diff>0?'+':''}${diff}</div>
+        <div style="font-size:12px;font-weight:800;color:${col}">${diff>0?'+':''}${pct}%</div>
+        <div class="comp-delta-label">${label}</div>
+        <div style="font-size:9px;color:#888;margin-top:2px">${aA}: ${vA} &nbsp;|&nbsp; ${aB}: ${vB}</div>
+      </div>`;
+    }
+    kpiRow.style.display = 'grid';
+    kpiRow.innerHTML = [
+      mkDelta(dA.length,                                      dB.length,                                      'Total de Ocorrências'),
+      mkDelta(dA.filter(r=>r.tipo==='Furto').length,          dB.filter(r=>r.tipo==='Furto').length,          'Furtos'),
+      mkDelta(dA.filter(r=>r.tipo==='Roubo').length,          dB.filter(r=>r.tipo==='Roubo').length,          'Roubos'),
+      mkDelta(dA.filter(r=>r.tipo==='Arrombamento').length,   dB.filter(r=>r.tipo==='Arrombamento').length,   'Arrombamentos'),
+    ].join('');
+  } else if (kpiRow) {
+    kpiRow.style.display = 'none';
+  }
+
+  // helper: conta por campo dentro de um subset de data para um ano
+  const cntAnoCampo = (a, campo, val) => data.filter(r => r.ano===a && r[campo]===val).length;
+
+  // ── Por Mês ────────────────────────────────────────────────────────────────
+  const MES_ORD = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const mesesP = MES_ORD.filter(m => vis.some(a => data.some(r=>r.ano===a&&r.mes===m)));
+  Plotly.react('comp-chart-mes',
+    vis.map(a => ({
+      type:'bar', name:String(a),
+      x:mesesP,
+      y:mesesP.map(m => cntAnoCampo(a,'mes',m)),
+      marker:{color:_anoColor(a,anosAll)},
+      text:mesesP.map(m=>{ const v=cntAnoCampo(a,'mes',m); return v>0?String(v):''; }),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{x} %{data.name}</b><br>%{y} ocorrências<extra></extra>',
+    })),
+    {...LCOMP,
+      xaxis:{tickfont:{size:10}},
+      yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}},
+      margin:{l:30,r:12,t:44,b:36},
+    }, CONFIG);
+
+  // ── Por Tipificação ────────────────────────────────────────────────────────
+  const TIPOS_ORD = ['Furto','Roubo','Arrombamento','Tentativa de Furto','Tentativa de Roubo'];
+  const tiposP = TIPOS_ORD.filter(t => vis.some(a => data.some(r=>r.ano===a&&r.tipo===t)));
+  Plotly.react('comp-chart-tipo',
+    vis.map(a => ({
+      type:'bar', name:String(a),
+      x:tiposP,
+      y:tiposP.map(t => cntAnoCampo(a,'tipo',t)),
+      marker:{color:_anoColor(a,anosAll)},
+      text:tiposP.map(t=>{ const v=cntAnoCampo(a,'tipo',t); return v>0?String(v):''; }),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{x} %{data.name}</b><br>%{y} ocorrências<extra></extra>',
+    })),
+    {...LCOMP,
+      xaxis:{tickfont:{size:10},tickangle:-15},
+      yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}},
+      margin:{l:30,r:12,t:44,b:60},
+    }, CONFIG);
+
+  // ── Por Bairro (top 10 combinado) ─────────────────────────────────────────
+  const top10B = sortedEntries(count(data,'bairro')).filter(e=>e[0]).slice(0,10).map(e=>e[0]).reverse();
+  Plotly.react('comp-chart-bairro',
+    vis.map(a => ({
+      type:'bar', orientation:'h', name:String(a),
+      y:top10B,
+      x:top10B.map(b => cntAnoCampo(a,'bairro',b)),
+      marker:{color:_anoColor(a,anosAll)},
+      text:top10B.map(b=>{ const v=cntAnoCampo(a,'bairro',b); return v>0?String(v):''; }),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{y} %{data.name}</b><br>%{x} ocorrências<extra></extra>',
+    })),
+    {...LCOMP,
+      xaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}},
+      yaxis:{tickfont:{size:10},automargin:true},
+      margin:{l:80,r:40,t:44,b:30},
+    }, CONFIG);
+
+  // ── Por Turno ─────────────────────────────────────────────────────────────
+  const TURN_ORD = ['Manhã','Tarde','Noite','Madrugada'];
+  Plotly.react('comp-chart-turno',
+    vis.map(a => ({
+      type:'bar', name:String(a),
+      x:TURN_ORD,
+      y:TURN_ORD.map(t => cntAnoCampo(a,'turno',t)),
+      marker:{color:_anoColor(a,anosAll)},
+      text:TURN_ORD.map(t=>{ const v=cntAnoCampo(a,'turno',t); return v>0?String(v):''; }),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{x} %{data.name}</b><br>%{y} ocorrências<extra></extra>',
+    })),
+    {...LCOMP,
+      xaxis:{tickfont:{size:10}},
+      yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}},
+      margin:{l:30,r:12,t:44,b:36},
+    }, CONFIG);
+
+  // ── Dia da Semana ──────────────────────────────────────────────────────────
+  const diasP = DIA_ORDER.filter(d => vis.some(a => data.some(r=>r.ano===a&&r.dia===d)));
+  Plotly.react('comp-chart-dia',
+    vis.map(a => ({
+      type:'bar', name:String(a),
+      x:diasP,
+      y:diasP.map(d => cntAnoCampo(a,'dia',d)),
+      marker:{color:_anoColor(a,anosAll)},
+      text:diasP.map(d=>{ const v=cntAnoCampo(a,'dia',d); return v>0?String(v):''; }),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{x} %{data.name}</b><br>%{y} ocorrências<extra></extra>',
+    })),
+    {...LCOMP,
+      xaxis:{tickfont:{size:10}},
+      yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}},
+      margin:{l:30,r:12,t:44,b:36},
+    }, CONFIG);
+
+  // ── Top 10 Ruas ────────────────────────────────────────────────────────────
+  const top10R = sortedEntries(count(data,'endereco')).filter(e=>e[0]).slice(0,10).map(e=>e[0]).reverse();
+  Plotly.react('comp-chart-ruas',
+    vis.map(a => ({
+      type:'bar', orientation:'h', name:String(a),
+      y:top10R,
+      x:top10R.map(rua => data.filter(r=>r.ano===a&&r.endereco===rua).length),
+      marker:{color:_anoColor(a,anosAll)},
+      text:top10R.map(rua=>{ const v=data.filter(r=>r.ano===a&&r.endereco===rua).length; return v>0?String(v):''; }),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{y} %{data.name}</b><br>%{x} ocorrências<extra></extra>',
+    })),
+    {...LCOMP,
+      xaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}},
+      yaxis:{tickfont:{size:10},automargin:true},
+      margin:{l:160,r:40,t:44,b:30},
+    }, CONFIG);
 }
 
 // ── PLANO POLICIAL DINÂMICO ───────────────────────────────────────────────────
