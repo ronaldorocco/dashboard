@@ -116,8 +116,12 @@ def norm_bairro(v):
     return BAIRRO_MAP.get(u, str(v).strip().title())
 
 DIA_MAP = {
-    'SEGUNDA':'Segunda','TERÇA':'Terça','TERCA':'Terça','QUARTA':'Quarta',
-    'QUINTA':'Quinta','SEXTA':'Sexta','SABADO':'Sábado','SÁBADO':'Sábado',
+    'SEGUNDA':'Segunda','SEGUNDA-FEIRA':'Segunda',
+    'TERÇA':'Terça','TERCA':'Terça','TERÇA-FEIRA':'Terça','TERCA-FEIRA':'Terça',
+    'QUARTA':'Quarta','QUARTA-FEIRA':'Quarta',
+    'QUINTA':'Quinta','QUINTA-FEIRA':'Quinta',
+    'SEXTA':'Sexta','SEXTA-FEIRA':'Sexta',
+    'SABADO':'Sábado','SÁBADO':'Sábado','SÁBADO-FEIRA':'Sábado',
     'DOMINGO':'Domingo',
 }
 def norm_dia(v):
