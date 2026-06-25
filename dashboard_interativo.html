@@ -1129,28 +1129,65 @@ function renderTurno(data) {
 function renderLinha(data) {
   if(typeof Plotly === 'undefined') return;
 
-  const c = {};
-  data.forEach(r => { if(r.data) c[r.data]=(c[r.data]||0)+1; });
-  const dates = Object.keys(c).sort();
-  const vals  = dates.map(d=>c[d]);
-  const trace = {
-    type:'scatter', mode:'lines+markers+text',
-    x:dates, y:vals,
-    line:{color:COLORS.azul,width:2.5,shape:'spline'},
-    marker:{color:COLORS.azulClr,size:7,line:{color:COLORS.azul,width:1.5}},
-    fill:'tozeroy', fillcolor:'rgba(0,120,212,.1)',
-    text:vals.map(String), textposition:'top center', textfont:{size:9,color:COLORS.azul},
-    hovertemplate:'<b>%{x}</b><br>%{y} casos<extra></extra>',
-  };
-  const layout = {...LAYOUT_BASE,
-    xaxis:{
-      tickformat:'%d/%m', tickfont:{size:9},
-      dtick:'D2',showgrid:false,
-    },
-    yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9},range:[0,Math.max(...vals,1)*1.20]},
-    margin:{l:28,r:12,t:4,b:36},
-  };
-  Plotly.react('chart-linha',[trace],layout,CONFIG);
+  const anos = [...new Set(data.map(r=>r.ano))].sort();
+
+  if(anos.length <= 1) {
+    // ── Um único ano: comportamento original ──────────────────────────────────
+    const c = {};
+    data.forEach(r => { if(r.data) c[r.data]=(c[r.data]||0)+1; });
+    const dates = Object.keys(c).sort();
+    const vals  = dates.map(d=>c[d]);
+    const trace = {
+      type:'scatter', mode:'lines+markers+text',
+      x:dates, y:vals,
+      line:{color:COLORS.azul,width:2.5,shape:'spline'},
+      marker:{color:COLORS.azulClr,size:7,line:{color:COLORS.azul,width:1.5}},
+      fill:'tozeroy', fillcolor:'rgba(0,120,212,.1)',
+      text:vals.map(String), textposition:'top center', textfont:{size:9,color:COLORS.azul},
+      hovertemplate:'<b>%{x|%d/%m/%Y}</b><br>%{y} casos<extra></extra>',
+    };
+    const layout = {...LAYOUT_BASE,
+      xaxis:{tickformat:'%d/%m',tickfont:{size:9},dtick:'D2',showgrid:false},
+      yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9},range:[0,Math.max(...vals,1)*1.20]},
+      margin:{l:28,r:12,t:4,b:36},
+    };
+    Plotly.react('chart-linha',[trace],layout,CONFIG);
+
+  } else {
+    // ── Múltiplos anos: uma linha por ano, eixo = mês/dia alinhado ────────────
+    const traces = anos.map((a,i) => {
+      const c = {};
+      data.filter(r=>r.ano===a&&r.data).forEach(r => {
+        const key = '2000-' + r.data.slice(5); // '2000-MM-DD'
+        c[key] = (c[key]||0)+1;
+      });
+      const dates = Object.keys(c).sort();
+      const vals  = dates.map(d=>c[d]);
+      const cor   = ANO_PALETTE[i % ANO_PALETTE.length];
+      return {
+        type:'scatter', mode:'lines+markers',
+        name:String(a),
+        x:dates, y:vals,
+        line:{color:cor,width:2.5,shape:'spline'},
+        marker:{color:cor,size:6,line:{color:'white',width:1.5}},
+        fill:'none',
+        hovertemplate:'<b>%{x|%d/%m} — '+String(a)+'</b><br>%{y} casos<extra></extra>',
+      };
+    });
+    const allVals = traces.flatMap(t=>t.y);
+    const layout = {...LAYOUT_BASE,
+      showlegend:true,
+      legend:{orientation:'h',x:0,y:1.18,font:{size:11}},
+      xaxis:{
+        tickformat:'%d/%m', tickfont:{size:9},
+        dtick:'M1', showgrid:false,
+        hoverformat:'%d/%m',
+      },
+      yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9},range:[0,Math.max(...allVals,1)*1.20]},
+      margin:{l:28,r:12,t:38,b:36},
+    };
+    Plotly.react('chart-linha',traces,layout,CONFIG);
+  }
 }
 
 // ── GRÁFICO: MÊS ─────────────────────────────────────────────────────────────
