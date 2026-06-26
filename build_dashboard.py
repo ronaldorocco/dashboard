@@ -2743,12 +2743,15 @@ function abrirAnalisePredit() {{
 
   function barRow(lbl, val, cor, isProj){{
     const pct=Math.round(val/maxBar*100);
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="width:52px;font-size:10px;color:#555;text-align:right">${{lbl}}</span>
-      <div style="flex:1;background:#F0F0F0;border-radius:4px;height:22px;position:relative">
-        <div style="width:${{pct}}%;background:${{cor}};height:22px;border-radius:4px;${{isProj?'opacity:.7;background:repeating-linear-gradient(45deg,'+cor+','+cor+' 4px,rgba(255,255,255,.3) 4px,rgba(255,255,255,.3) 8px)':''}}"></div>
-        <span style="position:absolute;left:${{Math.min(pct+1,60)}}%;top:3px;font-size:10px;font-weight:700;color:#333">${{val}}${{isProj?' (proj.)':''}}</span>
+    const barStyle=isProj
+      ?'opacity:.85;background:repeating-linear-gradient(45deg,'+cor+','+cor+' 4px,rgba(255,255,255,.35) 4px,rgba(255,255,255,.35) 8px)'
+      :'background:'+cor;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="width:52px;font-size:10px;color:#555;text-align:right;flex-shrink:0">${{lbl}}</span>
+      <div style="flex:1;background:#EBEBEB;border-radius:4px;height:22px;min-width:0">
+        <div style="width:${{pct}}%;height:22px;border-radius:4px;${{barStyle}}"></div>
       </div>
+      <span style="width:90px;flex-shrink:0;font-size:10px;font-weight:700;color:${{isProj?'#7B2FBE':'#0063B1'}}">${{val}}${{isProj?' proj.':''}}</span>
     </div>`;
   }}
 
