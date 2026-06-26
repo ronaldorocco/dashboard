@@ -1039,7 +1039,7 @@ function sair(){{
     <!-- Linha 3: Itens | Dia da semana -->
     <div class="row row2">
       <div class="chart-card">
-        <div class="chart-title"><span class="icon">📦</span> Top Itens Furtados / Roubados</div>
+        <div class="chart-title"><span class="icon">📦</span> 10 Itens Mais Furtados / Roubados</div>
         <div id="chart-item" style="height:220px"></div>
       </div>
       <div class="chart-card">
