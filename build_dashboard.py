@@ -1015,7 +1015,7 @@ function sair(){{
         <div id="chart-tipo" style="height:220px"></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title"><span class="icon">📍</span> Top 10 Bairros com Mais Ocorrências</div>
+        <div class="chart-title"><span class="icon">📍</span> 10 Bairros com Mais Ocorrências</div>
         <div id="chart-bairro" style="height:220px"></div>
       </div>
       <div class="chart-card">
@@ -1051,11 +1051,11 @@ function sair(){{
     <!-- Linha 4: Ruas | Pontos de referência -->
     <div class="row row2">
       <div class="chart-card">
-        <div class="chart-title"><span class="icon">🛣️</span> Top 10 Ruas com Mais Ocorrências</div>
+        <div class="chart-title"><span class="icon">🛣️</span> 10 Ruas com Mais Ocorrências</div>
         <div id="chart-ruas" style="height:340px"></div>
       </div>
       <div class="chart-card">
-        <div class="chart-title"><span class="icon">📌</span> Top 10 Pontos de Referência</div>
+        <div class="chart-title"><span class="icon">📌</span> 10 Pontos de Referência</div>
         <div id="chart-refs" style="height:340px"></div>
       </div>
     </div>
