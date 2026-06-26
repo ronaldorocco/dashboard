@@ -1144,10 +1144,10 @@ function renderLinha(data) {
   const anos = [...new Set(data.map(r=>r.ano))].sort();
 
   if(anos.length <= 1) {
-    // ── Um único ano: comportamento original ──────────────────────────────────
+    // ── Um único ano: últimos 30 dias ─────────────────────────────────────────
     const c = {};
     data.forEach(r => { if(r.data) c[r.data]=(c[r.data]||0)+1; });
-    const dates = Object.keys(c).sort();
+    const dates = Object.keys(c).sort().slice(-30); // apenas últimos 30 dias
     const vals  = dates.map(d=>c[d]);
     const trace = {
       type:'scatter', mode:'lines+markers+text',
@@ -1159,18 +1159,24 @@ function renderLinha(data) {
       hovertemplate:'<b>%{x|%d/%m/%Y}</b><br>%{y} casos<extra></extra>',
     };
     const layout = {...LAYOUT_BASE,
-      xaxis:{tickformat:'%d/%m',tickfont:{size:9},dtick:'D2',showgrid:false},
+      xaxis:{tickformat:'%d/%m',tickfont:{size:9},dtick:'D2',tickangle:-45,showgrid:false},
       yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9},range:[0,Math.max(...vals,1)*1.20]},
-      margin:{l:28,r:12,t:4,b:36},
+      margin:{l:28,r:12,t:4,b:52},
     };
     Plotly.react('chart-linha',[trace],layout,CONFIG);
 
   } else {
-    // ── Múltiplos anos: uma linha por ano, eixo = mês/dia alinhado ────────────
+    // ── Múltiplos anos: últimos 30 dias do ano mais recente, mesmo período nos demais ──
+    const anoRecente = anos[anos.length-1];
+    const mmddRecentes = [...new Set(
+      data.filter(r=>r.ano===anoRecente&&r.data).map(r=>r.data.slice(5))
+    )].sort().slice(-30); // últimos 30 MM-DD do ano mais recente
+    const filtroMMDD = new Set(mmddRecentes);
+
     const traces = anos.map((a,i) => {
       const c = {};
-      data.filter(r=>r.ano===a&&r.data).forEach(r => {
-        const key = '2000-' + r.data.slice(5); // '2000-MM-DD'
+      data.filter(r=>r.ano===a&&r.data&&filtroMMDD.has(r.data.slice(5))).forEach(r => {
+        const key = '2000-' + r.data.slice(5);
         c[key] = (c[key]||0)+1;
       });
       const dates = Object.keys(c).sort();
@@ -1192,11 +1198,11 @@ function renderLinha(data) {
       legend:{orientation:'h',x:0,y:1.18,font:{size:11}},
       xaxis:{
         tickformat:'%d/%m', tickfont:{size:9},
-        dtick:'M1', showgrid:false,
+        dtick:'D3', tickangle:-45, showgrid:false,
         hoverformat:'%d/%m',
       },
       yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9},range:[0,Math.max(...allVals,1)*1.20]},
-      margin:{l:28,r:12,t:38,b:36},
+      margin:{l:28,r:12,t:38,b:52},
     };
     Plotly.react('chart-linha',traces,layout,CONFIG);
   }
