@@ -2699,12 +2699,11 @@ function abrirInteligencia() {{
     const linhas = g.crimes.map((c,i)=>{{
       const rzs = (c.razoes||[]).join(' · ')||'referência';
       return `<tr style="background:${{i%2?'#FAFAFA':'white'}}">
-        <td style="padding:4px 7px;font-size:9px;font-family:monospace;color:#777">${{c.numero||'—'}}</td>
+        <td style="padding:4px 7px;font-size:10px;font-weight:600;color:#1B4332;white-space:nowrap">${{c.numero||c.arquivo||'—'}}</td>
         <td style="padding:4px 7px;font-size:10px;white-space:nowrap">${{c.data}}</td>
         <td style="padding:4px 7px;font-size:10px;white-space:nowrap">${{c.hora||'?'}} — ${{c.turno}}</td>
-        <td style="padding:4px 7px;font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${{c.local||'—'}}</td>
+        <td style="padding:4px 7px;font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${{c.local||'—'}}</td>
         <td style="padding:4px 7px">${{c.tipo?badge(c.tipo,corCrime(c.tipo)):'—'}}</td>
-        <td style="padding:4px 7px;font-size:9px;color:#666">${{rzs}}</td>
       </tr>`;
     }}).join('');
     const dInicio = (g.datas||[])[0]||'';
@@ -2730,7 +2729,6 @@ function abrirInteligencia() {{
           <th style="padding:5px 7px;text-align:left;font-size:9px">Hora/Turno</th>
           <th style="padding:5px 7px;text-align:left;font-size:9px">Local</th>
           <th style="padding:5px 7px;text-align:left;font-size:9px">Crime</th>
-          <th style="padding:5px 7px;text-align:left;font-size:9px">Similaridade</th>
         </tr></thead>
         <tbody>${{linhas}}</tbody>
       </table>
