@@ -1036,6 +1036,18 @@ function count(data, key) {
 function sortedEntries(obj, desc=true) {
   return Object.entries(obj).sort((a,b)=>desc?b[1]-a[1]:a[1]-b[1]);
 }
+// Deduplica por número de B.O.: um B.O. com 4 itens vira 1 ocorrência.
+// Usado em TODOS os gráficos/KPIs exceto renderItem (que conta itens).
+function dedupBO(data) {
+  if(!data || data.length === 0) return data;
+  const seen = new Set();
+  return data.filter(r => {
+    const k = r.bo ? r.bo.trim() : '';
+    if(!k) return true;
+    if(seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
 
 // ── PLOTLY HELPERS ────────────────────────────────────────────────────────────
 function barH(labels, vals, colors) {
@@ -1291,7 +1303,7 @@ function renderKPIs(data) {
     document.getElementById('kpi-arrom-media').textContent  = '';
   }
 
-  const gt = RAW.length;
+  const gt = dedupBO(RAW).length; // total global de ocorrências (não itens)
   const pBairro2 = gt ? ((topBairro[1]/gt)*100).toFixed(1)+'%' : '';
   const pRua2    = gt ? ((topRua[1]/gt)*100).toFixed(1)+'%'    : '';
   const pTurno2  = gt ? ((topTurno[1]/gt)*100).toFixed(1)+'%'  : '';
@@ -1745,25 +1757,26 @@ function renderInsights(data) {
 
 function renderAll() {
   const data = filtered();
-  renderKPIs(data);
-  renderTipo(data);
-  renderBairro(data);
-  renderTurno(data);
-  renderLinha(data);
-  renderMes(data);
-  renderItem(data);
-  renderDia(data);
-  renderRuas(data);
-  renderRefs(data);
-  renderHeatmap(data);
-  renderHora(data);
-  renderComparacao(data);
-  renderPlanoPolicial(data);
-  renderDiagnostico(data);
-  renderRecomendacoes(data);
-  renderInsights(data);
-  renderMapa(data);
-  renderTabela(data);
+  const ocs  = dedupBO(data); // 1 registo por B.O. (ocorrência), NÃO por item
+  renderKPIs(ocs);
+  renderTipo(ocs);
+  renderBairro(ocs);
+  renderTurno(ocs);
+  renderLinha(ocs);
+  renderMes(ocs);
+  renderItem(data);   // único que usa data bruto: conta cada item separado
+  renderDia(ocs);
+  renderRuas(ocs);
+  renderRefs(ocs);
+  renderHeatmap(ocs);
+  renderHora(ocs);
+  renderComparacao(ocs);
+  renderPlanoPolicial(ocs);
+  renderDiagnostico(ocs);
+  renderRecomendacoes(ocs);
+  renderInsights(ocs);
+  renderMapa(ocs);
+  renderTabela(data);   // tabela detalhada mostra todos os itens do B.O.
   renderChips();
   buildSidebar();
 }
@@ -2112,7 +2125,7 @@ function previsao() {
   const tituloEl = document.getElementById('prev-titulo');
   if (tituloEl) tituloEl.textContent = '📈 Previsão de Risco — ' + plural + ' — Guarda Municipal BC';
 
-  const hist  = RAW.filter(r => r.dia === diaSemana);
+  const hist  = dedupBO(RAW).filter(r => r.dia === diaSemana);
   const datas = [...new Set(hist.map(r=>r.data))].sort();
   const nDias = datas.length;
 
@@ -2924,7 +2937,7 @@ function toggleCompAno(ano) {
   } else {
     compAnosAtivos.add(ano);
   }
-  renderComparacao(filtered());
+  renderComparacao(dedupBO(filtered()));
 }
 
 function renderComparacao(data) {
