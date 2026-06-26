@@ -513,6 +513,22 @@ def main():
         })
 
     total_vinculados = sum(len(g) for g in grupos)
+    # Índice de busca nos relatos (para pesquisa livre no dashboard)
+    relato_index = []
+    for bo in bos:
+        if not bo.get("relato"):
+            continue
+        relato_index.append({
+            "numero": bo["arquivo"].replace(".pdf", ""),
+            "data":   bo.get("data_fato", ""),
+            "hora":   bo.get("hora_fato", ""),
+            "turno":  bo.get("turno", ""),
+            "local":  bo.get("local", ""),
+            "bairro": bo.get("bairro", ""),
+            "tipo":   bo.get("tipo_crime", ""),
+            "relato": bo.get("relato", "")[:800],
+        })
+
     dados_export = {
         "gerado_em":        ts,
         "total_bos":        len(bos),
@@ -521,6 +537,7 @@ def main():
         "bairros_freq":     dict(sorted(bairros_freq.items(), key=lambda x: -x[1])[:8]),
         "turnos_freq":      turnos_freq,
         "grupos":           grupos_export,
+        "relato_index":     relato_index,
     }
     with open(GRUPOS_JSON, "w", encoding="utf-8") as f:
         json.dump(dados_export, f, ensure_ascii=False, indent=2)

@@ -866,6 +866,15 @@ function sair(){{
 <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
     <button class="btn-predit" onclick="abrirAnalisePredit()">🔮<span class="btxt"> Preditiva</span></button>
     <button class="btn-intelig" onclick="abrirInteligencia()">🔍<span class="btxt"> Inteligência</span></button>
+    <div style="display:flex;align-items:center;gap:4px;margin-left:4px">
+      <input id="pesquisa-input" type="text" placeholder="🔎 Pesquisar..." autocomplete="off"
+        style="border:1.5px solid #ccc;border-radius:4px;padding:4px 10px;font-size:11px;width:160px;font-family:inherit;outline:none"
+        oninput="onPesquisaInput(this.value)"
+        onkeydown="if(event.key==='Enter')executarPesquisa()"
+        onfocus="this.style.borderColor='#2E6DA4'" onblur="this.style.borderColor='#ccc'">
+      <button onclick="executarPesquisa()" style="background:#2E6DA4;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:600">Buscar</button>
+      <button id="pesquisa-limpar" onclick="limparPesquisa()" style="display:none;background:#888;color:white;border:none;border-radius:4px;padding:5px 8px;font-size:11px;cursor:pointer">✕</button>
+    </div>
     <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
     <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
     <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
@@ -1219,7 +1228,7 @@ const state = {{
   bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set(),
   recuperado: new Set()
 }};
-let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '';
+let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '', pesquisaQ = '';
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
 const COLORS = {{
@@ -1260,6 +1269,7 @@ function filtered() {{
     (marcaQ === '' || (r.marca && r.marca.toLowerCase().includes(marcaQ.toLowerCase()))) &&
     (placaQ === '' || (r.placa && r.placa.toLowerCase().includes(placaQ.toLowerCase()))) &&
     (numeroSerieQ === '' || (r.numero_serie && r.numero_serie.toLowerCase().includes(numeroSerieQ.toLowerCase()))) &&
+    (pesquisaQ === '' || [r.bairro,r.tipo,r.endereco,r.item,r.marca,r.dia,r.turno,r.mes,r.bo].some(v=>v&&String(v).toLowerCase().includes(pesquisaQ.toLowerCase()))) &&
     (state.recuperado.size === 0 || state.recuperado.has(r.recuperado)) &&
     (state.dia.size        === 0 || state.dia.has(r.dia))        &&
     (state.logradouro.size === 0 || state.logradouro.has(r.endereco)) &&
@@ -2620,8 +2630,90 @@ function fecharPrevisao() {{
   document.getElementById('prev-overlay').classList.remove('ativo');
 }}
 
-// ── INTELIGÊNCIA CRIMINAL ─────────────────────────────────────────────────────
+// ── PESQUISA GERAL ────────────────────────────────────────────────────────────
 const INTEL_DATA = {INTEL_JSON};
+const RELATO_INDEX = INTEL_DATA ? INTEL_DATA.relato_index || [] : [];
+
+let _pesquisaTimer = null;
+function onPesquisaInput(val) {{
+  clearTimeout(_pesquisaTimer);
+  _pesquisaTimer = setTimeout(()=>{{ if(val.trim().length >= 2) executarPesquisa(); }}, 400);
+}}
+function limparPesquisa() {{
+  pesquisaQ = '';
+  document.getElementById('pesquisa-input').value = '';
+  document.getElementById('pesquisa-limpar').style.display = 'none';
+  renderAll(filtered());
+}}
+function fecharPesquisa() {{
+  document.getElementById('pesquisa-overlay').classList.remove('ativo');
+}}
+function executarPesquisa() {{
+  const termo = document.getElementById('pesquisa-input').value.trim();
+  if(!termo) return;
+  pesquisaQ = termo;
+  document.getElementById('pesquisa-limpar').style.display = '';
+
+  const termoLow = termo.toLowerCase();
+
+  // ── 1. Resultados no dashboard (dados estruturados) ───────────────────────
+  const dashResult = filtered();
+  const ocsDash    = dedupBO(dashResult);
+
+  // ── 2. Resultados nos relatos dos B.O.s ───────────────────────────────────
+  const boResult = RELATO_INDEX.filter(b => {{
+    const texto = [b.relato,b.local,b.bairro,b.tipo,b.numero].join(' ').toLowerCase();
+    return texto.includes(termoLow);
+  }});
+
+  // ── Atualiza gráficos ─────────────────────────────────────────────────────
+  renderAll(dashResult);
+
+  // ── Monta conteúdo do modal ───────────────────────────────────────────────
+  function highlight(txt, q) {{
+    if(!txt||!q) return txt||'';
+    const re = new RegExp('('+q.replace(/[.*+?^${{}}()|[\\]\\\\]/g,'\\\\$&')+')','gi');
+    return txt.replace(re,'<mark style="background:#FFE066;padding:0 2px;border-radius:2px">$1</mark>');
+  }}
+
+  const dashHtml = ocsDash.length > 0 ? `
+    <div style="font-size:11px;color:#2E6DA4;font-weight:600;margin-bottom:6px">
+      ✅ ${{ocsDash.length}} ocorrência(s) encontrada(s) nos dados do dashboard — gráficos atualizados
+    </div>` : `
+    <div style="font-size:11px;color:#888;margin-bottom:6px">
+      ℹ️ Nenhuma correspondência nos dados estruturados do dashboard
+    </div>`;
+
+  const boHtml = boResult.length > 0 ? `
+    <div style="font-size:12px;font-weight:700;color:#1A3A5C;border-bottom:2px solid #2E6DA4;padding-bottom:5px;margin:14px 0 10px">
+      📄 ${{boResult.length}} B.O.(s) com menção nos relatos
+    </div>
+    ${{boResult.map(b=>{{
+      const trecho = b.relato ? highlight(b.relato.substring(0,400), termo) : '—';
+      return `<div style="border:1px solid #E0E0E0;border-radius:8px;margin-bottom:10px;overflow:hidden">
+        <div style="background:#F0F6FF;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+          <span style="font-size:11px;font-weight:700;color:#1A3A5C">${{b.numero}}</span>
+          <span style="font-size:10px;color:#555">${{b.data}} &nbsp;•&nbsp; ${{b.hora||'?'}} — ${{b.turno}}</span>
+          <span style="font-size:10px;color:#555">${{b.local||b.bairro||'—'}}</span>
+          ${{b.tipo?`<span style="background:#E07B00;color:white;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700">${{b.tipo}}</span>`:''}}
+        </div>
+        <div style="padding:8px 12px;font-size:11px;color:#333;line-height:1.6;background:white">
+          ${{trecho}}${{b.relato&&b.relato.length>=400?'<span style="color:#aaa"> [...]</span>':''}}
+        </div>
+      </div>`;
+    }}).join('')}}` : `
+    <div style="font-size:11px;color:#888;margin-top:10px">
+      ℹ️ Nenhum B.O. com menção a "<strong>${{termo}}</strong>" nos relatos
+      ${{RELATO_INDEX.length===0?'<br><span style="color:#E07B00">⚠️ Execute INTELIGENCIA.bat para indexar os B.O.s</span>':''}}
+    </div>`;
+
+  document.getElementById('pesquisa-subtitulo').textContent =
+    `"${{termo}}" — ${{ocsDash.length}} no dashboard · ${{boResult.length}} nos B.O.s`;
+  document.getElementById('pesquisa-corpo').innerHTML = dashHtml + boHtml;
+  document.getElementById('pesquisa-overlay').classList.add('ativo');
+}}
+
+// ── INTELIGÊNCIA CRIMINAL ─────────────────────────────────────────────────────
 
 function fecharInteligencia() {{
   document.getElementById('intel-overlay').classList.remove('ativo');
@@ -4086,6 +4178,23 @@ else {{ window.addEventListener('load', init); }}
     </div>
   </div>
 </div>
+<!-- ── MODAL PESQUISA ── -->
+<div class="analise-overlay" id="pesquisa-overlay" onclick="if(event.target===this)fecharPesquisa()">
+  <div class="analise-box" style="width:min(860px,97vw);max-height:93vh">
+    <div class="analise-header" style="background:linear-gradient(135deg,#1A3A5C 0%,#2E6DA4 100%)">
+      <div>
+        <h2>🔎 Pesquisa Geral</h2>
+        <div style="font-size:10px;opacity:.85;margin-top:2px" id="pesquisa-subtitulo">Resultados da pesquisa</div>
+      </div>
+      <button class="analise-close" onclick="fecharPesquisa()" title="Fechar">✕</button>
+    </div>
+    <div class="analise-corpo" id="pesquisa-corpo" style="padding:18px 20px;overflow-y:auto"></div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharPesquisa()">✕ Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── MODAL INTELIGÊNCIA CRIMINAL ── -->
 <div class="analise-overlay" id="intel-overlay" onclick="if(event.target===this)fecharInteligencia()">
   <div class="analise-box" style="width:min(1000px,97vw);max-height:93vh">
