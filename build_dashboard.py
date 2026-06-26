@@ -70,6 +70,13 @@ if os.path.exists('geocache.json'):
         GEOCACHE = json.load(f)
     print(f"Geocache: {sum(1 for v in GEOCACHE.values() if v)} coordenadas carregadas")
 
+# ── Carregar dados de Inteligência Criminal (opcional) ────────────────────────
+INTEL_DATA = None
+if os.path.exists('bos_grupos.json'):
+    with open('bos_grupos.json', 'r', encoding='utf-8') as f:
+        INTEL_DATA = json.load(f)
+INTEL_JSON = json.dumps(INTEL_DATA, ensure_ascii=False) if INTEL_DATA else 'null'
+
 # ── Carregar e limpar dados ───────────────────────────────────────────────────
 df = pd.read_excel('secretario.xlsx', sheet_name='DADOS', engine='openpyxl')
 
@@ -2614,20 +2621,147 @@ function fecharPrevisao() {{
 }}
 
 // ── INTELIGÊNCIA CRIMINAL ─────────────────────────────────────────────────────
+const INTEL_DATA = {INTEL_JSON};
+
+function fecharInteligencia() {{
+  document.getElementById('intel-overlay').classList.remove('ativo');
+}}
+function imprimirInteligencia() {{
+  const c = document.getElementById('intel-corpo').innerHTML;
+  const w = window.open('','_blank','width=1000,height=760');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Inteligência Criminal — GMBC</title>
+    <style>body{{font-family:'Segoe UI',Arial,sans-serif;padding:20px;font-size:11px}}
+    table{{border-collapse:collapse;width:100%}} th,td{{border:1px solid #ddd;padding:5px 8px}}
+    th{{background:#1B4332;color:white}} .badge{{border-radius:4px;padding:2px 7px;font-weight:700;font-size:10px}}
+    </style></head><body>${{c}}</body></html>`);
+  w.document.close(); w.print();
+}}
 function abrirInteligencia() {{
-  const url = 'inteligencia_criminal.html';
-  fetch(url, {{method:'HEAD'}})
-    .then(r => {{
-      if(r.ok) {{
-        window.open(url, '_blank');
-      }} else {{
-        alert('Relatório não encontrado.\\n\\nExecute primeiro:\\npython analisar_bos.py\\n\\nO relatório é gerado localmente e não fica no servidor por segurança.');
-      }}
-    }})
-    .catch(() => {{
-      // Modo local — tenta abrir direto
-      window.open(url, '_blank');
-    }});
+  if(!INTEL_DATA) {{
+    alert('Dados de inteligência não disponíveis.\\n\\nExecute no seu computador:\\n1. INTELIGENCIA.bat (duplo clique)\\n2. atualizar.ps1 (duplo clique)\\n\\nIsso processa os B.O.s e publica os dados no dashboard.');
+    return;
+  }}
+  const d = INTEL_DATA;
+  const RISCO_COR = {{'CRÍTICO':'#D13438','ALTO':'#E07B00','MÉDIO':'#E6A817'}};
+  const CRIME_COR = {{'Roubo':'#D13438','Furto':'#E07B00'}};
+  function badge(t,c){{ return `<span class="badge" style="background:${{c}};color:white">${{t}}</span>`; }}
+  function corCrime(t){{ for(const[k,v] of Object.entries(CRIME_COR)) if(t&&t.includes(k)) return v; return '#555'; }}
+
+  // KPIs
+  const kpis = `
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px">
+    <div style="background:#F0FFF4;border-left:4px solid #2D6A4F;border-radius:8px;padding:12px 14px">
+      <div style="font-size:24px;font-weight:700;color:#2D6A4F">${{d.total_bos}}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">B.O.s analisados</div>
+    </div>
+    <div style="background:#FFF5F5;border-left:4px solid #D13438;border-radius:8px;padding:12px 14px">
+      <div style="font-size:24px;font-weight:700;color:#D13438">${{d.total_grupos}}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Grupos com padrão similar</div>
+    </div>
+    <div style="background:#FFF8EC;border-left:4px solid #E07B00;border-radius:8px;padding:12px 14px">
+      <div style="font-size:24px;font-weight:700;color:#E07B00">${{d.total_vinculados}}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Ocorrências vinculadas</div>
+    </div>
+    <div style="background:#F8F8FF;border-left:4px solid #555;border-radius:8px;padding:12px 14px">
+      <div style="font-size:24px;font-weight:700;color:#555">${{d.total_bos - d.total_vinculados}}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Sem vínculo identificado</div>
+    </div>
+  </div>`;
+
+  // Bairros + Turnos
+  const maxB = Math.max(...Object.values(d.bairros_freq),1);
+  const bairrosBar = Object.entries(d.bairros_freq).map(([b,c])=>{{
+    const pct=Math.round(c/maxB*100);
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span style="width:110px;font-size:10px;text-align:right;color:#333;flex-shrink:0">${{b}}</span>
+      <div style="flex:1;background:#EEE;border-radius:3px;height:16px">
+        <div style="width:${{pct}}%;background:#2D6A4F;height:16px;border-radius:3px"></div>
+      </div>
+      <span style="width:24px;font-size:10px;font-weight:700;color:#2D6A4F">${{c}}</span>
+    </div>`;
+  }}).join('');
+  const TCOR={{'Madrugada':'#7B2FBE','Manhã':'#0078D4','Tarde':'#E07B00','Noite':'#1A1A2E'}};
+  const turnosHtml = Object.entries(d.turnos_freq).sort((a,b)=>b[1]-a[1]).map(([t,c])=>
+    `<div style="display:flex;justify-content:space-between;padding:5px 8px;font-size:11px;border-bottom:1px solid #F0F0F0">
+      <span style="color:${{TCOR[t]||'#333'}};font-weight:600">${{t}}</span>
+      <span style="font-weight:700">${{c}}</span>
+    </div>`).join('');
+
+  // Grupos
+  const gruposHtml = d.grupos.map(g=>{{
+    const cor = RISCO_COR[g.risco]||'#555';
+    const padrao = [
+      g.n_suspeitos>0?`👤 ${{g.n_suspeitos}} suspeito(s)`:'',
+      g.armado?'🔫 Armado(s)':'',
+      g.veiculo?`🏍️ Fuga: ${{g.veiculo}}`:'',
+      ...(g.mo_tags||[]).slice(0,3).map(t=>`• ${{t}}`),
+    ].filter(Boolean).join(' &nbsp; ');
+    const linhas = g.crimes.map((c,i)=>{{
+      const rzs = (c.razoes||[]).join(' · ')||'referência';
+      return `<tr style="background:${{i%2?'#FAFAFA':'white'}}">
+        <td style="padding:4px 7px;font-size:9px;font-family:monospace;color:#777">${{c.numero||'—'}}</td>
+        <td style="padding:4px 7px;font-size:10px;white-space:nowrap">${{c.data}}</td>
+        <td style="padding:4px 7px;font-size:10px;white-space:nowrap">${{c.hora||'?'}} — ${{c.turno}}</td>
+        <td style="padding:4px 7px;font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${{c.local||'—'}}</td>
+        <td style="padding:4px 7px">${{c.tipo?badge(c.tipo,corCrime(c.tipo)):'—'}}</td>
+        <td style="padding:4px 7px;font-size:9px;color:#666">${{rzs}}</td>
+      </tr>`;
+    }}).join('');
+    const dInicio = (g.datas||[])[0]||'';
+    const dFim    = (g.datas||[]).slice(-1)[0]||'';
+    return `
+    <div style="border:1px solid #E0E0E0;border-radius:8px;margin-bottom:16px;overflow:hidden">
+      <div style="background:${{cor}};padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="color:white;font-size:13px;font-weight:700">Grupo #${{g.id}} — ${{g.n}} ocorrência(s) &nbsp;
+          <span style="background:rgba(0,0,0,.2);padding:2px 8px;border-radius:4px;font-size:10px">${{g.risco}}</span>
+        </span>
+        <span style="color:rgba(255,255,255,.85);font-size:10px">${{dInicio}}${{dFim&&dFim!==dInicio?' → '+dFim:''}}</span>
+      </div>
+      <div style="padding:10px 14px;background:#FAFAFA;font-size:11px;line-height:1.8">
+        ${{padrao?'<div><strong>🧩 Padrão:</strong> &nbsp;'+padrao+'</div>':''}}
+        ${{g.objetos&&g.objetos.length?'<div><strong>📦 Objetos:</strong> '+g.objetos.join(' · ')+'</div>':''}}
+        ${{g.bairros&&g.bairros.length?'<div><strong>📍 Bairros:</strong> '+g.bairros.join(', ')+'</div>':''}}
+      </div>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#F0F0F0">
+          <th style="padding:5px 7px;text-align:left;font-size:9px">Nº B.O.</th>
+          <th style="padding:5px 7px;text-align:left;font-size:9px">Data</th>
+          <th style="padding:5px 7px;text-align:left;font-size:9px">Hora/Turno</th>
+          <th style="padding:5px 7px;text-align:left;font-size:9px">Local</th>
+          <th style="padding:5px 7px;text-align:left;font-size:9px">Crime</th>
+          <th style="padding:5px 7px;text-align:left;font-size:9px">Similaridade</th>
+        </tr></thead>
+        <tbody>${{linhas}}</tbody>
+      </table>
+      </div>
+    </div>`;
+  }}).join('');
+
+  document.getElementById('intel-corpo').innerHTML = `
+  <div style="font-size:10px;color:#888;margin-bottom:14px">
+    Gerado em: ${{d.gerado_em}} &nbsp;•&nbsp; Base: ${{d.total_bos}} B.O.s processados
+    &nbsp;•&nbsp; <span style="color:#2D6A4F;font-weight:700">Análise de Padrões de MO / Suspeitos</span>
+  </div>
+  <div style="background:#FFF8EC;border-left:4px solid #E07B00;padding:8px 12px;border-radius:4px;font-size:11px;color:#555;margin-bottom:14px">
+    ⚠️ As vinculações são baseadas em similaridade de padrões — não constituem prova de autoria.
+    Ferramenta de apoio ao planejamento operacional e investigativo.
+  </div>
+  ${{kpis}}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+    <div>
+      <div style="font-size:12px;font-weight:700;border-bottom:2px solid #2D6A4F;padding-bottom:4px;margin-bottom:8px">📍 Bairros com Mais Ocorrências</div>
+      ${{bairrosBar}}
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:700;border-bottom:2px solid #2D6A4F;padding-bottom:4px;margin-bottom:8px">⏰ Distribuição por Turno</div>
+      ${{turnosHtml}}
+    </div>
+  </div>
+  <div style="font-size:12px;font-weight:700;border-bottom:2px solid #2D6A4F;padding-bottom:4px;margin-bottom:12px">🔗 Grupos com Padrão Similar</div>
+  ${{gruposHtml}}`;
+
+  document.getElementById('intel-overlay').classList.add('ativo');
 }}
 
 // ── ANÁLISE PREDITIVA CRIMINAL ────────────────────────────────────────────────
@@ -3954,6 +4088,24 @@ else {{ window.addEventListener('load', init); }}
     </div>
   </div>
 </div>
+<!-- ── MODAL INTELIGÊNCIA CRIMINAL ── -->
+<div class="analise-overlay" id="intel-overlay" onclick="if(event.target===this)fecharInteligencia()">
+  <div class="analise-box" style="width:min(1000px,97vw);max-height:93vh">
+    <div class="analise-header" style="background:linear-gradient(135deg,#1B4332 0%,#2D6A4F 100%)">
+      <div>
+        <h2>🔍 Inteligência Criminal — Análise de Padrões por B.O.</h2>
+        <div style="font-size:10px;opacity:.85;margin-top:2px">Secretaria de Segurança e Ordem Pública — Balneário Camboriú</div>
+      </div>
+      <button class="analise-close" onclick="fecharInteligencia()" title="Fechar">✕</button>
+    </div>
+    <div class="analise-corpo" id="intel-corpo" style="padding:18px 20px;overflow-y:auto"></div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharInteligencia()">✕ Fechar</button>
+      <button class="btn-pdf" onclick="imprimirInteligencia()">🖨️ Salvar PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── MODAL ANÁLISE PREDITIVA ── -->
 <div class="analise-overlay" id="predit-overlay" onclick="if(event.target===this)fecharAnalisePredit()">
   <div class="analise-box" style="width:min(980px,97vw);max-height:93vh">

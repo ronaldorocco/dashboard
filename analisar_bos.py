@@ -13,9 +13,10 @@ from datetime import datetime, timedelta
 import pdfplumber
 
 # ── Configurações ──────────────────────────────────────────────────────────────
-PASTA_BOS  = r"C:\Users\rebar\Downloads\B.O. Furtos"
-SAIDA_HTML = r"C:\Users\rebar\Downloads\Secretario\inteligencia_criminal.html"
-CACHE_JSON = r"C:\Users\rebar\Downloads\Secretario\bos_cache.json"
+PASTA_BOS   = r"C:\Users\rebar\Downloads\B.O. Furtos"
+SAIDA_HTML  = r"C:\Users\rebar\Downloads\Secretario\inteligencia_criminal.html"
+CACHE_JSON  = r"C:\Users\rebar\Downloads\Secretario\bos_cache.json"
+GRUPOS_JSON = r"C:\Users\rebar\Downloads\Secretario\bos_grupos.json"
 
 # ── Extração de texto ──────────────────────────────────────────────────────────
 def extrair_texto(caminho):
@@ -472,6 +473,58 @@ def main():
     html = gerar_html(grupos, bos, ts)
     with open(SAIDA_HTML, "w", encoding="utf-8") as f:
         f.write(html)
+
+    # Exporta JSON resumido para o dashboard (sem dados pessoais)
+    bairros_freq = {}
+    turnos_freq  = {}
+    for bo in bos:
+        if bo.get("bairro"): bairros_freq[bo["bairro"]] = bairros_freq.get(bo["bairro"], 0) + 1
+        if bo.get("turno"):  turnos_freq[bo["turno"]]   = turnos_freq.get(bo["turno"], 0) + 1
+
+    grupos_export = []
+    for idx, grupo in enumerate(grupos, 1):
+        bo_ref = grupo[0][0]
+        n = len(grupo)
+        datas   = sorted(set(x[0]["data_fato"] for x in grupo if x[0]["data_fato"]))
+        bairros = list(set(x[0]["bairro"] for x in grupo if x[0]["bairro"]))
+        objetos = list(set(o for x in grupo for o in x[0]["objetos"]))[:5]
+        mo_tags = list(set(t for x in grupo for t in x[0]["mo_tags"]))[:6]
+        crimes  = [{
+            "numero":  x[0]["numero"],
+            "data":    x[0]["data_fato"],
+            "hora":    x[0]["hora_fato"],
+            "turno":   x[0]["turno"],
+            "local":   x[0]["local"][:50] if x[0]["local"] else x[0]["bairro"],
+            "tipo":    x[0]["tipo_crime"],
+            "razoes":  x[1][:4],
+        } for x in grupo]
+        risco = "CRÍTICO" if n >= 5 else "ALTO" if n >= 3 else "MÉDIO"
+        grupos_export.append({
+            "id": idx, "n": n, "risco": risco,
+            "tipo_ref":    bo_ref["tipo_crime"],
+            "n_suspeitos": bo_ref["n_suspeitos"],
+            "armado":      bo_ref["armado"],
+            "veiculo":     bo_ref["veiculo"],
+            "datas":       datas,
+            "bairros":     bairros,
+            "objetos":     objetos,
+            "mo_tags":     mo_tags,
+            "crimes":      crimes,
+        })
+
+    total_vinculados = sum(len(g) for g in grupos)
+    dados_export = {
+        "gerado_em":        ts,
+        "total_bos":        len(bos),
+        "total_grupos":     len(grupos),
+        "total_vinculados": total_vinculados,
+        "bairros_freq":     dict(sorted(bairros_freq.items(), key=lambda x: -x[1])[:8]),
+        "turnos_freq":      turnos_freq,
+        "grupos":           grupos_export,
+    }
+    with open(GRUPOS_JSON, "w", encoding="utf-8") as f:
+        json.dump(dados_export, f, ensure_ascii=False, indent=2)
+    print(f"  JSON dashboard salvo: {GRUPOS_JSON}")
 
     print(f"\n  Relatório salvo: {SAIDA_HTML}")
     print("=" * 60)
