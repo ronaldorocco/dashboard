@@ -2654,7 +2654,7 @@ function abrirAnalisePredit() {{
   function riscoBadge(r){{
     const cfg={{
       'Crítico':['#D13438','🔴'],
-      'Alto':   ['#E07B00','🟠'],
+      'Alto':   ['#D13438','🔴'],
       'Médio':  ['#E6A817','🟡'],
       'Baixo':  ['#107C10','🟢'],
     }}; const [cor,ic]=cfg[r]||['#888','⚪'];
@@ -2676,7 +2676,7 @@ function abrirAnalisePredit() {{
   const tendCor  = regG.m>0.5?'#D13438':regG.m<-0.5?'#107C10':'#555';
 
   // ── 2. Risco por bairro ────────────────────────────────────────────────────
-  const ultMesesBairro = mesesGlobal.slice(-5);
+  const ultMesesBairro = mesesGlobal.filter(m=>m.startsWith('2026')).slice(-5);
   const bairroSet=[...new Set(RAWU.map(r=>r.bairro).filter(Boolean))];
   const bairroStats=bairroSet.map(b=>{{
     const recs=RAWU.filter(r=>r.bairro===b);
@@ -2822,7 +2822,6 @@ function abrirAnalisePredit() {{
         <th style="padding:5px 8px;text-align:center">Risco</th>
         ${{ultMesesBairro.map((m,i)=>`<th style="padding:5px 6px;text-align:center;color:#555;white-space:nowrap">${{ymLbl(m)}}</th>`).join('')}}
         <th style="padding:5px 8px;text-align:center">Total</th>
-        <th style="padding:5px 8px;text-align:left">Crime +freq.</th>
       </tr></thead>
       <tbody>
       ${{bairroStats.map((bs,i)=>{{
@@ -2839,7 +2838,6 @@ function abrirAnalisePredit() {{
           <td style="padding:4px 8px;text-align:center">${{riscoBadge(bs.risco)}}</td>
           ${{mCells}}
           <td style="padding:4px 8px;text-align:center;font-weight:700">${{bs.total}}</td>
-          <td style="padding:4px 8px;color:#555;white-space:nowrap">${{bs.topTipo}}</td>
         </tr>`;
       }}).join('')}}
       </tbody>
