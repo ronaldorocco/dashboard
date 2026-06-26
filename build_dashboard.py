@@ -332,6 +332,9 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .btn-predit{{background:linear-gradient(135deg,#4A0E8F,#7B2FBE);color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
 .btn-predit:hover{{background:linear-gradient(135deg,#3A0A6F,#5A1F9E);}}
+.btn-intelig{{background:linear-gradient(135deg,#1B4332,#2D6A4F);color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-intelig:hover{{background:linear-gradient(135deg,#0D2B1F,#1B4332);}}
 .btn-relatorio{{background:#0097A7;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
 .btn-relatorio:hover{{background:#006978;}}
@@ -855,6 +858,7 @@ function sair(){{
     <button class="btn-pdf" onclick="window.print()">🖨️<span class="btxt"> PDF</span></button>
 <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
     <button class="btn-predit" onclick="abrirAnalisePredit()">🔮<span class="btxt"> Preditiva</span></button>
+    <button class="btn-intelig" onclick="abrirInteligencia()">🔍<span class="btxt"> Inteligência</span></button>
     <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
     <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
     <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
@@ -2607,6 +2611,23 @@ function previsao() {{
 
 function fecharPrevisao() {{
   document.getElementById('prev-overlay').classList.remove('ativo');
+}}
+
+// ── INTELIGÊNCIA CRIMINAL ─────────────────────────────────────────────────────
+function abrirInteligencia() {{
+  const url = 'inteligencia_criminal.html';
+  fetch(url, {{method:'HEAD'}})
+    .then(r => {{
+      if(r.ok) {{
+        window.open(url, '_blank');
+      }} else {{
+        alert('Relatório não encontrado.\\n\\nExecute primeiro:\\npython analisar_bos.py\\n\\nO relatório é gerado localmente e não fica no servidor por segurança.');
+      }}
+    }})
+    .catch(() => {{
+      // Modo local — tenta abrir direto
+      window.open(url, '_blank');
+    }});
 }}
 
 // ── ANÁLISE PREDITIVA CRIMINAL ────────────────────────────────────────────────
