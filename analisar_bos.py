@@ -490,7 +490,7 @@ def main():
         objetos = list(set(o for x in grupo for o in x[0]["objetos"]))[:5]
         mo_tags = list(set(t for x in grupo for t in x[0]["mo_tags"]))[:6]
         crimes  = [{
-            "numero":  x[0]["numero"] or x[0]["arquivo"].replace(".pdf",""),
+            "numero":  x[0]["arquivo"].replace(".pdf",""),
             "data":    x[0]["data_fato"],
             "hora":    x[0]["hora_fato"],
             "turno":   x[0]["turno"],
