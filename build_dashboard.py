@@ -866,15 +866,6 @@ function sair(){{
 <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
     <button class="btn-predit" onclick="abrirAnalisePredit()">🔮<span class="btxt"> Preditiva</span></button>
     <button class="btn-intelig" onclick="abrirInteligencia()">🔍<span class="btxt"> Inteligência</span></button>
-    <div style="display:flex;align-items:center;gap:4px;margin-left:4px">
-      <input id="pesquisa-input" type="text" placeholder="🔎 Pesquisar..." autocomplete="off"
-        style="border:1.5px solid #ccc;border-radius:4px;padding:4px 10px;font-size:11px;width:160px;font-family:inherit;outline:none"
-        oninput="onPesquisaInput(this.value)"
-        onkeydown="if(event.key==='Enter')executarPesquisa()"
-        onfocus="this.style.borderColor='#2E6DA4'" onblur="this.style.borderColor='#ccc'">
-      <button onclick="executarPesquisa()" style="background:#2E6DA4;color:white;border:none;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:600">Buscar</button>
-      <button id="pesquisa-limpar" onclick="limparPesquisa()" style="display:none;background:#888;color:white;border:none;border-radius:4px;padding:5px 8px;font-size:11px;cursor:pointer">✕</button>
-    </div>
     <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
     <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
     <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
@@ -888,6 +879,25 @@ function sair(){{
     <div class="sidebar-topbar">
       <span>🔎 Filtros</span>
       <button class="sidebar-close" onclick="toggleSidebar()" title="Fechar filtros">✕</button>
+    </div>
+
+    <!-- Campo de Pesquisa -->
+    <div style="padding:10px 10px 6px;border-bottom:1px solid #E8E8E8">
+      <div style="font-size:10px;font-weight:700;color:#1A1A2E;margin-bottom:5px;letter-spacing:.3px">🔍 PESQUISAR</div>
+      <div style="display:flex;gap:4px">
+        <input id="pesquisa-input" type="text" placeholder="Digite e pressione Enter..." autocomplete="off"
+          style="flex:1;border:1.5px solid #CBD5E1;border-radius:5px;padding:5px 8px;font-size:11px;font-family:inherit;outline:none;min-width:0"
+          oninput="onPesquisaInput(this.value)"
+          onkeydown="if(event.key==='Enter')executarPesquisa()"
+          onfocus="this.style.borderColor='#2E6DA4'" onblur="this.style.borderColor='#CBD5E1'">
+        <button id="pesquisa-limpar" onclick="limparPesquisa()" title="Limpar pesquisa"
+          style="display:none;background:#E0E0E0;border:none;border-radius:5px;padding:5px 7px;font-size:11px;cursor:pointer;color:#555">✕</button>
+      </div>
+      <button onclick="executarPesquisa()"
+        style="width:100%;margin-top:5px;background:linear-gradient(135deg,#1A3A5C,#2E6DA4);color:white;border:none;border-radius:5px;padding:6px;font-size:11px;cursor:pointer;font-weight:600;letter-spacing:.3px">
+        🔎 Buscar no Dashboard e B.O.s
+      </button>
+      <div id="pesquisa-badge" style="display:none;margin-top:5px;font-size:10px;color:#2E6DA4;font-weight:600;text-align:center"></div>
     </div>
 
     <div class="filter-group">
@@ -2643,6 +2653,8 @@ function limparPesquisa() {{
   pesquisaQ = '';
   document.getElementById('pesquisa-input').value = '';
   document.getElementById('pesquisa-limpar').style.display = 'none';
+  const badge = document.getElementById('pesquisa-badge');
+  if(badge) {{ badge.style.display='none'; badge.textContent=''; }}
   renderAll(filtered());
 }}
 function fecharPesquisa() {{
@@ -2711,6 +2723,12 @@ function executarPesquisa() {{
     `"${{termo}}" — ${{ocsDash.length}} no dashboard · ${{boResult.length}} nos B.O.s`;
   document.getElementById('pesquisa-corpo').innerHTML = dashHtml + boHtml;
   document.getElementById('pesquisa-overlay').classList.add('ativo');
+  // Badge na sidebar
+  const badge = document.getElementById('pesquisa-badge');
+  if(badge) {{
+    badge.style.display = '';
+    badge.textContent = `✅ ${{ocsDash.length}} no dash · ${{boResult.length}} nos B.O.s`;
+  }}
 }}
 
 // ── INTELIGÊNCIA CRIMINAL ─────────────────────────────────────────────────────
