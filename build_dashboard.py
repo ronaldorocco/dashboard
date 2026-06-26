@@ -306,6 +306,8 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .pesquisa-header input::placeholder{{color:rgba(255,255,255,.6);}}
 .pesquisa-header input:focus{{border-color:rgba(255,255,255,.8);background:rgba(255,255,255,.2);}}
 .pesquisa-header input::-webkit-search-cancel-button{{display:none;}}
+.btn-pdf-r1{{display:none;}}
+.btn-pdf-r2{{display:inline-flex;}}
 .header .sub{{font-size:11px;opacity:.8;margin-top:2px;}}
 .header-right{{display:flex;gap:7px;align-items:center;flex-shrink:0;}}
 .btxt{{}}
@@ -588,6 +590,11 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
   .pesquisa-header input{{width:100%;min-width:0;box-sizing:border-box;}}
   .btn-sair{{flex-shrink:0;padding:5px 10px;font-size:11px;}}
 
+  /* Botões: somente ícones no mobile */
+  .btxt{{display:none !important;}}
+  .btn-pdf-r1{{display:block;}}
+  .btn-pdf-r2{{display:none;}}
+
   /* Header row 2: scroll horizontal, sem quebra */
   .header-row2{{
     padding:4px 8px 5px;gap:4px;
@@ -595,7 +602,7 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
     scrollbar-width:none;-ms-overflow-style:none;
   }}
   .header-row2::-webkit-scrollbar{{display:none;}}
-  .header-row2 button{{flex-shrink:0;padding:5px 8px;font-size:10px;white-space:nowrap;}}
+  .header-row2 button{{flex-shrink:0;padding:5px 10px;font-size:13px;white-space:nowrap;}}
 
   .badge{{display:none;}}
   .menu-toggle{{display:block;flex-shrink:0;}}
@@ -904,11 +911,12 @@ function sair(){{
         style="display:none;background:rgba(255,255,255,.2);color:white;border:none;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer">✕</button>
     </div>
     <button class="btn-reset" onclick="resetFilters()">⟳<span class="btxt"> Limpar</span></button>
+    <button class="btn-pdf btn-pdf-r1" onclick="window.print()">🖨️</button>
     <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
   </div>
   <!-- Linha 2: botões de ação -->
   <div class="header-row2">
-    <button class="btn-pdf" onclick="window.print()">🖨️<span class="btxt"> PDF</span></button>
+    <button class="btn-pdf btn-pdf-r2" onclick="window.print()">🖨️<span class="btxt"> PDF</span></button>
     <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
     <button class="btn-predit" onclick="abrirAnalisePredit()">🔮<span class="btxt"> Preditiva</span></button>
     <button class="btn-intelig" onclick="abrirInteligencia()">🔍<span class="btxt"> Inteligência</span></button>
