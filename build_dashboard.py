@@ -2989,29 +2989,29 @@ function filterNumeroSerie(q) {{
 
 
 function buildSidebar() {{
-  const all = filtered();
-  const allCounts = k => count(RAW,k);
+  const RAWU = dedupBO(RAW); // RAW deduplicado por B.O. (ocorrências)
+  const ocCounts = k => count(RAWU, k); // conta ocorrências (não itens)
 
-  const anos         = [...new Set(RAW.map(r=>String(r.ano)))].sort((a,b)=>a-b);
-  const anoCnts      = {{}}; RAW.forEach(r=>{{ const k=String(r.ano); anoCnts[k]=(anoCnts[k]||0)+1; }});
-  const meses        = [...new Set(RAW.map(r=>r.mes))].sort();
-  const turnos       = ['Manhã','Tarde','Noite','Madrugada'];
-  const tipos        = [...new Set(RAW.map(r=>r.tipo))].sort();
-  const bairros      = sortedEntries(count(RAW,'bairro')).map(e=>e[0]);
-  const itens        = sortedEntries(count(RAW,'item')).map(e=>e[0]);
-  const dias         = DIA_ORDER.filter(d=>RAW.some(r=>r.dia===d));
-  const logradouros  = [...new Set(RAW.map(r=>r.endereco).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const recuperados  = sortedEntries(count(RAW,'recuperado')).map(e=>e[0]).filter(Boolean);
+  const anos        = [...new Set(RAWU.map(r=>String(r.ano)))].sort((a,b)=>a-b);
+  const anoCnts     = {{}}; RAWU.forEach(r=>{{ const k=String(r.ano); anoCnts[k]=(anoCnts[k]||0)+1; }});
+  const meses       = [...new Set(RAWU.map(r=>r.mes))].sort();
+  const turnos      = ['Manhã','Tarde','Noite','Madrugada'];
+  const tipos       = [...new Set(RAWU.map(r=>r.tipo))].sort();
+  const bairros     = sortedEntries(count(RAWU,'bairro')).map(e=>e[0]);
+  const itens       = sortedEntries(count(RAW,'item')).map(e=>e[0]); // itens: usa RAW completo
+  const dias        = DIA_ORDER.filter(d=>RAWU.some(r=>r.dia===d));
+  const logradouros = [...new Set(RAWU.map(r=>r.endereco).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const recuperados = sortedEntries(count(RAWU,'recuperado')).map(e=>e[0]).filter(Boolean);
 
   buildCheckboxes('filter-ano',        'ano',        anos,        anoCnts);
-  buildCheckboxes('filter-mes',        'mes',        meses,       allCounts('mes'));
-  buildCheckboxes('filter-turno',      'turno',      turnos,      allCounts('turno'));
-  buildCheckboxes('filter-tipo',       'tipo',        tipos,      allCounts('tipo'));
-  buildCheckboxes('filter-bairro',     'bairro',     bairros,     allCounts('bairro'));
-  buildCheckboxes('filter-item',       'item',        itens,      allCounts('item'));
-  buildCheckboxes('filter-dia',        'dia',         dias,       allCounts('dia'));
-  buildCheckboxes('filter-logradouro', 'logradouro', logradouros, count(RAW,'endereco'));
-  buildCheckboxes('filter-recuperado', 'recuperado', recuperados, allCounts('recuperado'));
+  buildCheckboxes('filter-mes',        'mes',        meses,       ocCounts('mes'));
+  buildCheckboxes('filter-turno',      'turno',      turnos,      ocCounts('turno'));
+  buildCheckboxes('filter-tipo',       'tipo',        tipos,      ocCounts('tipo'));
+  buildCheckboxes('filter-bairro',     'bairro',     bairros,     ocCounts('bairro'));
+  buildCheckboxes('filter-item',       'item',        itens,      count(RAW,'item')); // itens: conta cada item
+  buildCheckboxes('filter-dia',        'dia',         dias,       ocCounts('dia'));
+  buildCheckboxes('filter-logradouro', 'logradouro', logradouros, count(RAWU,'endereco'));
+  buildCheckboxes('filter-recuperado', 'recuperado', recuperados, ocCounts('recuperado'));
 }}
 
 // ── RUAS ─────────────────────────────────────────────────────────────────────
