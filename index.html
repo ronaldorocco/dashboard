@@ -103,6 +103,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .btn-prev{background:#C05700;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
 .btn-prev:hover{background:#8F3F00;}
+.btn-predit{background:linear-gradient(135deg,#4A0E8F,#7B2FBE);color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
+.btn-predit:hover{background:linear-gradient(135deg,#3A0A6F,#5A1F9E);}
 .btn-relatorio{background:#0097A7;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
 .btn-relatorio:hover{background:#006978;}
@@ -626,6 +629,7 @@ function sair(){
     <button class="btn-reset" onclick="resetFilters()">⟳<span class="btxt"> Limpar</span></button>
     <button class="btn-pdf" onclick="window.print()">🖨️<span class="btxt"> PDF</span></button>
 <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
+    <button class="btn-predit" onclick="abrirAnalisePredit()">🔮<span class="btxt"> Preditiva</span></button>
     <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
     <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
     <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
@@ -2380,6 +2384,267 @@ function fecharPrevisao() {
   document.getElementById('prev-overlay').classList.remove('ativo');
 }
 
+// ── ANÁLISE PREDITIVA CRIMINAL ────────────────────────────────────────────────
+function fecharAnalisePredit() {
+  document.getElementById('predit-overlay').classList.remove('ativo');
+}
+function imprimirAnalisePredit() {
+  const corpo = document.getElementById('predit-corpo').innerHTML;
+  const w = window.open('','_blank','width=1000,height=760');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>Análise Preditiva — Guarda Municipal BC</title>
+    <style>body{font-family:'Segoe UI',Arial,sans-serif;padding:24px;font-size:12px;}
+    table{border-collapse:collapse;width:100%;} th,td{border:1px solid #ddd;padding:6px 10px;}
+    th{background:#2D0B6E;color:white;} .badge{border-radius:4px;padding:2px 7px;font-weight:700;font-size:11px;}
+    </style></head><body>${corpo}</body></html>`);
+  w.document.close(); w.print();
+}
+function abrirAnalisePredit() {
+  const RAWU = dedupBO(RAW);
+  const agora = new Date();
+  const dataHoje = agora.toLocaleDateString('pt-BR');
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const DIAS_ORD = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+  const TURNS    = ['Manhã','Tarde','Noite','Madrugada'];
+  const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  function linReg(xs, ys) {
+    const n=xs.length; if(n<2) return {m:0,b:ys[0]||0,predict:()=>ys[0]||0};
+    const mx=xs.reduce((a,b)=>a+b,0)/n, my=ys.reduce((a,b)=>a+b,0)/n;
+    const num=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0);
+    const den=xs.reduce((s,x)=>s+(x-mx)**2,0);
+    const m=den?num/den:0, b=my-m*mx;
+    return {m,b,predict:x=>Math.max(0,m*x+b)};
+  }
+  function addMon(ym,n){
+    let [y,m]=ym.split('-').map(Number); m+=n;
+    while(m>12){m-=12;y++;} while(m<1){m+=12;y--;}
+    return y+'-'+(m<10?'0'+m:m);
+  }
+  function ymLbl(ym){
+    const [y,mo]=ym.split('-');
+    return MESES_PT[parseInt(mo)-1]+'/'+y.slice(2);
+  }
+  function riscoBadge(r){
+    const cfg={
+      'Crítico':['#D13438','🔴'],
+      'Alto':   ['#E07B00','🟠'],
+      'Médio':  ['#E6A817','🟡'],
+      'Baixo':  ['#107C10','🟢'],
+    }; const [cor,ic]=cfg[r]||['#888','⚪'];
+    return `<span class="badge" style="background:${cor};color:white">${ic} ${r}</span>`;
+  }
+
+  // ── 1. Agregação mensal global ──────────────────────────────────────────────
+  const monGlobal={};
+  RAWU.forEach(r=>{ if(r.data){ const k=r.data.slice(0,7); monGlobal[k]=(monGlobal[k]||0)+1; } });
+  const mesesGlobal=Object.keys(monGlobal).sort();
+  const contsGlobal=mesesGlobal.map(m=>monGlobal[m]);
+  const regG=linReg(mesesGlobal.map((_,i)=>i), contsGlobal);
+  const ultimoMesChave=mesesGlobal[mesesGlobal.length-1]||'';
+  const prev30 = Math.round(regG.predict(mesesGlobal.length));
+  const prev60 = Math.round(regG.predict(mesesGlobal.length+1));
+  const prev90 = Math.round(regG.predict(mesesGlobal.length+2));
+  const tendPct = contsGlobal.length>=2 ? ((regG.m/(contsGlobal.reduce((a,b)=>a+b,0)/contsGlobal.length))*100).toFixed(1) : '0';
+  const tendSeta = regG.m>0.5?'▲ Crescente':regG.m<-0.5?'▼ Decrescente':'→ Estável';
+  const tendCor  = regG.m>0.5?'#D13438':regG.m<-0.5?'#107C10':'#555';
+
+  // ── 2. Risco por bairro ────────────────────────────────────────────────────
+  const bairroSet=[...new Set(RAWU.map(r=>r.bairro).filter(Boolean))];
+  const bairroStats=bairroSet.map(b=>{
+    const recs=RAWU.filter(r=>r.bairro===b);
+    const mb={};
+    recs.forEach(r=>{ if(r.data){const k=r.data.slice(0,7);mb[k]=(mb[k]||0)+1;} });
+    const ms=Object.keys(mb).sort(), cs=ms.map(m=>mb[m]);
+    const med=cs.length?cs.reduce((a,v)=>a+v,0)/cs.length:0;
+    const std=cs.length>1?Math.sqrt(cs.reduce((s,v)=>s+(v-med)**2,0)/cs.length):0;
+    const recente=mb[ultimoMesChave]||0;
+    const z=std>0?(recente-med)/std:0;
+    const pctVsMed=med>0?Math.round((recente-med)/med*100):0;
+    const tipoFreq={};
+    recs.forEach(r=>{ if(r.tipo) tipoFreq[r.tipo]=(tipoFreq[r.tipo]||0)+1; });
+    const topTipo=Object.entries(tipoFreq).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+    let risco='Baixo';
+    if(z>=1.5) risco='Crítico'; else if(z>=0.5) risco='Alto'; else if(z>=-0.5) risco='Médio';
+    return {b,total:recs.length,recente,med:med.toFixed(1),z,risco,pctVsMed,topTipo};
+  }).sort((a,b)=>b.total-a.total).slice(0,10);
+
+  // ── 3. Período crítico (dia × turno) ──────────────────────────────────────
+  const dtMap={};
+  RAWU.forEach(r=>{ if(r.dia&&r.turno){ const k=r.dia+'|'+r.turno; dtMap[k]=(dtMap[k]||0)+1; } });
+  const topPeriodo=Object.entries(dtMap).sort((a,b)=>b[1]-a[1])[0]||['—|—',0];
+  const [tpDia,tpTurno]=topPeriodo[0].split('|');
+  const totalOcs=RAWU.length||1;
+
+  // ── 4. Alertas automáticos ─────────────────────────────────────────────────
+  const now30 = new Date(agora); now30.setDate(now30.getDate()-30);
+  const prev30d= new Date(agora); prev30d.setDate(prev30d.getDate()-60);
+  const fmt=d=>d.toISOString().slice(0,10);
+  const rec30=RAWU.filter(r=>r.data&&r.data>=fmt(now30));
+  const ant30=RAWU.filter(r=>r.data&&r.data>=fmt(prev30d)&&r.data<fmt(now30));
+
+  const alertas=[];
+  function checkAlerta(label, valRec, valAnt){
+    if(valAnt===0) return;
+    const delta=((valRec-valAnt)/valAnt*100).toFixed(0);
+    if(delta>25) alertas.push({ic:'🔴',cor:'#D13438',msg:`${label}: aumento de ${delta}% nos últimos 30 dias vs período anterior`,nivel:'Crítico'});
+    else if(delta>10) alertas.push({ic:'🟠',cor:'#E07B00',msg:`${label}: aumento de ${delta}% nos últimos 30 dias`,nivel:'Alto'});
+    else if(delta<-15) alertas.push({ic:'🟢',cor:'#107C10',msg:`${label}: queda de ${Math.abs(delta)}% — tendência positiva`,nivel:'Baixo'});
+  }
+  const tipos=[...new Set(RAWU.map(r=>r.tipo).filter(Boolean))];
+  tipos.forEach(t=>checkAlerta('Tipo: '+t, rec30.filter(r=>r.tipo===t).length, ant30.filter(r=>r.tipo===t).length));
+  bairroStats.slice(0,5).forEach(bs=>checkAlerta('Bairro: '+bs.b, rec30.filter(r=>r.bairro===bs.b).length, ant30.filter(r=>r.bairro===bs.b).length));
+  checkAlerta('Total geral', rec30.length, ant30.length);
+  if(alertas.length===0) alertas.push({ic:'🟢',cor:'#107C10',msg:'Nenhuma variação crítica detectada no período recente',nivel:'Normal'});
+
+  // ── 5. Recomendações ───────────────────────────────────────────────────────
+  const recs=[];
+  const bCrit=bairroStats.filter(b=>b.risco==='Crítico'||b.risco==='Alto');
+  if(bCrit.length) recs.push(`🚔 Reforçar policiamento ostensivo no(s) bairro(s): <b>${bCrit.slice(0,3).map(b=>b.b).join(', ')}</b>`);
+  recs.push(`⏰ Ampliar rondas no turno <b>${tpTurno}</b> — período de maior concentração de ocorrências`);
+  recs.push(`📅 Atenção especial nas <b>${tpDia}s</b> — dia com maior histórico de ocorrências`);
+  const topTipoGlobal=tipos.map(t=>([t,RAWU.filter(r=>r.tipo===t).length])).sort((a,b)=>b[1]-a[1])[0];
+  if(topTipoGlobal) recs.push(`🔍 Estratégia específica para combate a <b>${topTipoGlobal[0]}</b> — crime mais frequente (${topTipoGlobal[1]} ocorrências)`);
+  if(regG.m>0.5) recs.push(`📈 Tendência crescente identificada — considerar reforço de efetivo preventivo`);
+  recs.push(`🤝 Integrar ações com Polícia Militar, Polícia Civil e agentes de trânsito nas áreas críticas`);
+
+  // ── 6. Projeção visual (barras CSS) ────────────────────────────────────────
+  const ultMeses=mesesGlobal.slice(-4);
+  const ultConts=ultMeses.map(m=>monGlobal[m]);
+  const projMeses=[addMon(ultimoMesChave||'',1),addMon(ultimoMesChave||'',2),addMon(ultimoMesChave||'',3)];
+  const projConts=[prev30,prev60,prev90];
+  const maxBar=Math.max(...ultConts,...projConts,1);
+
+  function barRow(lbl, val, cor, isProj){
+    const pct=Math.round(val/maxBar*100);
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="width:52px;font-size:10px;color:#555;text-align:right">${lbl}</span>
+      <div style="flex:1;background:#F0F0F0;border-radius:4px;height:22px;position:relative">
+        <div style="width:${pct}%;background:${cor};height:22px;border-radius:4px;${isProj?'opacity:.7;background:repeating-linear-gradient(45deg,'+cor+','+cor+' 4px,rgba(255,255,255,.3) 4px,rgba(255,255,255,.3) 8px)':''}"></div>
+        <span style="position:absolute;left:${Math.min(pct+1,60)}%;top:3px;font-size:10px;font-weight:700;color:#333">${val}${isProj?' (proj.)':''}</span>
+      </div>
+    </div>`;
+  }
+
+  // ── Heatmap dia × turno (HTML) ─────────────────────────────────────────────
+  const maxDT=Math.max(...DIAS_ORD.flatMap(d=>TURNS.map(t=>dtMap[d+'|'+t]||0)),1);
+  function heatCell(val){
+    const p=val/maxDT;
+    const bg=p>=0.7?'#D13438':p>=0.45?'#E07B00':p>=0.2?'#FFD966':'#E8F4FD';
+    const fg=p>=0.45?'white':'#333';
+    const pctTot=Math.round(val/totalOcs*100);
+    return `<td style="text-align:center;padding:5px 4px;background:${bg};color:${fg};font-size:10px;font-weight:${val>0?'700':'400'};border-radius:3px">${val>0?val+' <span style=\'font-size:8px;opacity:.8\'>'+pctTot+'%</span>':'—'}</td>`;
+  }
+  const heatRows=DIAS_ORD.map(d=>`<tr><td style="padding:5px 10px;font-size:10px;font-weight:600;white-space:nowrap">${d}</td>
+    ${TURNS.map(t=>heatCell(dtMap[d+'|'+t]||0)).join('')}</tr>`).join('');
+
+  // ── Monta HTML do modal ────────────────────────────────────────────────────
+  document.getElementById('predit-corpo').innerHTML = `
+  <div style="font-size:10px;color:#888;margin-bottom:14px">
+    Gerado em: ${dataHoje} às ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+    &nbsp;•&nbsp; Base: ${RAWU.length} ocorrências (deduplicadas por B.O.)
+    &nbsp;•&nbsp; <span style="color:#7B2FBE;font-weight:700">IA • Regressão Linear + Análise Estatística</span>
+  </div>
+
+  <!-- KPIs -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:18px">
+    <div style="background:#F5F0FF;border-left:4px solid #7B2FBE;border-radius:8px;padding:12px 14px">
+      <div style="font-size:22px;font-weight:700;color:#7B2FBE">~${prev30}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Previsão próximos 30 dias</div>
+      <div style="font-size:10px;color:#888">60d: ~${prev60} &nbsp;•&nbsp; 90d: ~${prev90}</div>
+    </div>
+    <div style="background:#FFF5F5;border-left:4px solid #D13438;border-radius:8px;padding:12px 14px">
+      <div style="font-size:16px;font-weight:700;color:#D13438;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bairroStats[0]?.b||'—'}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Bairro mais crítico</div>
+      <div style="font-size:10px;color:#888">${bairroStats[0]?.total||0} ocorrências históricas</div>
+    </div>
+    <div style="background:#FFF8EC;border-left:4px solid #E07B00;border-radius:8px;padding:12px 14px">
+      <div style="font-size:16px;font-weight:700;color:#E07B00">${tpDia} / ${tpTurno}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Período de maior risco</div>
+      <div style="font-size:10px;color:#888">${topPeriodo[1]} ocorrências históricas (${Math.round(topPeriodo[1]/totalOcs*100)}% do total)</div>
+    </div>
+    <div style="background:#F0FFF0;border-left:4px solid ${tendCor};border-radius:8px;padding:12px 14px">
+      <div style="font-size:18px;font-weight:700;color:${tendCor}">${tendSeta}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">Tendência geral</div>
+      <div style="font-size:10px;color:#888">${Math.abs(tendPct)}% ao mês</div>
+    </div>
+  </div>
+
+  <!-- Alertas -->
+  <div style="margin-bottom:18px">
+    <div style="font-size:12px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #7B2FBE;padding-bottom:5px;margin-bottom:10px">⚠️ Alertas Automáticos</div>
+    ${alertas.slice(0,6).map(a=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#FAFAFA;border-left:3px solid ${a.cor};border-radius:4px;margin-bottom:5px;font-size:11px">
+      <span style="font-size:14px">${a.ic}</span>
+      <span style="flex:1">${a.msg}</span>
+      <span class="badge" style="background:${a.cor};color:white;white-space:nowrap">${a.nivel}</span>
+    </div>`).join('')}
+  </div>
+
+  <!-- Dois blocos lado a lado -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+
+    <!-- Risco por bairro -->
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #7B2FBE;padding-bottom:5px;margin-bottom:8px">📊 Classificação de Risco por Bairro</div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <thead><tr style="background:#F0EAF8">
+          <th style="padding:5px 8px;text-align:left">Bairro</th>
+          <th style="padding:5px 8px;text-align:center">Risco</th>
+          <th style="padding:5px 8px;text-align:center">Ocor.</th>
+          <th style="padding:5px 8px;text-align:center">vs Média</th>
+          <th style="padding:5px 8px;text-align:left">Crime +freq.</th>
+        </tr></thead>
+        <tbody>
+        ${bairroStats.map((bs,i)=>`<tr style="background:${i%2?'#FAFAFA':'white'}">
+          <td style="padding:4px 8px;font-weight:600">${bs.b}</td>
+          <td style="padding:4px 8px;text-align:center">${riscoBadge(bs.risco)}</td>
+          <td style="padding:4px 8px;text-align:center;font-weight:700">${bs.total}</td>
+          <td style="padding:4px 8px;text-align:center;color:${bs.pctVsMed>0?'#D13438':'#107C10'};font-weight:700">${bs.pctVsMed>0?'+':''}${bs.pctVsMed}%</td>
+          <td style="padding:4px 8px;color:#555">${bs.topTipo}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Heatmap -->
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #7B2FBE;padding-bottom:5px;margin-bottom:8px">🗓️ Mapa de Risco — Dia × Turno</div>
+      <table style="width:100%;border-collapse:separate;border-spacing:3px;font-size:10px">
+        <thead><tr>
+          <th style="padding:4px;text-align:left;font-size:10px"></th>
+          ${TURNS.map(t=>`<th style="padding:4px 6px;text-align:center;font-size:10px;color:#555">${t}</th>`).join('')}
+        </tr></thead>
+        <tbody>${heatRows}</tbody>
+      </table>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;font-size:9px;color:#777">
+        <span>🟥 Alto &nbsp; 🟧 Médio-alto &nbsp; 🟨 Médio &nbsp; 🟦 Baixo</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projeção -->
+  <div style="margin-bottom:18px">
+    <div style="font-size:12px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #7B2FBE;padding-bottom:5px;margin-bottom:10px">📈 Projeção — Histórico + Previsão 90 Dias</div>
+    <div style="font-size:10px;color:#888;margin-bottom:8px">Histórico recente (azul) vs projeção por IA/regressão linear (roxo tracejado)</div>
+    ${ultMeses.map((m,i)=>barRow(ymLbl(m), ultConts[i], '#0078D4', false)).join('')}
+    ${projMeses.map((m,i)=>barRow(ymLbl(m), projConts[i], '#7B2FBE', true)).join('')}
+  </div>
+
+  <!-- Recomendações -->
+  <div>
+    <div style="font-size:12px;font-weight:700;color:#1A1A2E;border-bottom:2px solid #7B2FBE;padding-bottom:5px;margin-bottom:10px">🎯 Recomendações Operacionais (IA)</div>
+    ${recs.map(r=>`<div style="padding:8px 12px;background:#F9F5FF;border-left:3px solid #7B2FBE;border-radius:4px;margin-bottom:6px;font-size:11px;line-height:1.5">${r}</div>`).join('')}
+    <div style="margin-top:12px;font-size:10px;color:#aaa;text-align:center;font-style:italic">
+      ⚠️ A análise preditiva estima riscos em locais e períodos com base em padrões históricos.
+      Não identifica indivíduos nem prevê quem cometerá crimes. Ferramenta de apoio ao planejamento operacional.
+    </div>
+  </div>`;
+
+  document.getElementById('predit-overlay').classList.add('ativo');
+}
+
 function imprimirPrevisao() {
   const corpo = document.getElementById('prev-corpo').innerHTML;
   const titulo = document.getElementById('prev-titulo').textContent;
@@ -3422,6 +3687,23 @@ else { window.addEventListener('load', init); }
     <div class="login-error" id="login-erro"></div>
     <div style="margin-top:20px;text-align:center;font-size:10px;color:#aaa;line-height:1.5">
       Desenvolvido por <strong style="color:#888">Ronaldo E. Barbosa</strong> — Guarda Municipal
+    </div>
+  </div>
+</div>
+<!-- ── MODAL ANÁLISE PREDITIVA ── -->
+<div class="analise-overlay" id="predit-overlay" onclick="if(event.target===this)fecharAnalisePredit()">
+  <div class="analise-box" style="width:min(980px,97vw);max-height:93vh">
+    <div class="analise-header" style="background:linear-gradient(135deg,#2D0B6E 0%,#7B2FBE 100%)">
+      <div>
+        <h2>🔮 Análise Preditiva Criminal — Inteligência Artificial</h2>
+        <div style="font-size:10px;opacity:.85;margin-top:2px">Secretaria de Segurança e Ordem Pública — Balneário Camboriú</div>
+      </div>
+      <button class="analise-close" onclick="fecharAnalisePredit()" title="Fechar">✕</button>
+    </div>
+    <div class="analise-corpo" id="predit-corpo" style="padding:18px 20px;overflow-y:auto"></div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharAnalisePredit()">✕ Fechar</button>
+      <button class="btn-pdf" onclick="imprimirAnalisePredit()">🖨️ Salvar PDF</button>
     </div>
   </div>
 </div>
