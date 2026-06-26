@@ -903,11 +903,11 @@ function sair(){{
       <button id="pesquisa-limpar" onclick="limparPesquisa()" title="Limpar"
         style="display:none;background:rgba(255,255,255,.2);color:white;border:none;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer">✕</button>
     </div>
+    <button class="btn-reset" onclick="resetFilters()">⟳<span class="btxt"> Limpar</span></button>
     <button class="btn-sair" onclick="sair()">🔒<span class="btxt"> Sair</span></button>
   </div>
   <!-- Linha 2: botões de ação -->
   <div class="header-row2">
-    <button class="btn-reset" onclick="resetFilters()">⟳<span class="btxt"> Limpar</span></button>
     <button class="btn-pdf" onclick="window.print()">🖨️<span class="btxt"> PDF</span></button>
     <button class="btn-analise" onclick="analiseDiaria()">📋<span class="btxt"> Análise</span></button>
     <button class="btn-predit" onclick="abrirAnalisePredit()">🔮<span class="btxt"> Preditiva</span></button>
