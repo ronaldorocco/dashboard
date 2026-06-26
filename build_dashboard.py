@@ -1326,18 +1326,20 @@ function renderBairro(data) {{
   if(typeof Plotly === 'undefined') return;
 
   const c = count(data,'bairro');
-  const entries = sortedEntries(c);
-  const labels = entries.map(e=>e[0]).reverse();
+  const entries = sortedEntries(c).slice(0,10); // top 10
+  const rawLabels = entries.map(e=>e[0]);
+  const labels = rawLabels.map(l=>l.length>22?l.slice(0,20)+'…':l).reverse();
   const vals   = entries.map(e=>e[1]).reverse();
   const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:COLORS.azulClr);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
-    yaxis:{{tickfont:{{size:10}},automargin:true}},
-    margin:{{l:80,r:30,t:4,b:24}},
+    yaxis:{{tickfont:{{size:10}},automargin:false}},
+    margin:{{l:130,r:30,t:4,b:24}},
   }};
   Plotly.react('chart-bairro', barH(labels,vals,colors), layout, CONFIG);
   document.getElementById('chart-bairro').on('plotly_click', e => {{
-    toggleFilter('bairro', e.points[0].y);
+    const idx = labels.indexOf(e.points[0].y);
+    toggleFilter('bairro', idx>=0 ? rawLabels.slice().reverse()[idx] : e.points[0].y);
   }});
 }}
 
@@ -3025,14 +3027,14 @@ function renderRuas(data) {{
   if(typeof Plotly === 'undefined') return;
 
   const c = count(data,'endereco');
-  const entries = sortedEntries(c).filter(e=>e[0]&&e[0]!=='').slice(0,15);
-  const labels = entries.map(e=>e[0]).reverse();
+  const entries = sortedEntries(c).filter(e=>e[0]&&e[0]!=='').slice(0,10); // top 10
+  const labels = entries.map(e=>e[0]).map(l=>l.length>30?l.slice(0,28)+'…':l).reverse();
   const vals   = entries.map(e=>e[1]).reverse();
   const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:i>labels.length-4?COLORS.laranja:COLORS.azulClr);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
-    yaxis:{{tickfont:{{size:10}},automargin:true}},
-    margin:{{l:160,r:36,t:4,b:24}},
+    yaxis:{{tickfont:{{size:9}},automargin:false}},
+    margin:{{l:190,r:36,t:4,b:24}},
   }};
   Plotly.react('chart-ruas', barH(labels,vals,colors), layout, CONFIG);
 }}
@@ -3042,14 +3044,14 @@ function renderRefs(data) {{
   if(typeof Plotly === 'undefined') return;
 
   const c = count(data,'ref');
-  const entries = sortedEntries(c).filter(e=>e[0]&&e[0]!=='').slice(0,15);
-  const labels = entries.map(e=>e[0]).map(l=>l.length>35?l.slice(0,33)+'…':l).reverse();
+  const entries = sortedEntries(c).filter(e=>e[0]&&e[0]!=='').slice(0,10); // top 10
+  const labels = entries.map(e=>e[0]).map(l=>l.length>32?l.slice(0,30)+'…':l).reverse();
   const vals   = entries.map(e=>e[1]).reverse();
   const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:i>labels.length-4?COLORS.laranja:COLORS.azulClr);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
-    yaxis:{{tickfont:{{size:9.5}},automargin:true}},
-    margin:{{l:220,r:36,t:4,b:24}},
+    yaxis:{{tickfont:{{size:9}},automargin:false}},
+    margin:{{l:210,r:36,t:4,b:24}},
   }};
   Plotly.react('chart-refs', barH(labels,vals,colors), layout, CONFIG);
 }}
