@@ -363,14 +363,12 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
   .btn-pdf-r1{display:block;}
   .btn-pdf-r2{display:none;}
 
-  /* Header row 2: scroll horizontal, sem quebra */
+  /* Header row 2: todos na mesma linha */
   .header-row2{
-    padding:4px 8px 5px;gap:4px;
-    flex-wrap:nowrap;overflow-x:auto;
-    scrollbar-width:none;-ms-overflow-style:none;
+    padding:3px 6px 4px;gap:2px;
+    flex-wrap:nowrap;overflow-x:hidden;
   }
-  .header-row2::-webkit-scrollbar{display:none;}
-  .header-row2 button{flex-shrink:0;padding:5px 10px;font-size:13px;white-space:nowrap;}
+  .header-row2 button{flex:1;min-width:0;padding:4px 2px;font-size:10px;white-space:nowrap;text-align:center;}
 
   .badge{display:none;}
   .menu-toggle{display:block;flex-shrink:0;}
