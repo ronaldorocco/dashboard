@@ -242,6 +242,8 @@ for _, r in df.iterrows():
         'item': r['ITEM'],
         'descricao': r['DESCRICAO'],
         'marca': str(r['MARCA_MODELO']) if 'MARCA_MODELO' in df.columns and pd.notna(r['MARCA_MODELO']) else '',
+        'cor': clean_text_cell(r, 'COR'),
+        'detalhes': clean_text_cell(r, 'DETALHES'),
         'imei': clean_text_cell(r, 'IMEI'),
         'placa': clean_text_cell(r, 'PLACA'),
         'numero_serie': clean_text_cell(r, 'NUMERO_SERIE'),
@@ -999,6 +1001,16 @@ function sair(){{
     </div>
 
     <div class="filter-group">
+      <span class="filter-label">Cor</span>
+      <input id="filter-cor-input" class="filter-search" type="text" placeholder="Buscar cor..." oninput="filterCor(this.value)">
+    </div>
+
+    <div class="filter-group">
+      <span class="filter-label">Detalhes</span>
+      <input id="filter-detalhes-input" class="filter-search" type="text" placeholder="Buscar detalhes..." oninput="filterDetalhes(this.value)">
+    </div>
+
+    <div class="filter-group">
       <span class="filter-label">Recuperado</span>
       <div class="filter-scroll" id="filter-recuperado"></div>
     </div>
@@ -1273,7 +1285,7 @@ const state = {{
   bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set(),
   recuperado: new Set()
 }};
-let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '', pesquisaQ = '';
+let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '', corQ = '', detalhesQ = '', pesquisaQ = '';
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
 const COLORS = {{
@@ -1312,9 +1324,11 @@ function filtered() {{
     (state.item.size       === 0 || state.item.has(r.item))      &&
     (imeiQ === '' || (r.imei && r.imei.toLowerCase().includes(imeiQ.toLowerCase()))) &&
     (marcaQ === '' || (r.marca && r.marca.toLowerCase().includes(marcaQ.toLowerCase()))) &&
+    (corQ === '' || (r.cor && r.cor.toLowerCase().includes(corQ.toLowerCase()))) &&
+    (detalhesQ === '' || (r.detalhes && r.detalhes.toLowerCase().includes(detalhesQ.toLowerCase()))) &&
     (placaQ === '' || (r.placa && r.placa.toLowerCase().includes(placaQ.toLowerCase()))) &&
     (numeroSerieQ === '' || (r.numero_serie && r.numero_serie.toLowerCase().includes(numeroSerieQ.toLowerCase()))) &&
-    (pesquisaQ === '' || [r.bairro,r.tipo,r.endereco,r.item,r.marca,r.dia,r.turno,r.mes,r.bo].some(v=>v&&String(v).toLowerCase().includes(pesquisaQ.toLowerCase()))) &&
+    (pesquisaQ === '' || [r.bairro,r.tipo,r.endereco,r.item,r.marca,r.cor,r.detalhes,r.dia,r.turno,r.mes,r.bo].some(v=>v&&String(v).toLowerCase().includes(pesquisaQ.toLowerCase()))) &&
     (state.recuperado.size === 0 || state.recuperado.has(r.recuperado)) &&
     (state.dia.size        === 0 || state.dia.has(r.dia))        &&
     (state.logradouro.size === 0 || state.logradouro.has(r.endereco)) &&
@@ -2111,7 +2125,7 @@ function toggleFilter(key, val) {{
 // ── RESET ─────────────────────────────────────────────────────────────────────
 function resetFilters() {{
   for(const k of Object.keys(state)) state[k].clear();
-  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = '';
+  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = ''; corQ = ''; detalhesQ = '';
   const imeiInput = document.querySelector('#filter-imei-input');
   if(imeiInput) imeiInput.value = '';
   const marcaInput = document.querySelector('#filter-marca-input');
@@ -2120,6 +2134,10 @@ function resetFilters() {{
   if(placaInput) placaInput.value = '';
   const nSerieInput = document.querySelector('#filter-nserie-input');
   if(nSerieInput) nSerieInput.value = '';
+  const corInput = document.querySelector('#filter-cor-input');
+  if(corInput) corInput.value = '';
+  const detalhesInput = document.querySelector('#filter-detalhes-input');
+  if(detalhesInput) detalhesInput.value = '';
   renderAll();
 }}
 
@@ -2161,6 +2179,8 @@ function compartilharWA() {{
   if(state.logradouro.size) filtros.push('Logradouro: '+[...state.logradouro].join(', '));
   if(imeiQ)        filtros.push('IMEI: '+imeiQ);
   if(marcaQ)       filtros.push('Marca: '+marcaQ);
+  if(corQ)         filtros.push('Cor: '+corQ);
+  if(detalhesQ)    filtros.push('Detalhes: '+detalhesQ);
   if(placaQ)       filtros.push('Placa: '+placaQ);
   if(numeroSerieQ) filtros.push('Nº Série: '+numeroSerieQ);
   if(state.recuperado.size) filtros.push('Recuperado: '+[...state.recuperado].join(', '));
@@ -3573,6 +3593,16 @@ function filterPlaca(q) {{
 
 function filterNumeroSerie(q) {{
   numeroSerieQ = q.trim();
+  renderAll();
+}}
+
+function filterCor(q) {{
+  corQ = q.trim();
+  renderAll();
+}}
+
+function filterDetalhes(q) {{
+  detalhesQ = q.trim();
   renderAll();
 }}
 
