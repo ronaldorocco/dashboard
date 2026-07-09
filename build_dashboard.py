@@ -1603,8 +1603,7 @@ function renderKPIs(data) {{
   const datas = data.map(r=>r.data).filter(Boolean).sort();
   let nDias = 1, mediaLabel = '';
   if(datas.length > 0) {{
-    const d0 = new Date(datas[0]), d1 = new Date(datas[datas.length-1]);
-    nDias = Math.max(1, Math.round((d1-d0)/86400000)+1);
+    nDias = new Set(datas).size;
     const mediaTotal  = (total/nDias).toFixed(1);
     const mediaFurtos = (furtos/nDias).toFixed(1);
     const mediaRoubos = (roubos/nDias).toFixed(1);
@@ -2018,10 +2017,8 @@ function renderInsights(data) {{
   const pBairro = ((topBairro[1]/total)*100).toFixed(0);
   const pTurno  = ((topTurno[1]/total)*100).toFixed(0);
   // Calcular nDias igual ao KPI card
-  const _dts = data.map(r=>r.data).filter(Boolean).sort();
-  const nDias = _dts.length > 0
-    ? Math.max(1, Math.round((new Date(_dts[_dts.length-1])-new Date(_dts[0]))/86400000)+1)
-    : 1;
+  const _dts = data.map(r=>r.data).filter(Boolean);
+  const nDias = _dts.length > 0 ? new Set(_dts).size : 1;
   const pDia    = ((topDia[1]/total)*100).toFixed(0);
   const pItem   = ((topItem[1]/total)*100).toFixed(0);
 
