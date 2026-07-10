@@ -1,0 +1,14 @@
+.git
+.github
+.claude
+.vercel
+.sixth
+__pycache__
+*.pyc
+node_modules
+*.xlsx
+*.csv
+bos_cache.json
+bos_grupos.json
+geocache.json
+.env*
