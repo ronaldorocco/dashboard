@@ -2844,7 +2844,7 @@ async function gerarSlides() {
     const dataHora = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
     const NAVY = [26,39,68], TEAL = [13,148,136], GOLD = [219,158,45];
-    const TXT = [60,60,66], SUBTXT = [130,130,138];
+    const TXT = [15,15,18], SUBTXT = [130,130,138];
     const W = 10, H = 5.63;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation:'landscape', unit:'in', format:[W,H] });
@@ -2852,15 +2852,19 @@ async function gerarSlides() {
     function novoSlide() { doc.addPage([W,H], 'landscape'); }
     function tituloSlide(txt) {
       doc.setFillColor(...NAVY);
-      doc.rect(0, 0, W, 0.58, 'F');
+      doc.rect(0, 0, W, 0.72, 'F');
       doc.setFillColor(...TEAL);
-      doc.rect(0, 0.58, W, 0.05, 'F');
+      doc.rect(0, 0.72, W, 0.05, 'F');
       doc.setFillColor(...TEAL);
-      doc.rect(0, 0.63, 0.07, H-0.63, 'F');
+      doc.rect(0, 0.77, 0.07, H-0.77, 'F');
       doc.setTextColor(255,255,255);
       doc.setFont(undefined, 'bold');
       doc.setFontSize(17);
-      doc.text(txt, 0.4, 0.37);
+      doc.text(txt, 0.4, 0.36);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...GOLD);
+      doc.text('FILTRO: ' + filtroDesc.toUpperCase(), 0.4, 0.58);
       doc.setFont(undefined, 'normal');
     }
     function rodapeSlide(pagina, total) {
@@ -2917,7 +2921,7 @@ async function gerarSlides() {
     ];
     novoSlide();
     tituloSlide('Indicadores Principais');
-    const cardW = 2.15, cardH = 1.55, gapX = 0.2, gapY = 0.22, startX = 0.4, startY = 1.0;
+    const cardW = 2.15, cardH = 1.42, gapX = 0.2, gapY = 0.2, startX = 0.4, startY = 1.05;
     kpiCards.forEach((c, idx) => {
       const col = idx % 4, row = Math.floor(idx/4);
       const x = startX + col*(cardW+gapX);
@@ -2991,39 +2995,51 @@ async function gerarSlides() {
         novoSlide();
         tituloSlide(g.titulo);
 
-        const imgW = 5.2, imgH = imgW * (450/800);
-        const imgX = (W - imgW) / 2;
-        const imgY = 0.82;
+        // ── Coluna esquerda: gráfico ──
+        const chartColW = 5.0;
+        const imgW = 4.5, imgH = imgW * (450/800);
+        const panelY = 0.95, panelH = 4.25;
+        const imgX = 0.4 + (chartColW - imgW)/2;
+        const imgY = panelY + (panelH - imgH)/2;
         doc.addImage(img, 'PNG', imgX, imgY, imgW, imgH);
 
+        // ── Coluna direita: caixa com observação/sugestão ──
+        const panelX = 5.6, panelW = 4.0;
+        doc.setFillColor(250,250,252);
+        doc.setDrawColor(224,224,230);
+        doc.setLineWidth(0.012);
+        doc.roundedRect(panelX, panelY, panelW, panelH, 0.06, 0.06, 'FD');
+
         const { obs, sug } = parseInsight(insightsBlocos[i]);
-        let ty = imgY + imgH + 0.22;
+        const textX = panelX + 0.3;
+        const textW = panelW - 0.6;
+        let ty = panelY + 0.45;
         if (obs) {
           doc.setFillColor(...NAVY);
-          doc.rect(0.5, ty-0.1, 0.045, 0.15, 'F');
+          doc.rect(textX-0.18, ty-0.1, 0.045, 0.15, 'F');
           doc.setFont(undefined, 'bold');
-          doc.setFontSize(9);
+          doc.setFontSize(10);
           doc.setTextColor(...NAVY);
-          doc.text('OBSERVAÇÃO', 0.68, ty);
+          doc.text('OBSERVAÇÃO', textX, ty);
           doc.setFont(undefined, 'normal');
-          doc.setFontSize(9.5);
+          doc.setFontSize(10.5);
           doc.setTextColor(...TXT);
-          const obsLinhas = doc.splitTextToSize(obs, 8.6);
-          doc.text(obsLinhas, 0.68, ty+0.19);
-          ty += 0.19 + 0.16*obsLinhas.length + 0.12;
+          const obsLinhas = doc.splitTextToSize(obs, textW);
+          doc.text(obsLinhas, textX, ty+0.22, { lineHeightFactor:1.35 });
+          ty += 0.22 + 0.19*obsLinhas.length + 0.4;
         }
         if (sug) {
           doc.setFillColor(...TEAL);
-          doc.rect(0.5, ty-0.1, 0.045, 0.15, 'F');
+          doc.rect(textX-0.18, ty-0.1, 0.045, 0.15, 'F');
           doc.setFont(undefined, 'bold');
-          doc.setFontSize(9);
+          doc.setFontSize(10);
           doc.setTextColor(...TEAL);
-          doc.text('SUGESTÃO', 0.68, ty);
+          doc.text('SUGESTÃO', textX, ty);
           doc.setFont(undefined, 'normal');
-          doc.setFontSize(9.5);
+          doc.setFontSize(10.5);
           doc.setTextColor(...TXT);
-          const sugLinhas = doc.splitTextToSize(sug, 8.6);
-          doc.text(sugLinhas, 0.68, ty+0.19);
+          const sugLinhas = doc.splitTextToSize(sug, textW);
+          doc.text(sugLinhas, textX, ty+0.22, { lineHeightFactor:1.35 });
         }
       } catch (e) { /* ignora gráfico que falhar */ }
     }
@@ -3045,7 +3061,7 @@ async function gerarSlides() {
     doc.setTextColor(...TXT);
     doc.setFont(undefined, 'normal');
     const linhas = doc.splitTextToSize(resumoTexto, 8.8);
-    doc.text(linhas, 0.6, 1.25, { lineHeightFactor:1.4 });
+    doc.text(linhas, 0.6, 1.4, { lineHeightFactor:1.4 });
 
     // ── Rodapé (numeração + identificação) em todas as páginas, exceto a capa ──
     const totalPaginas = doc.internal.getNumberOfPages();
