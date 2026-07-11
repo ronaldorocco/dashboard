@@ -2496,13 +2496,16 @@ function _normalizarTexto(s) {{
 }}
 
 function montarContextoChat(pergunta) {{
-  const dadosU = dedupBO(RAW);
+  // Respeita os filtros já ativos na sidebar (ano, mês, bairro, item, etc.)
+  // e só então aplica os critérios adicionais identificados na pergunta.
+  const dataFiltrada = filtered();
+  const dadosU = dedupBO(dataFiltrada);
   const pNorm = _normalizarTexto(pergunta);
 
   const bairros = [...new Set(dadosU.map(r=>r.bairro).filter(Boolean))];
   const tipos   = [...new Set(dadosU.map(r=>r.tipo).filter(Boolean))];
   const turnos  = [...new Set(dadosU.map(r=>r.turno).filter(Boolean))];
-  const itens   = [...new Set(RAW.map(r=>r.item).filter(Boolean))];
+  const itens   = [...new Set(dataFiltrada.map(r=>r.item).filter(Boolean))];
 
   const acharNaLista = lista => lista.filter(v => pNorm.includes(_normalizarTexto(v)));
 
@@ -2513,7 +2516,8 @@ function montarContextoChat(pergunta) {{
   const critItem   = acharNaLista(itens);
 
   const semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length && !critItem.length;
-  if (semCriterio) return '';
+  const semFiltroAtivo = dataFiltrada.length === RAW.length;
+  if (semCriterio && semFiltroAtivo) return '';
 
   let subset = dadosU;
   if (critBairro.length) subset = subset.filter(r => critBairro.includes(r.bairro));
@@ -2521,11 +2525,11 @@ function montarContextoChat(pergunta) {{
   if (critTurno.length)  subset = subset.filter(r => critTurno.includes(r.turno));
   if (critDia.length)    subset = subset.filter(r => critDia.includes(r.dia));
   if (critItem.length) {{
-    const bosComItem = new Set(RAW.filter(r => critItem.includes(r.item)).map(r=>r.bo));
+    const bosComItem = new Set(dataFiltrada.filter(r => critItem.includes(r.item)).map(r=>r.bo));
     subset = subset.filter(r => bosComItem.has(r.bo));
   }}
 
-  const criteriosTxt = [...critBairro,...critTipo,...critTurno,...critDia,...critItem].join(', ');
+  const criteriosTxt = [...critBairro,...critTipo,...critTurno,...critDia,...critItem].join(', ') || 'filtros já ativos na tela';
   if (subset.length === 0) return `Nenhum registro encontrado para os critérios identificados (${{criteriosTxt}}).`;
 
   const porTipo   = count(subset,'tipo');
