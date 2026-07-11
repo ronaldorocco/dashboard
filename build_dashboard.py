@@ -2826,7 +2826,7 @@ async function gerarSlides() {{
 
     function parseInsight(bloco) {{
       if (!bloco) return {{ obs:'', sug:'' }};
-      const obsMatch = bloco.match(/Observação:\s*([\s\S]*?)(?=\\nSugestão:|$)/i);
+      const obsMatch = bloco.match(/Observação:\s*([\s\S]*?)(?=\\s*Sugestão:|$)/i);
       const sugMatch = bloco.match(/Sugestão:\s*([\s\S]*)/i);
       return {{
         obs: obsMatch ? obsMatch[1].trim() : '',
@@ -2853,25 +2853,23 @@ async function gerarSlides() {{
 
         // ── Coluna direita: caixa com observação/sugestão ──
         const panelX = 5.6, panelW = 4.0;
-        doc.setFillColor(250,250,252);
-        doc.setDrawColor(224,224,230);
-        doc.setLineWidth(0.012);
-        doc.roundedRect(panelX, panelY, panelW, panelH, 0.06, 0.06, 'FD');
+        doc.setFillColor(...NAVY);
+        doc.roundedRect(panelX, panelY, panelW, panelH, 0.06, 0.06, 'F');
 
         const {{ obs, sug }} = parseInsight(insightsBlocos[i]);
         const textX = panelX + 0.3;
         const textW = panelW - 0.6;
         let ty = panelY + 0.45;
         if (obs) {{
-          doc.setFillColor(...NAVY);
+          doc.setFillColor(...LIGHT);
           doc.rect(textX-0.18, ty-0.1, 0.045, 0.15, 'F');
           doc.setFont(undefined, 'bold');
           doc.setFontSize(10);
-          doc.setTextColor(...NAVY);
+          doc.setTextColor(...LIGHT);
           doc.text('OBSERVAÇÃO', textX, ty);
           doc.setFont(undefined, 'normal');
           doc.setFontSize(10.5);
-          doc.setTextColor(...TXT);
+          doc.setTextColor(...GRAY);
           const obsLinhas = doc.splitTextToSize(obs, textW);
           doc.text(obsLinhas, textX, ty+0.22, {{ lineHeightFactor:1.35 }});
           ty += 0.22 + 0.19*obsLinhas.length + 0.4;
@@ -2881,11 +2879,11 @@ async function gerarSlides() {{
           doc.rect(textX-0.18, ty-0.1, 0.045, 0.15, 'F');
           doc.setFont(undefined, 'bold');
           doc.setFontSize(10);
-          doc.setTextColor(120,123,130);
+          doc.setTextColor(...GRAY);
           doc.text('SUGESTÃO', textX, ty);
           doc.setFont(undefined, 'normal');
           doc.setFontSize(10.5);
-          doc.setTextColor(...TXT);
+          doc.setTextColor(...GRAY);
           const sugLinhas = doc.splitTextToSize(sug, textW);
           doc.text(sugLinhas, textX, ty+0.22, {{ lineHeightFactor:1.35 }});
         }}
