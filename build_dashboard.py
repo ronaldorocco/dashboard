@@ -54,6 +54,8 @@ cluster_css2 = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5
                          'MarkerCluster.Default.min.css')
 cluster_js   = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.min.js',
                          'leaflet.markercluster.min.js')
+pptxgen_js   = fetch_lib('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
+                         'pptxgen.bundle.js')
 
 def _embed_js(code):
     if not code:
@@ -273,6 +275,7 @@ __LEAFLET_JS__
 __CLUSTER_CSS1__
 __CLUSTER_CSS2__
 __CLUSTER_JS__
+__PPTXGEN_JS__
 <style>
 :root {{
   --azul:#0078D4; --azul2:#106EBE; --azul-clr:#50B2FF;
@@ -370,6 +373,10 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .btn-resumoia{{background:linear-gradient(135deg,#0078D4,#00B7C3);color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
 .btn-resumoia:hover{{background:linear-gradient(135deg,#005A9E,#008B96);}}
+.btn-slides{{background:linear-gradient(135deg,#8E44AD,#C0392B);color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-slides:hover{{background:linear-gradient(135deg,#6C3483,#922B21);}}
+.btn-slides:disabled{{opacity:.6;cursor:wait;}}
 .chat-ia-panel{{position:fixed;top:0;right:-380px;width:360px;max-width:92vw;height:100vh;background:white;
   box-shadow:-4px 0 24px rgba(0,0,0,.25);z-index:9999;display:flex;flex-direction:column;
   transition:right .25s ease;font-family:inherit;}}
@@ -952,6 +959,7 @@ function sair(){{
     <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
     <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
     <button class="btn-resumoia" onclick="abrirResumoIA()">🤖<span class="btxt"> Resumo IA</span></button>
+    <button id="btn-gerar-slides" class="btn-slides" onclick="gerarSlides()">📊<span class="btxt"> Gerar Slides</span></button>
   </div>
 </div>
 
@@ -2642,6 +2650,89 @@ async function transcreverAudio(blob) {{
   }} finally {{
     input.disabled = false;
     input.placeholder = placeholderOriginal;
+  }}
+}}
+
+// ── GERAR SLIDES (PowerPoint) ──────────────────────────────────────────────
+async function gerarSlides() {{
+  const btn = document.getElementById('btn-gerar-slides');
+  const labelOriginal = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳<span class="btxt"> Gerando...</span>';
+
+  try {{
+    const chips = [];
+    for (const [key, set] of Object.entries(state)) {{ set.forEach(v => chips.push(v)); }}
+    const filtroDesc = chips.length ? chips.join(', ') : 'Todos os registros';
+    const agora = new Date();
+    const dataHora = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{{hour:'2-digit',minute:'2-digit'}});
+
+    const AZUL = '0078D4', ROXO = '4A0E8F', CINZA = '555555';
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({{ name: 'GMBC', width: 10, height: 5.63 }});
+    pptx.layout = 'GMBC';
+
+    // ── Slide 1: título ──
+    const s1 = pptx.addSlide();
+    s1.background = {{ color: '1A1A2E' }};
+    s1.addText('Secretaria de Segurança e Ordem Pública', {{ x:0.5, y:1.6, w:9, h:0.6, fontSize:20, color:'FFFFFF', bold:true, align:'center' }});
+    s1.addText('Balneário Camboriú — Guarda Municipal', {{ x:0.5, y:2.2, w:9, h:0.5, fontSize:14, color:'BBBBBB', align:'center' }});
+    s1.addText(filtroDesc, {{ x:0.5, y:3.0, w:9, h:0.5, fontSize:12, color:AZUL, align:'center', bold:true }});
+    s1.addText('Gerado em ' + dataHora, {{ x:0.5, y:5.0, w:9, h:0.4, fontSize:9, color:'888888', align:'center' }});
+
+    // ── Slide 2: KPIs ──
+    const kpiTxt = [
+      ['Total de ocorrências', document.getElementById('kpi-total').textContent],
+      ['Bairro mais afetado', document.getElementById('kpi-bairro').textContent + ' (' + document.getElementById('kpi-bairro-num').textContent + ' casos)'],
+      ['Turno mais crítico', document.getElementById('kpi-turno').textContent + ' (' + document.getElementById('kpi-turno-num').textContent + ' casos)'],
+      ['Dia mais crítico', document.getElementById('kpi-dia').textContent + ' (' + document.getElementById('kpi-dia-num').textContent + ' casos)'],
+      ['Furtos', document.getElementById('kpi-furtos').textContent + ' (' + document.getElementById('kpi-furtos-sub').textContent + ')'],
+      ['Roubos', document.getElementById('kpi-roubos').textContent + ' (' + document.getElementById('kpi-roubos-sub').textContent + ')'],
+      ['Arrombamentos', document.getElementById('kpi-arrom').textContent + ' (' + document.getElementById('kpi-arrom-sub').textContent + ')'],
+    ];
+    const s2 = pptx.addSlide();
+    s2.addText('Indicadores Principais', {{ x:0.4, y:0.3, w:9.2, h:0.5, fontSize:22, bold:true, color:ROXO }});
+    s2.addTable(kpiTxt.map(([k,v]) => ([
+      {{ text:k, options:{{ bold:true, color:'333333', fontSize:12 }} }},
+      {{ text:v, options:{{ color:AZUL, fontSize:12, bold:true }} }},
+    ])), {{ x:0.5, y:1.0, w:9, colW:[4.5,4.5], border:{{type:'solid',color:'DDDDDD',pt:1}}, autoPage:false }});
+
+    // ── Slides 3-4: gráficos ──
+    async function addChartSlide(elId, titulo) {{
+      const el = document.getElementById(elId);
+      if (!el || !window.Plotly) return;
+      try {{
+        const img = await Plotly.toImage(el, {{ format:'png', width:900, height:500 }});
+        const sl = pptx.addSlide();
+        sl.addText(titulo, {{ x:0.4, y:0.3, w:9.2, h:0.5, fontSize:20, bold:true, color:ROXO }});
+        sl.addImage({{ data:img, x:0.7, y:1.0, w:8.6, h:4.2 }});
+      }} catch (e) {{ /* ignora gráfico que falhar */ }}
+    }}
+    await addChartSlide('chart-tipo', 'Tipificação das Ocorrências');
+    await addChartSlide('chart-bairro', '10 Bairros com Mais Ocorrências');
+
+    // ── Slide final: Resumo Executivo IA ──
+    const sFinal = pptx.addSlide();
+    sFinal.addText('Resumo Executivo — IA', {{ x:0.4, y:0.3, w:9.2, h:0.5, fontSize:20, bold:true, color:ROXO }});
+    let resumoTexto = 'Resumo não disponível.';
+    try {{
+      const resp = await fetch('/api/explicar', {{
+        method: 'POST',
+        headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{resumo: _resumoExecutivoDados}})
+      }});
+      const data = await resp.json();
+      if (resp.ok) resumoTexto = data.texto;
+    }} catch (e) {{ /* mantém texto padrão se a IA falhar */ }}
+    sFinal.addText(resumoTexto, {{ x:0.6, y:1.1, w:8.8, h:4.2, fontSize:12, color:'333333', valign:'top', lineSpacingMultiple:1.3 }});
+
+    const nomeArquivo = 'dashboard-gmbc-' + agora.toISOString().slice(0,10) + '.pptx';
+    await pptx.writeFile({{ fileName: nomeArquivo }});
+  }} catch (e) {{
+    alert('Erro ao gerar slides: ' + e.message);
+  }} finally {{
+    btn.disabled = false;
+    btn.innerHTML = labelOriginal;
   }}
 }}
 
@@ -4708,6 +4799,7 @@ html = html.replace('__LEAFLET_JS__',   _embed_js(leaflet_js))
 html = html.replace('__CLUSTER_CSS1__', _embed_css(cluster_css1))
 html = html.replace('__CLUSTER_CSS2__', _embed_css(cluster_css2))
 html = html.replace('__CLUSTER_JS__',   _embed_js(cluster_js))
+html = html.replace('__PPTXGEN_JS__',   _embed_js(pptxgen_js))
 
 with open('dashboard_interativo.html', 'w', encoding='utf-8') as f:
     f.write(html)
