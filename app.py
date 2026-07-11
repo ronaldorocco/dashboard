@@ -108,6 +108,40 @@ def chat():
     return jsonify({"texto": texto})
 
 
+INSIGHTS_SYSTEM_PROMPT = (
+    "Você é um analista de segurança pública auxiliando a Guarda Municipal "
+    "de Balneário Camboriú. Você recebe várias categorias numeradas, cada "
+    "uma com dados estatísticos já processados sobre ocorrências "
+    "criminais. Para CADA categoria, gere uma observação e uma sugestão "
+    "prática, respondendo estritamente neste formato, sem nada antes ou "
+    "depois:\n"
+    "###N###\n"
+    "Observação: <1 a 2 frases descrevendo o padrão nos dados>\n"
+    "Sugestão: <1 frase objetiva com recomendação operacional prática>\n"
+    "Repita esse bloco para cada categoria recebida, na mesma ordem e "
+    "numeração. Nunca invente números que não estejam nos dados "
+    "fornecidos. Seja específico, citando os valores concretos recebidos."
+)
+
+
+@app.route("/api/insights", methods=["POST"])
+def insights():
+    if not OPENAI_API_KEY:
+        return jsonify({"erro": "OPENAI_API_KEY não configurada no servidor"}), 500
+
+    dados = request.get_json(silent=True) or {}
+    categorias = dados.get("categorias", "").strip()
+    if not categorias:
+        return jsonify({"erro": "Campo 'categorias' é obrigatório"}), 400
+
+    try:
+        texto = _chamar_openai(INSIGHTS_SYSTEM_PROMPT, categorias, max_tokens=1200)
+    except requests.RequestException as exc:
+        return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
+
+    return jsonify({"texto": texto})
+
+
 @app.route("/api/transcrever", methods=["POST"])
 def transcrever():
     if not OPENAI_API_KEY:
