@@ -2761,13 +2761,13 @@ async function gerarSlides() {{
 
     // ── Slide 2: KPIs (cards) ──
     const kpiCards = [
-      {{ label:'Total de Ocorrências',  value: document.getElementById('kpi-total').textContent, cor:NAVY }},
-      {{ label:'Bairro Mais Afetado',   value: document.getElementById('kpi-bairro').textContent, sub: document.getElementById('kpi-bairro-num').textContent+' casos', cor:GRAY }},
-      {{ label:'Turno Mais Crítico',    value: document.getElementById('kpi-turno').textContent,  sub: document.getElementById('kpi-turno-num').textContent+' casos', cor:NAVY }},
-      {{ label:'Dia Mais Crítico',      value: document.getElementById('kpi-dia').textContent,    sub: document.getElementById('kpi-dia-num').textContent+' casos', cor:GRAY }},
-      {{ label:'Furtos',                value: document.getElementById('kpi-furtos').textContent, sub: document.getElementById('kpi-furtos-sub').textContent, cor:NAVY }},
-      {{ label:'Roubos',                value: document.getElementById('kpi-roubos').textContent, sub: document.getElementById('kpi-roubos-sub').textContent, cor:GRAY }},
-      {{ label:'Arrombamentos',         value: document.getElementById('kpi-arrom').textContent,  sub: document.getElementById('kpi-arrom-sub').textContent, cor:NAVY }},
+      {{ label:'Total de Ocorrências',  value: document.getElementById('kpi-total').textContent }},
+      {{ label:'Bairro Mais Afetado',   value: document.getElementById('kpi-bairro').textContent, sub: document.getElementById('kpi-bairro-num').textContent+' casos' }},
+      {{ label:'Turno Mais Crítico',    value: document.getElementById('kpi-turno').textContent,  sub: document.getElementById('kpi-turno-num').textContent+' casos' }},
+      {{ label:'Dia Mais Crítico',      value: document.getElementById('kpi-dia').textContent,    sub: document.getElementById('kpi-dia-num').textContent+' casos' }},
+      {{ label:'Furtos',                value: document.getElementById('kpi-furtos').textContent, sub: document.getElementById('kpi-furtos-sub').textContent }},
+      {{ label:'Roubos',                value: document.getElementById('kpi-roubos').textContent, sub: document.getElementById('kpi-roubos-sub').textContent }},
+      {{ label:'Arrombamentos',         value: document.getElementById('kpi-arrom').textContent,  sub: document.getElementById('kpi-arrom-sub').textContent }},
     ];
     novoSlide();
     tituloSlide('Indicadores Principais');
@@ -2776,25 +2776,23 @@ async function gerarSlides() {{
       const col = idx % 4, row = Math.floor(idx/4);
       const x = startX + col*(cardW+gapX);
       const y = startY + row*(cardH+gapY);
-      doc.setFillColor(250,250,252);
-      doc.setDrawColor(224,224,230);
-      doc.setLineWidth(0.01);
-      doc.roundedRect(x, y, cardW, cardH, 0.05, 0.05, 'FD');
-      doc.setFillColor(...c.cor);
-      doc.rect(x, y, cardW, 0.07, 'F');
+      doc.setFillColor(...NAVY);
+      doc.roundedRect(x, y, cardW, cardH, 0.05, 0.05, 'F');
+      doc.setFillColor(...GRAY);
+      doc.rect(x, y, cardW, 0.06, 'F');
       doc.setFont(undefined, 'bold');
       doc.setFontSize(17);
-      doc.setTextColor(...TXT);
+      doc.setTextColor(...LIGHT);
       doc.text(String(c.value), x+cardW/2, y+0.65, {{ align:'center' }});
       doc.setFont(undefined, 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(...SUBTXT);
+      doc.setTextColor(...GRAY);
       const labelLinhas = doc.splitTextToSize(c.label, cardW-0.2);
       doc.text(labelLinhas, x+cardW/2, y+0.95, {{ align:'center' }});
       if (c.sub) {{
         doc.setFont(undefined, 'bold');
         doc.setFontSize(7.5);
-        doc.setTextColor(...c.cor);
+        doc.setTextColor(...LIGHT);
         doc.text(String(c.sub), x+cardW/2, y+cardH-0.15, {{ align:'center' }});
         doc.setFont(undefined, 'normal');
       }}
