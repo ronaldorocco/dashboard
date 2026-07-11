@@ -135,6 +135,25 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .btn-resumoia{background:linear-gradient(135deg,#0078D4,#00B7C3);color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
 .btn-resumoia:hover{background:linear-gradient(135deg,#005A9E,#008B96);}
+.chat-ia-panel{position:fixed;top:0;right:-380px;width:360px;max-width:92vw;height:100vh;background:white;
+  box-shadow:-4px 0 24px rgba(0,0,0,.25);z-index:9999;display:flex;flex-direction:column;
+  transition:right .25s ease;font-family:inherit;}
+.chat-ia-panel.aberto{right:0;}
+.chat-ia-header{background:linear-gradient(135deg,#0078D4,#00B7C3);color:white;padding:14px 16px;
+  font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.chat-ia-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.chat-msg{padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.5;max-width:88%;}
+.chat-msg-user{background:#0078D4;color:white;align-self:flex-end;border-bottom-right-radius:2px;}
+.chat-msg-ia{background:#F0F0F0;color:#222;align-self:flex-start;border-bottom-left-radius:2px;}
+.chat-ia-inputbar{display:flex;gap:8px;padding:12px;border-top:1px solid #EEE;flex-shrink:0;}
+.chat-ia-inputbar input{flex:1;border:1px solid #DDD;border-radius:6px;padding:8px 10px;font-size:12px;font-family:inherit;min-width:0;}
+.chat-ia-inputbar button{background:#0078D4;color:white;border:none;border-radius:6px;padding:8px 14px;
+  font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.chat-ia-inputbar button:hover{background:#005A9E;}
+#chat-ia-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,#0078D4,#00B7C3);color:white;border:none;font-size:24px;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;z-index:9998;}
+#chat-ia-fab:hover{background:linear-gradient(135deg,#005A9E,#008B96);}
 /* ── MODAL RELATÓRIO ── */
 .rel-date-bar{background:#f2f4f8;padding:11px 18px;border-bottom:1px solid #ddd;
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;}
@@ -2237,6 +2256,104 @@ async function explicarComIA(resumoTexto, boxId, btnId) {
   }
 }
 
+// ── CHAT IA (perguntas livres sobre os dados reais) ───────────────────────────
+function _normalizarTexto(s) {
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function montarContextoChat(pergunta) {
+  const dadosU = dedupBO(RAW);
+  const pNorm = _normalizarTexto(pergunta);
+
+  const bairros = [...new Set(dadosU.map(r=>r.bairro).filter(Boolean))];
+  const tipos   = [...new Set(dadosU.map(r=>r.tipo).filter(Boolean))];
+  const turnos  = [...new Set(dadosU.map(r=>r.turno).filter(Boolean))];
+  const itens   = [...new Set(RAW.map(r=>r.item).filter(Boolean))];
+
+  const acharNaLista = lista => lista.filter(v => pNorm.includes(_normalizarTexto(v)));
+
+  const critBairro = acharNaLista(bairros);
+  const critTipo   = acharNaLista(tipos);
+  const critTurno  = acharNaLista(turnos);
+  const critDia    = acharNaLista(DIA_ORDER);
+  const critItem   = acharNaLista(itens);
+
+  const semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length && !critItem.length;
+  if (semCriterio) return '';
+
+  let subset = dadosU;
+  if (critBairro.length) subset = subset.filter(r => critBairro.includes(r.bairro));
+  if (critTipo.length)   subset = subset.filter(r => critTipo.includes(r.tipo));
+  if (critTurno.length)  subset = subset.filter(r => critTurno.includes(r.turno));
+  if (critDia.length)    subset = subset.filter(r => critDia.includes(r.dia));
+  if (critItem.length) {
+    const bosComItem = new Set(RAW.filter(r => critItem.includes(r.item)).map(r=>r.bo));
+    subset = subset.filter(r => bosComItem.has(r.bo));
+  }
+
+  const criteriosTxt = [...critBairro,...critTipo,...critTurno,...critDia,...critItem].join(', ');
+  if (subset.length === 0) return `Nenhum registro encontrado para os critérios identificados (${criteriosTxt}).`;
+
+  const porTipo   = count(subset,'tipo');
+  const porBairro = count(subset,'bairro');
+  const porTurno  = count(subset,'turno');
+  const porDia    = count(subset,'dia');
+  const fmtObj = o => Object.entries(o).map(([k,v])=>`${k}: ${v}`).join(', ');
+
+  const amostra = [...subset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,15);
+  const amostraTxt = amostra.map(r =>
+    `${r.data||'?'} | ${r.bairro||'?'} | ${r.turno||'?'} | ${r.tipo||'?'} | ${r.endereco||'?'}`
+  ).join('\n');
+
+  return `Critérios identificados na pergunta: ${criteriosTxt}.
+` +
+    `Total de registros encontrados: ${subset.length}.
+` +
+    `Distribuição por tipo: ${fmtObj(porTipo)}.
+` +
+    `Distribuição por bairro: ${fmtObj(porBairro)}.
+` +
+    `Distribuição por turno: ${fmtObj(porTurno)}.
+` +
+    `Distribuição por dia da semana: ${fmtObj(porDia)}.
+` +
+    `Amostra de até 15 registros mais recentes (data | bairro | turno | tipo | endereço):
+${amostraTxt}`;
+}
+
+function toggleChatIA() {
+  document.getElementById('chat-ia-panel').classList.toggle('aberto');
+}
+
+async function enviarPerguntaChat() {
+  const input = document.getElementById('chat-ia-input');
+  const pergunta = input.value.trim();
+  if (!pergunta) return;
+  input.value = '';
+
+  const log = document.getElementById('chat-ia-log');
+  const respId = 'chat-resp-' + Date.now();
+  log.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-msg-user">${pergunta.replace(/</g,'&lt;')}</div>`);
+  log.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-msg-ia" id="${respId}"><span style="color:#888;font-style:italic">Consultando IA...</span></div>`);
+  log.scrollTop = log.scrollHeight;
+
+  const contexto = montarContextoChat(pergunta);
+  const alvo = document.getElementById(respId);
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({pergunta, contexto})
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
+    alvo.innerHTML = data.texto.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  } catch (e) {
+    alvo.innerHTML = '<span style="color:#D13438">Erro: ' + e.message + '</span>';
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
 function abrirResumoIA() {
   const agora = new Date();
   document.getElementById('resumoia-meta').textContent =
@@ -4168,6 +4285,23 @@ else { window.addEventListener('load', init); }
         onclick="explicarComIA(_resumoExecutivoDados,'resumoia-resultado','btn-resumoia-refazer')" style="background:#0078D4">🔄 Gerar novamente</button>
       <button class="btn-pdf" onclick="imprimirResumoIA()">🖨️ Salvar PDF</button>
     </div>
+  </div>
+</div>
+
+<!-- ── CHAT IA FLUTUANTE ── -->
+<button id="chat-ia-fab" onclick="toggleChatIA()" title="Pergunte à IA">💬</button>
+<div id="chat-ia-panel" class="chat-ia-panel">
+  <div class="chat-ia-header">
+    <span>💬 Pergunte à IA</span>
+    <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
+  </div>
+  <div id="chat-ia-log" class="chat-ia-log">
+    <div class="chat-msg chat-msg-ia">Olá! Pergunte sobre as ocorrências — ex: "quantos furtos aconteceram no Centro?" ou "o que acontece mais aos sábados de madrugada?"</div>
+  </div>
+  <div class="chat-ia-inputbar">
+    <input id="chat-ia-input" type="text" placeholder="Digite sua pergunta..."
+      onkeydown="if(event.key==='Enter')enviarPerguntaChat()">
+    <button onclick="enviarPerguntaChat()">Enviar</button>
   </div>
 </div>
 <!-- ── MODAL PREVISÃO ── -->

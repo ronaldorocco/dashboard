@@ -20,6 +20,44 @@ SYSTEM_PROMPT = (
     "mencione."
 )
 
+CHAT_SYSTEM_PROMPT = (
+    "Você é um assistente analítico para a equipe da Guarda Municipal de "
+    "Balneário Camboriú, respondendo perguntas sobre ocorrências criminais "
+    "registradas no dashboard. Você receberá, junto com a pergunta do "
+    "usuário, um conjunto de registros reais já filtrados pelo sistema com "
+    "base na pergunta. Responda somente com base nesses registros "
+    "fornecidos — nunca use conhecimento externo sobre criminalidade, nunca "
+    "invente números, datas ou locais que não estejam nos dados recebidos. "
+    "Se os dados fornecidos forem insuficientes ou vazios, diga isso "
+    "claramente e sugira ao usuário refinar a pergunta (por exemplo, "
+    "especificar bairro, tipo de ocorrência, turno ou dia da semana). "
+    "Responda de forma direta, técnica e em português, citando números e "
+    "percentuais concretos quando disponíveis. Não dê opiniões pessoais "
+    "nem conselhos fora do escopo de segurança pública."
+)
+
+
+def _chamar_openai(system_prompt, user_content, max_tokens=500):
+    resp = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": OPENAI_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            "temperature": 0.3,
+            "max_tokens": max_tokens,
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"]
+
 
 @app.route("/")
 def index():
@@ -37,28 +75,36 @@ def explicar():
         return jsonify({"erro": "Campo 'resumo' é obrigatório"}), 400
 
     try:
-        resp = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": OPENAI_MODEL,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": resumo_dados},
-                ],
-                "temperature": 0.3,
-                "max_tokens": 500,
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
+        texto = _chamar_openai(SYSTEM_PROMPT, resumo_dados, max_tokens=500)
     except requests.RequestException as exc:
         return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
 
-    texto = resp.json()["choices"][0]["message"]["content"]
+    return jsonify({"texto": texto})
+
+
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    if not OPENAI_API_KEY:
+        return jsonify({"erro": "OPENAI_API_KEY não configurada no servidor"}), 500
+
+    dados = request.get_json(silent=True) or {}
+    pergunta = dados.get("pergunta", "").strip()
+    contexto = dados.get("contexto", "").strip()
+    if not pergunta:
+        return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
+
+    user_content = (
+        f"Pergunta do usuário: {pergunta}\n\n"
+        "Registros/estatísticas encontrados no banco de dados que "
+        "correspondem a essa pergunta:\n"
+        f"{contexto or '(nenhum registro encontrado para os critérios identificados na pergunta)'}"
+    )
+
+    try:
+        texto = _chamar_openai(CHAT_SYSTEM_PROMPT, user_content, max_tokens=600)
+    except requests.RequestException as exc:
+        return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
+
     return jsonify({"texto": texto})
 
 
