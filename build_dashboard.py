@@ -2432,6 +2432,34 @@ function fecharAnalise() {{
   document.getElementById('analise-overlay').classList.remove('ativo');
 }}
 
+// ── EXPLICAR COM IA (OpenAI via backend) ──────────────────────────────────────
+let _preditResumoIA = '';
+async function explicarComIA() {{
+  const btn = document.getElementById('btn-explicar-ia');
+  const box = document.getElementById('predit-ia-resultado');
+  if (!box || !_preditResumoIA) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando...';
+  box.style.display = 'block';
+  box.innerHTML = '<span style="color:#888;font-style:italic">Consultando IA...</span>';
+  try {{
+    const resp = await fetch('/api/explicar', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{resumo: _preditResumoIA}})
+    }});
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
+    const texto = data.texto.replace(/</g,'&lt;').replace(/\\n/g,'<br>');
+    box.innerHTML = '<div style="line-height:1.6">' + texto + '</div>';
+  }} catch (e) {{
+    box.innerHTML = '<span style="color:#D13438">Erro ao gerar: ' + e.message + '</span>';
+  }} finally {{
+    btn.disabled = false;
+    btn.textContent = '🤖 Explicar com IA';
+  }}
+}}
+
 // ── PREVISÃO DE RISCO ─────────────────────────────────────────────────────────
 let _prevTextoWA = '';
 function previsao() {{
@@ -3051,6 +3079,17 @@ function abrirAnalisePredit() {{
   if(regG.m>0.5) recs.push(`📈 Tendência crescente identificada — considerar reforço de efetivo preventivo`);
   recs.push(`🤝 Integrar ações com Polícia Militar, Polícia Civil e agentes de trânsito nas áreas críticas`);
 
+  // ── Resumo para IA ────────────────────────────────────────────────────────
+  const bairrosCriticosTxt = bCrit.slice(0,3).map(b=>`${{b.b}} (${{b.recente}} casos recentes, risco ${{b.risco}})`).join('; ');
+  _preditResumoIA =
+    `total de ${{totalOcs}} ocorrências analisadas; ` +
+    `tendência geral: ${{tendSeta}} (${{tendPct}}% de variação média mensal); ` +
+    `bairros de maior risco: ${{bairrosCriticosTxt || 'nenhum em nível crítico/alto'}}; ` +
+    `período mais crítico: ${{tpDia}} no turno ${{tpTurno}}; ` +
+    `tipo de ocorrência mais frequente: ${{topTipoGlobal ? topTipoGlobal[0]+' ('+topTipoGlobal[1]+' casos)' : 'não informado'}}; ` +
+    `previsão para os próximos 30 dias: ~${{prev30}} ocorrências; ` +
+    `alertas automáticos: ${{alertas.map(a=>a.msg).join('; ')}}.`;
+
   // ── 6. Projeção visual (barras CSS) ────────────────────────────────────────
   const ultMeses=mesesGlobal.slice(-4);
   const ultConts=ultMeses.map(m=>monGlobal[m]);
@@ -3090,6 +3129,13 @@ function abrirAnalisePredit() {{
     Gerado em: ${{dataHoje}} às ${{agora.toLocaleTimeString('pt-BR',{{hour:'2-digit',minute:'2-digit'}})}}
     &nbsp;•&nbsp; Base: ${{RAWU.length}} ocorrências (deduplicadas por B.O.)
     &nbsp;•&nbsp; <span style="color:#7B2FBE;font-weight:700">IA • Regressão Linear + Análise Estatística</span>
+  </div>
+
+  <!-- Explicar com IA generativa -->
+  <div style="margin-bottom:16px">
+    <button id="btn-explicar-ia" class="btn-analise" onclick="explicarComIA()" style="background:#0078D4">🤖 Explicar com IA</button>
+    <div id="predit-ia-resultado" style="display:none;margin-top:10px;background:#F0F6FC;border-left:4px solid #0078D4;
+      border-radius:8px;padding:12px 14px;font-size:12px"></div>
   </div>
 
   <!-- KPIs -->
