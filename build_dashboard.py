@@ -367,6 +367,9 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .btn-relatorio{{background:#0097A7;color:white;border:none;border-radius:4px;padding:5px 12px;
   font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
 .btn-relatorio:hover{{background:#006978;}}
+.btn-resumoia{{background:linear-gradient(135deg,#0078D4,#00B7C3);color:white;border:none;border-radius:4px;padding:5px 12px;
+  font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}}
+.btn-resumoia:hover{{background:linear-gradient(135deg,#005A9E,#008B96);}}
 /* ── MODAL RELATÓRIO ── */
 .rel-date-bar{{background:#f2f4f8;padding:11px 18px;border-bottom:1px solid #ddd;
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;}}
@@ -923,6 +926,7 @@ function sair(){{
     <button class="btn-intelig" onclick="abrirInteligencia()">🔍<span class="btxt"> Inteligência</span></button>
     <button class="btn-prev" onclick="previsao()">📈<span class="btxt"> Previsão</span></button>
     <button class="btn-relatorio" onclick="relatorioDiario()">📅<span class="btxt"> Relatório</span></button>
+    <button class="btn-resumoia" onclick="abrirResumoIA()">🤖<span class="btxt"> Resumo IA</span></button>
   </div>
 </div>
 
@@ -1646,6 +1650,13 @@ function renderKPIs(data) {{
   document.getElementById('kpi-dia-num').textContent     = topDia[1];
   document.getElementById('kpi-dia-pct').textContent     = pDia2;
 
+  _resumoExecutivoDados =
+    `total de ${{total}} ocorrências no período filtrado; ` +
+    `furtos: ${{furtos}} (${{pFurtos}}%); roubos: ${{roubos}} (${{pRoubos}}%); arrombamentos: ${{arrom}} (${{pArrom}}%); ` +
+    `bairro mais afetado: ${{topBairro[0]}} (${{topBairro[1]}} casos, ${{pBairro2}}); ` +
+    `rua mais crítica: ${{topRua[0]}} (${{topRua[1]}} casos, ${{pRua2}}); ` +
+    `turno mais crítico: ${{topTurno[0]}} (${{topTurno[1]}} casos, ${{pTurno2}}); ` +
+    `dia mais crítico: ${{topDia[0]}} (${{topDia[1]}} casos, ${{pDia2}}).`;
 }}
 
 // ── TABELA ────────────────────────────────────────────────────────────────────
@@ -2434,19 +2445,20 @@ function fecharAnalise() {{
 
 // ── EXPLICAR COM IA (OpenAI via backend) ──────────────────────────────────────
 let _preditResumoIA = '';
-async function explicarComIA() {{
-  const btn = document.getElementById('btn-explicar-ia');
-  const box = document.getElementById('predit-ia-resultado');
-  if (!box || !_preditResumoIA) return;
-  btn.disabled = true;
-  btn.textContent = '⏳ Gerando...';
+let _resumoExecutivoDados = '';
+
+async function explicarComIA(resumoTexto, boxId, btnId) {{
+  const btn = btnId ? document.getElementById(btnId) : null;
+  const box = document.getElementById(boxId);
+  if (!box || !resumoTexto) return;
+  if (btn) {{ btn.disabled = true; btn.textContent = '⏳ Gerando...'; }}
   box.style.display = 'block';
   box.innerHTML = '<span style="color:#888;font-style:italic">Consultando IA...</span>';
   try {{
     const resp = await fetch('/api/explicar', {{
       method: 'POST',
       headers: {{'Content-Type': 'application/json'}},
-      body: JSON.stringify({{resumo: _preditResumoIA}})
+      body: JSON.stringify({{resumo: resumoTexto}})
     }});
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
@@ -2455,10 +2467,22 @@ async function explicarComIA() {{
   }} catch (e) {{
     box.innerHTML = '<span style="color:#D13438">Erro ao gerar: ' + e.message + '</span>';
   }} finally {{
-    btn.disabled = false;
-    btn.textContent = '🤖 Explicar com IA';
+    if (btn) {{ btn.disabled = false; btn.textContent = btn.dataset.label; }}
   }}
 }}
+
+function abrirResumoIA() {{
+  const agora = new Date();
+  document.getElementById('resumoia-meta').textContent =
+    'Gerado em: ' + agora.toLocaleDateString('pt-BR') + ' às ' +
+    agora.toLocaleTimeString('pt-BR',{{hour:'2-digit',minute:'2-digit'}});
+  document.getElementById('resumoia-overlay').classList.add('ativo');
+  explicarComIA(_resumoExecutivoDados, 'resumoia-resultado', null);
+}}
+function fecharResumoIA() {{
+  document.getElementById('resumoia-overlay').classList.remove('ativo');
+}}
+function imprimirResumoIA() {{ window.print(); }}
 
 // ── PREVISÃO DE RISCO ─────────────────────────────────────────────────────────
 let _prevTextoWA = '';
@@ -3133,7 +3157,8 @@ function abrirAnalisePredit() {{
 
   <!-- Explicar com IA generativa -->
   <div style="margin-bottom:16px">
-    <button id="btn-explicar-ia" class="btn-analise" onclick="explicarComIA()" style="background:#0078D4">🤖 Explicar com IA</button>
+    <button id="btn-explicar-ia" class="btn-analise" data-label="🤖 Explicar com IA"
+      onclick="explicarComIA(_preditResumoIA,'predit-ia-resultado','btn-explicar-ia')" style="background:#0078D4">🤖 Explicar com IA</button>
     <div id="predit-ia-resultado" style="display:none;margin-top:10px;background:#F0F6FC;border-left:4px solid #0078D4;
       border-radius:8px;padding:12px 14px;font-size:12px"></div>
   </div>
@@ -4353,6 +4378,29 @@ else {{ window.addEventListener('load', init); }}
     <div class="analise-footer">
       <button class="btn-reset" onclick="fecharAnalisePredit()">✕ Fechar</button>
       <button class="btn-pdf" onclick="imprimirAnalisePredit()">🖨️ Salvar PDF</button>
+    </div>
+  </div>
+</div>
+<!-- ── MODAL RESUMO EXECUTIVO IA ── -->
+<div class="analise-overlay" id="resumoia-overlay" onclick="if(event.target===this)fecharResumoIA()">
+  <div class="analise-box" style="width:min(700px,95vw)">
+    <div class="analise-header" style="background:linear-gradient(135deg,#0078D4 0%,#00B7C3 100%)">
+      <div>
+        <h2>🤖 Resumo Executivo — Inteligência Artificial</h2>
+        <div style="font-size:10px;opacity:.85;margin-top:2px">Secretaria de Segurança e Ordem Pública — Balneário Camboriú</div>
+      </div>
+      <button class="analise-close" onclick="fecharResumoIA()" title="Fechar">✕</button>
+    </div>
+    <div class="analise-corpo" id="resumoia-corpo" style="padding:18px 20px;overflow-y:auto">
+      <div style="font-size:10px;color:#888;margin-bottom:14px" id="resumoia-meta"></div>
+      <div id="resumoia-resultado" style="background:#F0F6FC;border-left:4px solid #0078D4;
+        border-radius:8px;padding:14px 16px;font-size:13px"></div>
+    </div>
+    <div class="analise-footer">
+      <button class="btn-reset" onclick="fecharResumoIA()">✕ Fechar</button>
+      <button id="btn-resumoia-refazer" class="btn-analise" data-label="🔄 Gerar novamente"
+        onclick="explicarComIA(_resumoExecutivoDados,'resumoia-resultado','btn-resumoia-refazer')" style="background:#0078D4">🔄 Gerar novamente</button>
+      <button class="btn-pdf" onclick="imprimirResumoIA()">🖨️ Salvar PDF</button>
     </div>
   </div>
 </div>
