@@ -2685,8 +2685,8 @@ async function gerarSlides() {{
     const agora = new Date();
     const dataHora = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{{hour:'2-digit',minute:'2-digit'}});
 
-    const NAVY = [26,39,68], TEAL = [13,148,136], GOLD = [219,158,45];
-    const TXT = [15,15,18], SUBTXT = [130,130,138];
+    const NAVY = [51,61,101], GRAY = [168,170,174], LIGHT = [222,224,227];
+    const TXT = [70,74,82], SUBTXT = [145,148,155];
     const W = 10, H = 5.63;
     const {{ jsPDF }} = window.jspdf;
     const doc = new jsPDF({{ orientation:'landscape', unit:'in', format:[W,H] }});
@@ -2695,9 +2695,9 @@ async function gerarSlides() {{
     function tituloSlide(txt) {{
       doc.setFillColor(...NAVY);
       doc.rect(0, 0, W, 0.72, 'F');
-      doc.setFillColor(...TEAL);
+      doc.setFillColor(...GRAY);
       doc.rect(0, 0.72, W, 0.05, 'F');
-      doc.setFillColor(...TEAL);
+      doc.setFillColor(...GRAY);
       doc.rect(0, 0.77, 0.07, H-0.77, 'F');
       doc.setTextColor(255,255,255);
       doc.setFont(undefined, 'bold');
@@ -2705,7 +2705,7 @@ async function gerarSlides() {{
       doc.text(txt, 0.4, 0.36);
       doc.setFont(undefined, 'bold');
       doc.setFontSize(9.5);
-      doc.setTextColor(...GOLD);
+      doc.setTextColor(...LIGHT);
       doc.text('FILTRO: ' + filtroDesc.toUpperCase(), 0.4, 0.58);
       doc.setFont(undefined, 'normal');
       if (LOGO_GMBC) {{
@@ -2714,7 +2714,7 @@ async function gerarSlides() {{
       }}
     }}
     function rodapeSlide(pagina, total) {{
-      doc.setFillColor(...TEAL);
+      doc.setFillColor(...GRAY);
       doc.rect(0, H-0.34, W, 0.035, 'F');
       doc.setFont(undefined, 'normal');
       doc.setFontSize(7.5);
@@ -2731,9 +2731,9 @@ async function gerarSlides() {{
     // ── Slide 1: título ──
     doc.setFillColor(...NAVY);
     doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(...TEAL);
+    doc.setFillColor(...GRAY);
     doc.rect(0, 0, 0.14, H, 'F');
-    doc.setFillColor(...GOLD);
+    doc.setFillColor(...GRAY);
     doc.rect(0, H-0.14, W, 0.14, 'F');
     if (LOGO_GMBC) {{
       const lh = 1.1, lw = lh * (1442/1612);
@@ -2747,13 +2747,13 @@ async function gerarSlides() {{
     doc.setTextColor(195,205,220);
     doc.setFont(undefined, 'normal');
     doc.text('Balneário Camboriú — Guarda Municipal', W/2, 2.5, {{ align:'center' }});
-    doc.setTextColor(...GOLD);
+    doc.setTextColor(...LIGHT);
     doc.setFont(undefined, 'bold');
     doc.setFontSize(12);
     doc.text(filtroDesc, W/2, 3.2, {{ align:'center' }});
     doc.setFont(undefined, 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(150,160,175);
+    doc.setTextColor(...SUBTXT);
     doc.text('Gerado em ' + dataHora, W/2, 4.6, {{ align:'center' }});
     doc.setFontSize(7);
     doc.setTextColor(120,130,145);
@@ -2762,11 +2762,11 @@ async function gerarSlides() {{
     // ── Slide 2: KPIs (cards) ──
     const kpiCards = [
       {{ label:'Total de Ocorrências',  value: document.getElementById('kpi-total').textContent, cor:NAVY }},
-      {{ label:'Bairro Mais Afetado',   value: document.getElementById('kpi-bairro').textContent, sub: document.getElementById('kpi-bairro-num').textContent+' casos', cor:TEAL }},
-      {{ label:'Turno Mais Crítico',    value: document.getElementById('kpi-turno').textContent,  sub: document.getElementById('kpi-turno-num').textContent+' casos', cor:GOLD }},
-      {{ label:'Dia Mais Crítico',      value: document.getElementById('kpi-dia').textContent,    sub: document.getElementById('kpi-dia-num').textContent+' casos', cor:NAVY }},
-      {{ label:'Furtos',                value: document.getElementById('kpi-furtos').textContent, sub: document.getElementById('kpi-furtos-sub').textContent, cor:TEAL }},
-      {{ label:'Roubos',                value: document.getElementById('kpi-roubos').textContent, sub: document.getElementById('kpi-roubos-sub').textContent, cor:GOLD }},
+      {{ label:'Bairro Mais Afetado',   value: document.getElementById('kpi-bairro').textContent, sub: document.getElementById('kpi-bairro-num').textContent+' casos', cor:GRAY }},
+      {{ label:'Turno Mais Crítico',    value: document.getElementById('kpi-turno').textContent,  sub: document.getElementById('kpi-turno-num').textContent+' casos', cor:NAVY }},
+      {{ label:'Dia Mais Crítico',      value: document.getElementById('kpi-dia').textContent,    sub: document.getElementById('kpi-dia-num').textContent+' casos', cor:GRAY }},
+      {{ label:'Furtos',                value: document.getElementById('kpi-furtos').textContent, sub: document.getElementById('kpi-furtos-sub').textContent, cor:NAVY }},
+      {{ label:'Roubos',                value: document.getElementById('kpi-roubos').textContent, sub: document.getElementById('kpi-roubos-sub').textContent, cor:GRAY }},
       {{ label:'Arrombamentos',         value: document.getElementById('kpi-arrom').textContent,  sub: document.getElementById('kpi-arrom-sub').textContent, cor:NAVY }},
     ];
     novoSlide();
@@ -2879,11 +2879,11 @@ async function gerarSlides() {{
           ty += 0.22 + 0.19*obsLinhas.length + 0.4;
         }}
         if (sug) {{
-          doc.setFillColor(...TEAL);
+          doc.setFillColor(...GRAY);
           doc.rect(textX-0.18, ty-0.1, 0.045, 0.15, 'F');
           doc.setFont(undefined, 'bold');
           doc.setFontSize(10);
-          doc.setTextColor(...TEAL);
+          doc.setTextColor(120,123,130);
           doc.text('SUGESTÃO', textX, ty);
           doc.setFont(undefined, 'normal');
           doc.setFontSize(10.5);
@@ -2917,9 +2917,9 @@ async function gerarSlides() {{
     novoSlide();
     doc.setFillColor(...NAVY);
     doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(...TEAL);
+    doc.setFillColor(...GRAY);
     doc.rect(0, 0, 0.14, H, 'F');
-    doc.setFillColor(...GOLD);
+    doc.setFillColor(...GRAY);
     doc.rect(0, H-0.14, W, 0.14, 'F');
     if (LOGO_GMBC) {{
       const lh = 2.6, lw = lh * (1442/1612);
@@ -2931,7 +2931,7 @@ async function gerarSlides() {{
     doc.text('Apresentação Concluída', W/2, 3.7, {{ align:'center' }});
     doc.setFont(undefined, 'normal');
     doc.setFontSize(11);
-    doc.setTextColor(195,205,220);
+    doc.setTextColor(...LIGHT);
     doc.text('Secretaria de Segurança e Ordem Pública — Guarda Municipal BC', W/2, 4.1, {{ align:'center' }});
 
     // ── Rodapé (numeração + identificação) em todas as páginas, exceto a capa ──
