@@ -55,8 +55,8 @@ cluster_css2 = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5
                          'MarkerCluster.Default.min.css')
 cluster_js   = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.min.js',
                          'leaflet.markercluster.min.js')
-pptxgen_js   = fetch_lib('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
-                         'pptxgen.bundle.js')
+jspdf_js     = fetch_lib('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+                         'jspdf.umd.min.js')
 
 def _embed_js(code):
     if not code:
@@ -279,7 +279,7 @@ __LEAFLET_JS__
 __CLUSTER_CSS1__
 __CLUSTER_CSS2__
 __CLUSTER_JS__
-__PPTXGEN_JS__
+__JSPDF_JS__
 <style>
 :root {{
   --azul:#0078D4; --azul2:#106EBE; --azul-clr:#50B2FF;
@@ -2657,10 +2657,17 @@ async function transcreverAudio(blob) {{
   }}
 }}
 
-// ── GERAR SLIDES (PowerPoint) ──────────────────────────────────────────────
+// ── GERAR SLIDES (PDF, abre direto no navegador) ──────────────────────────
 async function gerarSlides() {{
   const btn = document.getElementById('btn-gerar-slides');
   const labelOriginal = btn.innerHTML;
+
+  // Abre a aba já no clique (síncrono) pra não ser bloqueada como pop-up.
+  const novaAba = window.open('', '_blank');
+  if (novaAba) {{
+    novaAba.document.write('<title>Gerando apresentação...</title><body style="font-family:sans-serif;padding:40px;text-align:center;color:#555">Gerando apresentação, aguarde...</body>');
+  }}
+
   btn.disabled = true;
   btn.innerHTML = '⏳<span class="btxt"> Gerando...</span>';
 
@@ -2671,18 +2678,37 @@ async function gerarSlides() {{
     const agora = new Date();
     const dataHora = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{{hour:'2-digit',minute:'2-digit'}});
 
-    const AZUL = '0078D4', ROXO = '4A0E8F', CINZA = '555555';
-    const pptx = new PptxGenJS();
-    pptx.defineLayout({{ name: 'GMBC', width: 10, height: 5.63 }});
-    pptx.layout = 'GMBC';
+    const AZUL = [0,120,212], ROXO = [74,14,143], CINZA = [85,85,85];
+    const W = 10, H = 5.63;
+    const {{ jsPDF }} = window.jspdf;
+    const doc = new jsPDF({{ orientation:'landscape', unit:'in', format:[W,H] }});
+
+    function novoSlide() {{ doc.addPage([W,H], 'landscape'); }}
+    function tituloSlide(txt) {{
+      doc.setTextColor(...ROXO);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(20);
+      doc.text(txt, 0.4, 0.7);
+      doc.setFont(undefined, 'normal');
+    }}
 
     // ── Slide 1: título ──
-    const s1 = pptx.addSlide();
-    s1.background = {{ color: '1A1A2E' }};
-    s1.addText('Secretaria de Segurança e Ordem Pública', {{ x:0.5, y:1.6, w:9, h:0.6, fontSize:20, color:'FFFFFF', bold:true, align:'center' }});
-    s1.addText('Balneário Camboriú — Guarda Municipal', {{ x:0.5, y:2.2, w:9, h:0.5, fontSize:14, color:'BBBBBB', align:'center' }});
-    s1.addText(filtroDesc, {{ x:0.5, y:3.0, w:9, h:0.5, fontSize:12, color:AZUL, align:'center', bold:true }});
-    s1.addText('Gerado em ' + dataHora, {{ x:0.5, y:5.0, w:9, h:0.4, fontSize:9, color:'888888', align:'center' }});
+    doc.setFillColor(26,26,46);
+    doc.rect(0, 0, W, H, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(20);
+    doc.text('Secretaria de Segurança e Ordem Pública', W/2, 2.0, {{ align:'center' }});
+    doc.setFontSize(13);
+    doc.setTextColor(200,200,200);
+    doc.text('Balneário Camboriú — Guarda Municipal', W/2, 2.5, {{ align:'center' }});
+    doc.setTextColor(...AZUL.map(c=>Math.min(255,c+80)));
+    doc.setFontSize(12);
+    doc.text(filtroDesc, W/2, 3.2, {{ align:'center' }});
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(150,150,150);
+    doc.text('Gerado em ' + dataHora, W/2, 5.2, {{ align:'center' }});
 
     // ── Slide 2: KPIs ──
     const kpiTxt = [
@@ -2694,12 +2720,20 @@ async function gerarSlides() {{
       ['Roubos', document.getElementById('kpi-roubos').textContent + ' (' + document.getElementById('kpi-roubos-sub').textContent + ')'],
       ['Arrombamentos', document.getElementById('kpi-arrom').textContent + ' (' + document.getElementById('kpi-arrom-sub').textContent + ')'],
     ];
-    const s2 = pptx.addSlide();
-    s2.addText('Indicadores Principais', {{ x:0.4, y:0.3, w:9.2, h:0.5, fontSize:22, bold:true, color:ROXO }});
-    s2.addTable(kpiTxt.map(([k,v]) => ([
-      {{ text:k, options:{{ bold:true, color:'333333', fontSize:12 }} }},
-      {{ text:v, options:{{ color:AZUL, fontSize:12, bold:true }} }},
-    ])), {{ x:0.5, y:1.0, w:9, colW:[4.5,4.5], border:{{type:'solid',color:'DDDDDD',pt:1}}, autoPage:false }});
+    novoSlide();
+    tituloSlide('Indicadores Principais');
+    let ky = 1.5;
+    kpiTxt.forEach(([k,v]) => {{
+      doc.setFontSize(12);
+      doc.setTextColor(51,51,51);
+      doc.setFont(undefined, 'bold');
+      doc.text(k, 0.6, ky);
+      doc.setTextColor(...AZUL);
+      doc.text(v, 5.2, ky);
+      doc.setDrawColor(230,230,230);
+      doc.line(0.6, ky+0.12, 9.4, ky+0.12);
+      ky += 0.5;
+    }});
 
     // ── Slides 3-4: gráficos ──
     async function addChartSlide(elId, titulo) {{
@@ -2707,17 +2741,15 @@ async function gerarSlides() {{
       if (!el || !window.Plotly) return;
       try {{
         const img = await Plotly.toImage(el, {{ format:'png', width:900, height:500 }});
-        const sl = pptx.addSlide();
-        sl.addText(titulo, {{ x:0.4, y:0.3, w:9.2, h:0.5, fontSize:20, bold:true, color:ROXO }});
-        sl.addImage({{ data:img, x:0.7, y:1.0, w:8.6, h:4.2 }});
+        novoSlide();
+        tituloSlide(titulo);
+        doc.addImage(img, 'PNG', 0.7, 1.0, 8.6, 4.2);
       }} catch (e) {{ /* ignora gráfico que falhar */ }}
     }}
     await addChartSlide('chart-tipo', 'Tipificação das Ocorrências');
     await addChartSlide('chart-bairro', '10 Bairros com Mais Ocorrências');
 
     // ── Slide final: Resumo Executivo IA ──
-    const sFinal = pptx.addSlide();
-    sFinal.addText('Resumo Executivo — IA', {{ x:0.4, y:0.3, w:9.2, h:0.5, fontSize:20, bold:true, color:ROXO }});
     let resumoTexto = 'Resumo não disponível.';
     try {{
       const resp = await fetch('/api/explicar', {{
@@ -2728,12 +2760,23 @@ async function gerarSlides() {{
       const data = await resp.json();
       if (resp.ok) resumoTexto = data.texto;
     }} catch (e) {{ /* mantém texto padrão se a IA falhar */ }}
-    sFinal.addText(resumoTexto, {{ x:0.6, y:1.1, w:8.8, h:4.2, fontSize:12, color:'333333', valign:'top', lineSpacingMultiple:1.3 }});
+    novoSlide();
+    tituloSlide('Resumo Executivo — IA');
+    doc.setFontSize(12);
+    doc.setTextColor(51,51,51);
+    doc.setFont(undefined, 'normal');
+    const linhas = doc.splitTextToSize(resumoTexto, 8.8);
+    doc.text(linhas, 0.6, 1.4, {{ lineHeightFactor:1.4 }});
 
-    const nomeArquivo = 'dashboard-gmbc-' + agora.toISOString().slice(0,10) + '.pptx';
-    await pptx.writeFile({{ fileName: nomeArquivo }});
+    const blobUrl = doc.output('bloburl');
+    if (novaAba) {{
+      novaAba.location.href = blobUrl;
+    }} else {{
+      window.open(blobUrl, '_blank');
+    }}
   }} catch (e) {{
-    alert('Erro ao gerar slides: ' + e.message);
+    if (novaAba) novaAba.close();
+    alert('Erro ao gerar apresentação: ' + e.message);
   }} finally {{
     btn.disabled = false;
     btn.innerHTML = labelOriginal;
@@ -4803,7 +4846,7 @@ html = html.replace('__LEAFLET_JS__',   _embed_js(leaflet_js))
 html = html.replace('__CLUSTER_CSS1__', _embed_css(cluster_css1))
 html = html.replace('__CLUSTER_CSS2__', _embed_css(cluster_css2))
 html = html.replace('__CLUSTER_JS__',   _embed_js(cluster_js))
-html = html.replace('__PPTXGEN_JS__',   _embed_js(pptxgen_js))
+html = html.replace('__JSPDF_JS__',     _embed_js(jspdf_js))
 
 with open('dashboard_interativo.html', 'w', encoding='utf-8') as f:
     f.write(html)
