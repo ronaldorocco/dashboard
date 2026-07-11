@@ -794,12 +794,13 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
   .btn-pdf-r1{display:block;}
   .btn-pdf-r2{display:none;}
 
-  /* Header row 2: quebra em 2 linhas de 4 botões (8 botões ao todo) */
+  /* Header row 2: grid fixo de 4 colunas (garante 4 por linha independente
+     do tamanho do texto do botão — flexbox deixava o texto forçar só 2) */
   .header-row2{
-    padding:3px 6px 4px;gap:4px;
-    flex-wrap:wrap;justify-content:center;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:4px;
+    padding:3px 6px 4px;
   }
-  .header-row2 button{flex:1 1 22%;min-width:72px;padding:5px 2px;font-size:10px;white-space:nowrap;text-align:center;}
+  .header-row2 button{padding:5px 1px;font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
 
   .badge{display:none;}
   .menu-toggle{display:block;flex-shrink:0;}
@@ -883,7 +884,7 @@ tbody td{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space:
   .rec-text{font-size:11.5px;}
   .chart-card{padding:8px;}
   .section-title{font-size:12px;}
-  .header-row2 button{flex:1 1 45%;font-size:10.5px;}
+  .header-row2 button{font-size:7.5px;padding:5px 1px;}
 }
 
 /* INSIGHTS */
