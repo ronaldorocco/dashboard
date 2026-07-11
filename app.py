@@ -101,7 +101,7 @@ def chat():
     )
 
     try:
-        texto = _chamar_openai(CHAT_SYSTEM_PROMPT, user_content, max_tokens=600)
+        texto = _chamar_openai(CHAT_SYSTEM_PROMPT, user_content, max_tokens=1500)
     except requests.RequestException as exc:
         return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
 
