@@ -108,6 +108,37 @@ def chat():
     return jsonify({"texto": texto})
 
 
+@app.route("/api/transcrever", methods=["POST"])
+def transcrever():
+    if not OPENAI_API_KEY:
+        return jsonify({"erro": "OPENAI_API_KEY não configurada no servidor"}), 500
+
+    audio_file = request.files.get("audio")
+    if not audio_file:
+        return jsonify({"erro": "Arquivo de áudio é obrigatório"}), 400
+
+    try:
+        resp = requests.post(
+            "https://api.openai.com/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+            files={
+                "file": (
+                    audio_file.filename or "audio.webm",
+                    audio_file.stream,
+                    audio_file.mimetype or "audio/webm",
+                )
+            },
+            data={"model": "whisper-1", "language": "pt"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        return jsonify({"erro": f"Falha ao transcrever áudio: {exc}"}), 502
+
+    texto = resp.json().get("text", "")
+    return jsonify({"texto": texto})
+
+
 @app.route("/<path:filename>")
 def static_files(filename):
     # Arquivos sensíveis (ex: inteligencia_criminal.html) ficam fora do

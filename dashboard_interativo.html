@@ -150,6 +150,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .chat-ia-inputbar button{background:#0078D4;color:white;border:none;border-radius:6px;padding:8px 14px;
   font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
 .chat-ia-inputbar button:hover{background:#005A9E;}
+#chat-ia-mic{background:#F0F0F0;color:#333;border:none;border-radius:6px;padding:8px 10px;
+  font-size:14px;cursor:pointer;flex-shrink:0;}
+#chat-ia-mic:hover{background:#E0E0E0;}
+#chat-ia-mic.gravando{background:#D13438;color:white;animation:pulseGravando 1s infinite;}
+@keyframes pulseGravando{0%{opacity:1;}50%{opacity:.5;}100%{opacity:1;}}
 #chat-ia-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;
   background:linear-gradient(135deg,#0078D4,#00B7C3);color:white;border:none;font-size:24px;
   box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;z-index:9998;}
@@ -2358,6 +2363,60 @@ async function enviarPerguntaChat() {
   log.scrollTop = log.scrollHeight;
 }
 
+// ── ENTRADA POR VOZ (Whisper via backend) ─────────────────────────────────────
+let _mediaRecorder = null;
+let _audioChunks = [];
+let _gravando = false;
+
+async function toggleGravacao() {
+  const btn = document.getElementById('chat-ia-mic');
+  if (!_gravando) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      _audioChunks = [];
+      _mediaRecorder = new MediaRecorder(stream);
+      _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
+      _mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(_audioChunks, { type: 'audio/webm' });
+        await transcreverAudio(blob);
+      };
+      _mediaRecorder.start();
+      _gravando = true;
+      btn.textContent = '⏹';
+      btn.classList.add('gravando');
+    } catch (e) {
+      alert('Não foi possível acessar o microfone: ' + e.message);
+    }
+  } else {
+    _mediaRecorder.stop();
+    _gravando = false;
+    btn.textContent = '🎤';
+    btn.classList.remove('gravando');
+  }
+}
+
+async function transcreverAudio(blob) {
+  const input = document.getElementById('chat-ia-input');
+  const placeholderOriginal = input.placeholder;
+  input.placeholder = 'Transcrevendo áudio...';
+  input.disabled = true;
+  try {
+    const formData = new FormData();
+    formData.append('audio', blob, 'audio.webm');
+    const resp = await fetch('/api/transcrever', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
+    input.value = data.texto;
+    input.focus();
+  } catch (e) {
+    alert('Erro ao transcrever: ' + e.message);
+  } finally {
+    input.disabled = false;
+    input.placeholder = placeholderOriginal;
+  }
+}
+
 function abrirResumoIA() {
   const agora = new Date();
   document.getElementById('resumoia-meta').textContent =
@@ -4303,6 +4362,7 @@ else { window.addEventListener('load', init); }
     <div class="chat-msg chat-msg-ia">Olá! Pergunte sobre as ocorrências — ex: "quantos furtos aconteceram no Centro?" ou "o que acontece mais aos sábados de madrugada?"</div>
   </div>
   <div class="chat-ia-inputbar">
+    <button id="chat-ia-mic" type="button" onclick="toggleGravacao()" title="Falar">🎤</button>
     <input id="chat-ia-input" type="text" placeholder="Digite sua pergunta..."
       onkeydown="if(event.key==='Enter')enviarPerguntaChat()">
     <button onclick="enviarPerguntaChat()">Enviar</button>
