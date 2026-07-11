@@ -396,7 +396,7 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .chat-ia-log{{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}}
 .chat-msg{{padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.5;max-width:88%;}}
 .chat-msg-user{{background:#0078D4;color:white;align-self:flex-end;border-bottom-right-radius:2px;}}
-.chat-msg-ia{{background:#F0F0F0;color:#222;align-self:flex-start;border-bottom-left-radius:2px;}}
+.chat-msg-ia{{background:#F0F0F0;color:#222;align-self:flex-start;border-bottom-left-radius:2px;text-align:justify;}}
 .chat-ia-inputbar{{display:flex;gap:8px;padding:12px;border-top:1px solid #EEE;flex-shrink:0;align-items:flex-end;}}
 .chat-ia-inputbar textarea{{flex:1;border:1px solid #DDD;border-radius:6px;padding:8px 10px;font-size:12px;
   font-family:inherit;min-width:0;resize:vertical;min-height:64px;max-height:200px;line-height:1.4;}}
@@ -643,12 +643,12 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
   .btn-pdf-r1{{display:block;}}
   .btn-pdf-r2{{display:none;}}
 
-  /* Header row 2: todos na mesma linha */
+  /* Header row 2: quebra em 2 linhas de 4 botões (8 botões ao todo) */
   .header-row2{{
-    padding:3px 6px 4px;gap:2px;
-    flex-wrap:nowrap;overflow-x:hidden;
+    padding:3px 6px 4px;gap:4px;
+    flex-wrap:wrap;justify-content:center;
   }}
-  .header-row2 button{{flex:1;min-width:0;padding:4px 2px;font-size:10px;white-space:nowrap;text-align:center;}}
+  .header-row2 button{{flex:1 1 22%;min-width:72px;padding:5px 2px;font-size:10px;white-space:nowrap;text-align:center;}}
 
   .badge{{display:none;}}
   .menu-toggle{{display:block;flex-shrink:0;}}
@@ -732,6 +732,7 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
   .rec-text{{font-size:11.5px;}}
   .chart-card{{padding:8px;}}
   .section-title{{font-size:12px;}}
+  .header-row2 button{{flex:1 1 45%;font-size:10.5px;}}
 }}
 
 /* INSIGHTS */
@@ -894,7 +895,7 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
 <body>
 
 <div id="__err__" style="display:none;position:fixed;top:0;left:0;right:0;background:#c00;color:#fff;padding:16px;font-family:monospace;font-size:13px;z-index:99999;white-space:pre-wrap"></div>
-<script>window.onerror=function(m,s,l,c,e){{var d=document.getElementById('__err__');if(d){{d.style.display='block';d.textContent='ERRO JS: '+m+' (linha '+l+')\n'+(e&&e.stack?e.stack:'');}}return false;}};</script>
+<script>window.onerror=function(m,s,l,c,e){{var d=document.getElementById('__err__');if(d){{d.style.display='block';d.textContent='ERRO JS: '+m+' (linha '+l+')\\n'+(e&&e.stack?e.stack:'');}}return false;}};</script>
 
 <script>
 /* ── LOGIN STANDALONE — funciona mesmo se o script principal falhar ── */
@@ -1337,7 +1338,7 @@ let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '', corQ = '', detalhes
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
 const COLORS = {{
-  azul:'#0078D4', azulClr:'#50B2FF', laranja:'#E07B00',
+  azul:'#0078D4', azulClr:'#333D65', laranja:'#E07B00',
   verde:'#107C10', vermelho:'#D13438', roxo:'#8764B8', amarelo:'#FFB900',
   roxo2:'#CA5010',
 }};
@@ -3641,7 +3642,7 @@ function abrirAnalisePredit() {{
     <button id="btn-explicar-ia" class="btn-analise" data-label="🤖 Explicar com IA"
       onclick="explicarComIA(_preditResumoIA,'predit-ia-resultado','btn-explicar-ia')" style="background:#0078D4">🤖 Explicar com IA</button>
     <div id="predit-ia-resultado" style="display:none;margin-top:10px;background:#F0F6FC;border-left:4px solid #0078D4;
-      border-radius:8px;padding:12px 14px;font-size:12px"></div>
+      border-radius:8px;padding:12px 14px;font-size:12px;text-align:justify"></div>
   </div>
 
   <!-- KPIs -->
@@ -4875,7 +4876,7 @@ else {{ window.addEventListener('load', init); }}
     <div class="analise-corpo" id="resumoia-corpo" style="padding:18px 20px;overflow-y:auto">
       <div style="font-size:10px;color:#888;margin-bottom:14px" id="resumoia-meta"></div>
       <div id="resumoia-resultado" style="background:#F0F6FC;border-left:4px solid #0078D4;
-        border-radius:8px;padding:14px 16px;font-size:13px"></div>
+        border-radius:8px;padding:14px 16px;font-size:13px;text-align:justify"></div>
     </div>
     <div class="analise-footer">
       <button class="btn-reset" onclick="fecharResumoIA()">✕ Fechar</button>
