@@ -2843,66 +2843,107 @@ async function gerarSlides() {
     const agora = new Date();
     const dataHora = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
-    const AZUL = [0,120,212], ROXO = [74,14,143], CINZA = [85,85,85];
+    const NAVY = [26,39,68], TEAL = [13,148,136], GOLD = [219,158,45];
+    const TXT = [60,60,66], SUBTXT = [130,130,138];
     const W = 10, H = 5.63;
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation:'landscape', unit:'in', format:[W,H] });
 
     function novoSlide() { doc.addPage([W,H], 'landscape'); }
     function tituloSlide(txt) {
-      doc.setFillColor(...ROXO);
-      doc.rect(0, 0, W, 0.14, 'F');
-      doc.setTextColor(...ROXO);
+      doc.setFillColor(...NAVY);
+      doc.rect(0, 0, W, 0.58, 'F');
+      doc.setFillColor(...TEAL);
+      doc.rect(0, 0.58, W, 0.05, 'F');
+      doc.setFillColor(...TEAL);
+      doc.rect(0, 0.63, 0.07, H-0.63, 'F');
+      doc.setTextColor(255,255,255);
       doc.setFont(undefined, 'bold');
-      doc.setFontSize(19);
-      doc.text(txt, 0.4, 0.62);
-      doc.setDrawColor(...ROXO);
-      doc.setLineWidth(0.015);
-      doc.line(0.4, 0.75, W-0.4, 0.75);
+      doc.setFontSize(17);
+      doc.text(txt, 0.4, 0.37);
       doc.setFont(undefined, 'normal');
+    }
+    function rodapeSlide(pagina, total) {
+      doc.setFillColor(...TEAL);
+      doc.rect(0, H-0.34, W, 0.035, 'F');
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...SUBTXT);
+      doc.text('Secretaria de Segurança e Ordem Pública — Guarda Municipal BC', 0.4, H-0.15);
+      doc.setFontSize(6.5);
+      doc.setTextColor(170,170,178);
+      doc.text('Desenvolvido por Ronaldo E. Barbosa - Guarda Municipal', W/2, H-0.15, { align:'center' });
+      doc.setFontSize(7.5);
+      doc.setTextColor(...SUBTXT);
+      doc.text(pagina + ' / ' + total, W-0.4, H-0.15, { align:'right' });
     }
 
     // ── Slide 1: título ──
-    doc.setFillColor(26,26,46);
+    doc.setFillColor(...NAVY);
     doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(...TEAL);
+    doc.rect(0, 0, 0.14, H, 'F');
+    doc.setFillColor(...GOLD);
+    doc.rect(0, H-0.14, W, 0.14, 'F');
     doc.setTextColor(255,255,255);
     doc.setFont(undefined, 'bold');
-    doc.setFontSize(20);
+    doc.setFontSize(22);
     doc.text('Secretaria de Segurança e Ordem Pública', W/2, 2.0, { align:'center' });
     doc.setFontSize(13);
-    doc.setTextColor(200,200,200);
+    doc.setTextColor(195,205,220);
+    doc.setFont(undefined, 'normal');
     doc.text('Balneário Camboriú — Guarda Municipal', W/2, 2.5, { align:'center' });
-    doc.setTextColor(...AZUL.map(c=>Math.min(255,c+80)));
+    doc.setTextColor(...GOLD);
+    doc.setFont(undefined, 'bold');
     doc.setFontSize(12);
     doc.text(filtroDesc, W/2, 3.2, { align:'center' });
     doc.setFont(undefined, 'normal');
     doc.setFontSize(9);
-    doc.setTextColor(150,150,150);
-    doc.text('Gerado em ' + dataHora, W/2, 5.2, { align:'center' });
+    doc.setTextColor(150,160,175);
+    doc.text('Gerado em ' + dataHora, W/2, 4.6, { align:'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(120,130,145);
+    doc.text('Desenvolvido por Ronaldo E. Barbosa - Guarda Municipal', W/2, H-0.32, { align:'center' });
 
-    // ── Slide 2: KPIs ──
-    const kpiTxt = [
-      ['Total de ocorrências', document.getElementById('kpi-total').textContent],
-      ['Bairro mais afetado', document.getElementById('kpi-bairro').textContent + ' (' + document.getElementById('kpi-bairro-num').textContent + ' casos)'],
-      ['Turno mais crítico', document.getElementById('kpi-turno').textContent + ' (' + document.getElementById('kpi-turno-num').textContent + ' casos)'],
-      ['Dia mais crítico', document.getElementById('kpi-dia').textContent + ' (' + document.getElementById('kpi-dia-num').textContent + ' casos)'],
-      ['Furtos', document.getElementById('kpi-furtos').textContent + ' (' + document.getElementById('kpi-furtos-sub').textContent + ')'],
-      ['Roubos', document.getElementById('kpi-roubos').textContent + ' (' + document.getElementById('kpi-roubos-sub').textContent + ')'],
-      ['Arrombamentos', document.getElementById('kpi-arrom').textContent + ' (' + document.getElementById('kpi-arrom-sub').textContent + ')'],
+    // ── Slide 2: KPIs (cards) ──
+    const kpiCards = [
+      { label:'Total de Ocorrências',  value: document.getElementById('kpi-total').textContent, cor:NAVY },
+      { label:'Bairro Mais Afetado',   value: document.getElementById('kpi-bairro').textContent, sub: document.getElementById('kpi-bairro-num').textContent+' casos', cor:TEAL },
+      { label:'Turno Mais Crítico',    value: document.getElementById('kpi-turno').textContent,  sub: document.getElementById('kpi-turno-num').textContent+' casos', cor:GOLD },
+      { label:'Dia Mais Crítico',      value: document.getElementById('kpi-dia').textContent,    sub: document.getElementById('kpi-dia-num').textContent+' casos', cor:NAVY },
+      { label:'Furtos',                value: document.getElementById('kpi-furtos').textContent, sub: document.getElementById('kpi-furtos-sub').textContent, cor:TEAL },
+      { label:'Roubos',                value: document.getElementById('kpi-roubos').textContent, sub: document.getElementById('kpi-roubos-sub').textContent, cor:GOLD },
+      { label:'Arrombamentos',         value: document.getElementById('kpi-arrom').textContent,  sub: document.getElementById('kpi-arrom-sub').textContent, cor:NAVY },
     ];
     novoSlide();
     tituloSlide('Indicadores Principais');
-    let ky = 1.5;
-    kpiTxt.forEach(([k,v]) => {
-      doc.setFontSize(12);
-      doc.setTextColor(51,51,51);
+    const cardW = 2.15, cardH = 1.55, gapX = 0.2, gapY = 0.22, startX = 0.4, startY = 1.0;
+    kpiCards.forEach((c, idx) => {
+      const col = idx % 4, row = Math.floor(idx/4);
+      const x = startX + col*(cardW+gapX);
+      const y = startY + row*(cardH+gapY);
+      doc.setFillColor(250,250,252);
+      doc.setDrawColor(224,224,230);
+      doc.setLineWidth(0.01);
+      doc.roundedRect(x, y, cardW, cardH, 0.05, 0.05, 'FD');
+      doc.setFillColor(...c.cor);
+      doc.rect(x, y, cardW, 0.07, 'F');
       doc.setFont(undefined, 'bold');
-      doc.text(k, 0.6, ky);
-      doc.setTextColor(...AZUL);
-      doc.text(v, 5.2, ky);
-      doc.setDrawColor(230,230,230);
-      doc.line(0.6, ky+0.12, 9.4, ky+0.12);
-      ky += 0.5;
+      doc.setFontSize(17);
+      doc.setTextColor(...TXT);
+      doc.text(String(c.value), x+cardW/2, y+0.65, { align:'center' });
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...SUBTXT);
+      const labelLinhas = doc.splitTextToSize(c.label, cardW-0.2);
+      doc.text(labelLinhas, x+cardW/2, y+0.95, { align:'center' });
+      if (c.sub) {
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...c.cor);
+        doc.text(String(c.sub), x+cardW/2, y+cardH-0.15, { align:'center' });
+        doc.setFont(undefined, 'normal');
+      }
     });
 
     // ── Gráficos principais: 1 por página, com observação/sugestão da IA ──
@@ -2946,32 +2987,43 @@ async function gerarSlides() {
       const el = document.getElementById(g.id);
       if (!el || !window.Plotly) continue;
       try {
-        const img = await Plotly.toImage(el, { format:'png', width:900, height:500 });
+        const img = await Plotly.toImage(el, { format:'png', width:800, height:450 });
         novoSlide();
         tituloSlide(g.titulo);
-        doc.addImage(img, 'PNG', 0.9, 0.95, 8.2, 2.95);
+
+        const imgW = 5.2, imgH = imgW * (450/800);
+        const imgX = (W - imgW) / 2;
+        const imgY = 0.82;
+        doc.addImage(img, 'PNG', imgX, imgY, imgW, imgH);
 
         const { obs, sug } = parseInsight(insightsBlocos[i]);
-        let ty = 4.15;
+        let ty = imgY + imgH + 0.22;
         if (obs) {
-          doc.setFontSize(10.5);
-          doc.setTextColor(51,51,51);
+          doc.setFillColor(...NAVY);
+          doc.rect(0.5, ty-0.1, 0.045, 0.15, 'F');
           doc.setFont(undefined, 'bold');
-          doc.text('📌 Observação', 0.6, ty);
+          doc.setFontSize(9);
+          doc.setTextColor(...NAVY);
+          doc.text('OBSERVAÇÃO', 0.68, ty);
           doc.setFont(undefined, 'normal');
-          const obsLinhas = doc.splitTextToSize(obs, 8.8);
-          doc.text(obsLinhas, 0.6, ty+0.22);
-          ty += 0.22 + 0.19*obsLinhas.length + 0.14;
+          doc.setFontSize(9.5);
+          doc.setTextColor(...TXT);
+          const obsLinhas = doc.splitTextToSize(obs, 8.6);
+          doc.text(obsLinhas, 0.68, ty+0.19);
+          ty += 0.19 + 0.16*obsLinhas.length + 0.12;
         }
         if (sug) {
-          doc.setFontSize(10.5);
-          doc.setTextColor(...AZUL);
+          doc.setFillColor(...TEAL);
+          doc.rect(0.5, ty-0.1, 0.045, 0.15, 'F');
           doc.setFont(undefined, 'bold');
-          doc.text('💡 Sugestão', 0.6, ty);
+          doc.setFontSize(9);
+          doc.setTextColor(...TEAL);
+          doc.text('SUGESTÃO', 0.68, ty);
           doc.setFont(undefined, 'normal');
-          doc.setTextColor(51,51,51);
-          const sugLinhas = doc.splitTextToSize(sug, 8.8);
-          doc.text(sugLinhas, 0.6, ty+0.22);
+          doc.setFontSize(9.5);
+          doc.setTextColor(...TXT);
+          const sugLinhas = doc.splitTextToSize(sug, 8.6);
+          doc.text(sugLinhas, 0.68, ty+0.19);
         }
       } catch (e) { /* ignora gráfico que falhar */ }
     }
@@ -2989,21 +3041,17 @@ async function gerarSlides() {
     } catch (e) { /* mantém texto padrão se a IA falhar */ }
     novoSlide();
     tituloSlide('Resumo Executivo — IA');
-    doc.setFontSize(12);
-    doc.setTextColor(51,51,51);
+    doc.setFontSize(11.5);
+    doc.setTextColor(...TXT);
     doc.setFont(undefined, 'normal');
     const linhas = doc.splitTextToSize(resumoTexto, 8.8);
-    doc.text(linhas, 0.6, 1.4, { lineHeightFactor:1.4 });
+    doc.text(linhas, 0.6, 1.25, { lineHeightFactor:1.4 });
 
     // ── Rodapé (numeração + identificação) em todas as páginas, exceto a capa ──
     const totalPaginas = doc.internal.getNumberOfPages();
     for (let p = 2; p <= totalPaginas; p++) {
       doc.setPage(p);
-      doc.setFont(undefined, 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(150,150,150);
-      doc.text('Secretaria de Segurança e Ordem Pública — Guarda Municipal BC', 0.4, H-0.18);
-      doc.text(p + ' / ' + totalPaginas, W-0.4, H-0.18, { align:'right' });
+      rodapeSlide(p, totalPaginas);
     }
 
     const blobUrl = doc.output('bloburl');
