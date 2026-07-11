@@ -2888,7 +2888,25 @@ async function gerarSlides() {
       doc.text(pagina + ' / ' + total, W-0.4, H-0.15, { align:'right' });
     }
 
-    // Escreve texto justificado (esquerda E direita), palavra por palavra.
+    // Escreve UMA linha justificada (esquerda E direita), palavra por palavra.
+    // Não força linhas curtas (poucas palavras) a esticar até a borda —
+    // fica feio um "gap" enorme numa linha de 2-3 palavras.
+    function linhaJustificada(linha, x, ly, maxWidth) {
+      const palavras = linha.trim().split(/\s+/).filter(Boolean);
+      const larguraPalavras = palavras.reduce((s,p) => s + doc.getTextWidth(p), 0);
+      if (palavras.length <= 2 || larguraPalavras < maxWidth*0.55) {
+        doc.text(linha, x, ly);
+        return;
+      }
+      const espacoPorGap = (maxWidth - larguraPalavras) / (palavras.length - 1);
+      let cx = x;
+      palavras.forEach((p) => {
+        doc.text(p, cx, ly);
+        cx += doc.getTextWidth(p) + espacoPorGap;
+      });
+    }
+
+    // Escreve texto justificado numa única coluna.
     // IMPORTANTE: maxWidth deve ficar abaixo de ~5 in — versões deste jsPDF
     // truncam silenciosamente texto de uma única chamada text() acima de
     // ~5.2 in de largura acumulada (bug da biblioteca, não do nosso código).
@@ -2896,21 +2914,28 @@ async function gerarSlides() {
       const linhas = doc.splitTextToSize(texto, maxWidth);
       linhas.forEach((linha, i) => {
         const isLast = i === linhas.length - 1;
-        const palavras = linha.trim().split(/\s+/).filter(Boolean);
         const ly = y + i*lineHeight;
-        if (isLast || palavras.length <= 1) {
-          doc.text(linha, x, ly);
-          return;
-        }
-        const larguraPalavras = palavras.reduce((s,p) => s + doc.getTextWidth(p), 0);
-        const espacoPorGap = (maxWidth - larguraPalavras) / (palavras.length - 1);
-        let cx = x;
-        palavras.forEach((p) => {
-          doc.text(p, cx, ly);
-          cx += doc.getTextWidth(p) + espacoPorGap;
-        });
+        if (isLast) { doc.text(linha, x, ly); return; }
+        linhaJustificada(linha, x, ly, maxWidth);
       });
       return linhas.length;
+    }
+
+    // Escreve texto justificado fluindo em 2 colunas lado a lado, dividindo
+    // as linhas de forma equilibrada entre as duas (evita coluna vazia).
+    function escreverJustificado2Colunas(texto, x1, x2, y, colW, lineHeight) {
+      const linhas = doc.splitTextToSize(texto, colW);
+      const linhasPorColuna = Math.ceil(linhas.length / 2);
+      linhas.forEach((linha, i) => {
+        const col = Math.floor(i / linhasPorColuna);
+        const linhaNaCol = i % linhasPorColuna;
+        const x = col === 0 ? x1 : x2;
+        const ly = y + linhaNaCol*lineHeight;
+        const isLastDoTexto = i === linhas.length - 1;
+        const isUltimaDaCol = linhaNaCol === linhasPorColuna - 1;
+        if (isLastDoTexto || isUltimaDaCol) { doc.text(linha, x, ly); return; }
+        linhaJustificada(linha, x, ly, colW);
+      });
     }
 
     // ── Slide 1: título ──
@@ -3092,7 +3117,9 @@ async function gerarSlides() {
     doc.setFont(undefined, 'normal');
     // Coluna única, mas com largura abaixo do limite de ~5.2in que trunca
     // texto silenciosamente no jsPDF (bug da biblioteca, ver escreverJustificado).
-    escreverJustificado(resumoTexto, 0.6, 1.1, 5.0, 0.2);
+    // 2 colunas de 4.2in cada, preenchendo a largura toda do slide sem
+    // ultrapassar o limite seguro de largura por linha (~5.2in, ver acima).
+    escreverJustificado2Colunas(resumoTexto, 0.6, 5.2, 1.1, 4.2, 0.2);
 
     // ── Slide de encerramento ──
     novoSlide();
