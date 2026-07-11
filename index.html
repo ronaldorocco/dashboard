@@ -147,7 +147,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .chat-msg-ia{background:#F0F0F0;color:#222;align-self:flex-start;border-bottom-left-radius:2px;}
 .chat-ia-inputbar{display:flex;gap:8px;padding:12px;border-top:1px solid #EEE;flex-shrink:0;align-items:flex-end;}
 .chat-ia-inputbar textarea{flex:1;border:1px solid #DDD;border-radius:6px;padding:8px 10px;font-size:12px;
-  font-family:inherit;min-width:0;resize:vertical;min-height:34px;max-height:140px;line-height:1.4;}
+  font-family:inherit;min-width:0;resize:vertical;min-height:64px;max-height:200px;line-height:1.4;}
 .chat-ia-inputbar button{background:#0078D4;color:white;border:none;border-radius:6px;padding:8px 14px;
   font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
 .chat-ia-inputbar button:hover{background:#005A9E;}
@@ -4364,7 +4364,7 @@ else { window.addEventListener('load', init); }
   </div>
   <div class="chat-ia-inputbar">
     <button id="chat-ia-mic" type="button" onclick="toggleGravacao()" title="Falar">🎤</button>
-    <textarea id="chat-ia-input" rows="1" placeholder="Digite ou cole sua pergunta... (Enter envia, Shift+Enter quebra linha)"
+    <textarea id="chat-ia-input" rows="3" placeholder="Digite ou cole sua pergunta... (Enter envia, Shift+Enter quebra linha)"
       onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); enviarPerguntaChat(); }"></textarea>
     <button onclick="enviarPerguntaChat()">Enviar</button>
   </div>
