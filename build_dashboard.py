@@ -2837,6 +2837,7 @@ async function gerarSlides() {{
       {{ id:'chart-turno',  titulo:'Ocorrências por Turno',             dados:() => topEntradas(count(dadosU,'turno')) }},
       {{ id:'chart-dia',    titulo:'Ocorrências por Dia da Semana',     dados:() => topEntradas(count(dadosU,'dia')) }},
       {{ id:'chart-item',   titulo:'Itens Mais Furtados/Roubados',      dados:() => topEntradas(count(dataFiltrada,'item')) }},
+      {{ id:'chart-ruas',   titulo:'Ruas com Mais Ocorrências',         dados:() => topEntradas(count(dadosU,'endereco')) }},
     ];
 
     let insightsBlocos = [];
@@ -2931,15 +2932,9 @@ async function gerarSlides() {{
     doc.setFontSize(11);
     doc.setTextColor(...TXT);
     doc.setFont(undefined, 'normal');
-    // Duas colunas estreitas (cada uma bem abaixo do limite de ~5in que
-    // trunca texto no jsPDF) em vez de uma coluna larga só.
-    const colW = 4.2, col1X = 0.6, col2X = 5.2, textY = 1.1, lineH = 0.2;
-    let meio = resumoTexto.indexOf(' ', Math.round(resumoTexto.length/2));
-    if (meio === -1) meio = resumoTexto.length;
-    const parte1 = resumoTexto.slice(0, meio).trim();
-    const parte2 = resumoTexto.slice(meio).trim();
-    escreverJustificado(parte1, col1X, textY, colW, lineH);
-    if (parte2) escreverJustificado(parte2, col2X, textY, colW, lineH);
+    // Coluna única, mas com largura abaixo do limite de ~5.2in que trunca
+    // texto silenciosamente no jsPDF (bug da biblioteca, ver escreverJustificado).
+    escreverJustificado(resumoTexto, 0.6, 1.1, 5.0, 0.2);
 
     // ── Slide de encerramento ──
     novoSlide();
