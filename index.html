@@ -2921,21 +2921,22 @@ async function gerarSlides() {
       return linhas.length;
     }
 
-    // Escreve texto justificado fluindo em 2 colunas lado a lado, dividindo
-    // as linhas de forma equilibrada entre as duas (evita coluna vazia).
-    function escreverJustificado2Colunas(texto, x1, x2, y, colW, lineHeight) {
-      const linhas = doc.splitTextToSize(texto, colW);
-      const linhasPorColuna = Math.ceil(linhas.length / 2);
-      linhas.forEach((linha, i) => {
-        const col = Math.floor(i / linhasPorColuna);
-        const linhaNaCol = i % linhasPorColuna;
-        const x = col === 0 ? x1 : x2;
-        const ly = y + linhaNaCol*lineHeight;
-        const isLastDoTexto = i === linhas.length - 1;
-        const isUltimaDaCol = linhaNaCol === linhasPorColuna - 1;
-        if (isLastDoTexto || isUltimaDaCol) { doc.text(linha, x, ly); return; }
-        linhaJustificada(linha, x, ly, colW);
+    // Escreve texto justificado numa única coluna, respeitando os parágrafos
+    // (separados por linha em branco), com um espaço extra entre eles.
+    function escreverJustificadoParagrafos(texto, x, y, maxWidth, lineHeight, paragraphGap) {
+      const paragrafos = texto.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+      let cy = y;
+      paragrafos.forEach((paragrafo) => {
+        const linhas = doc.splitTextToSize(paragrafo, maxWidth);
+        linhas.forEach((linha, i) => {
+          const isLast = i === linhas.length - 1;
+          if (isLast) { doc.text(linha, x, cy); }
+          else { linhaJustificada(linha, x, cy, maxWidth); }
+          cy += lineHeight;
+        });
+        cy += paragraphGap;
       });
+      return cy;
     }
 
     // ── Slide 1: título ──
@@ -3115,11 +3116,10 @@ async function gerarSlides() {
     doc.setFontSize(11);
     doc.setTextColor(...TXT);
     doc.setFont(undefined, 'normal');
-    // Coluna única, mas com largura abaixo do limite de ~5.2in que trunca
-    // texto silenciosamente no jsPDF (bug da biblioteca, ver escreverJustificado).
-    // 2 colunas de 4.2in cada, preenchendo a largura toda do slide sem
-    // ultrapassar o limite seguro de largura por linha (~5.2in, ver acima).
-    escreverJustificado2Colunas(resumoTexto, 0.6, 5.2, 1.1, 4.2, 0.2);
+    // Coluna única, centralizada, com largura abaixo do limite de ~5.2in que
+    // trunca texto silenciosamente no jsPDF (bug da biblioteca, ver
+    // escreverJustificado). Parágrafos preservados, como no resumo da IA.
+    escreverJustificadoParagrafos(resumoTexto, (W-5.0)/2, 1.1, 5.0, 0.24, 0.18);
 
     // ── Slide de encerramento ──
     novoSlide();
