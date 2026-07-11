@@ -58,6 +58,12 @@ cluster_js   = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5
 jspdf_js     = fetch_lib('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
                          'jspdf.umd.min.js')
 
+# ── Logo da Guarda Municipal (usado nos slides em PDF) ────────────────────────
+LOGO_GMBC_B64 = ''
+if os.path.exists('logo_gmbc.png'):
+    with open('logo_gmbc.png', 'rb') as f:
+        LOGO_GMBC_B64 = 'data:image/png;base64,' + _b64.b64encode(f.read()).decode('ascii')
+
 def _embed_js(code):
     if not code:
         return ''
@@ -1310,6 +1316,7 @@ function sair(){{
 
 <script type="application/json" id="raw-data">{data_json}</script>
 <script>
+const LOGO_GMBC = "{LOGO_GMBC_B64}";
 // ── DADOS ────────────────────────────────────────────────────────────────────
 var RAW = [];
 try {{
@@ -2701,6 +2708,10 @@ async function gerarSlides() {{
       doc.setTextColor(...GOLD);
       doc.text('FILTRO: ' + filtroDesc.toUpperCase(), 0.4, 0.58);
       doc.setFont(undefined, 'normal');
+      if (LOGO_GMBC) {{
+        const lh = 0.5, lw = lh * (1442/1612);
+        doc.addImage(LOGO_GMBC, 'PNG', W - lw - 0.25, 0.11, lw, lh);
+      }}
     }}
     function rodapeSlide(pagina, total) {{
       doc.setFillColor(...TEAL);
@@ -2724,6 +2735,10 @@ async function gerarSlides() {{
     doc.rect(0, 0, 0.14, H, 'F');
     doc.setFillColor(...GOLD);
     doc.rect(0, H-0.14, W, 0.14, 'F');
+    if (LOGO_GMBC) {{
+      const lh = 1.1, lw = lh * (1442/1612);
+      doc.addImage(LOGO_GMBC, 'PNG', (W-lw)/2, 0.45, lw, lh);
+    }}
     doc.setTextColor(255,255,255);
     doc.setFont(undefined, 'bold');
     doc.setFontSize(22);
@@ -2897,6 +2912,27 @@ async function gerarSlides() {{
     doc.setFont(undefined, 'normal');
     const linhas = doc.splitTextToSize(resumoTexto, 8.8);
     doc.text(linhas, 0.6, 1.4, {{ lineHeightFactor:1.4 }});
+
+    // ── Slide de encerramento ──
+    novoSlide();
+    doc.setFillColor(...NAVY);
+    doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(...TEAL);
+    doc.rect(0, 0, 0.14, H, 'F');
+    doc.setFillColor(...GOLD);
+    doc.rect(0, H-0.14, W, 0.14, 'F');
+    if (LOGO_GMBC) {{
+      const lh = 2.6, lw = lh * (1442/1612);
+      doc.addImage(LOGO_GMBC, 'PNG', (W-lw)/2, 0.65, lw, lh);
+    }}
+    doc.setTextColor(255,255,255);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(18);
+    doc.text('Apresentação Concluída', W/2, 3.7, {{ align:'center' }});
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(195,205,220);
+    doc.text('Secretaria de Segurança e Ordem Pública — Guarda Municipal BC', W/2, 4.1, {{ align:'center' }});
 
     // ── Rodapé (numeração + identificação) em todas as páginas, exceto a capa ──
     const totalPaginas = doc.internal.getNumberOfPages();
