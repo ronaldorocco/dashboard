@@ -2685,10 +2685,15 @@ async function gerarSlides() {{
 
     function novoSlide() {{ doc.addPage([W,H], 'landscape'); }}
     function tituloSlide(txt) {{
+      doc.setFillColor(...ROXO);
+      doc.rect(0, 0, W, 0.14, 'F');
       doc.setTextColor(...ROXO);
       doc.setFont(undefined, 'bold');
-      doc.setFontSize(20);
-      doc.text(txt, 0.4, 0.7);
+      doc.setFontSize(19);
+      doc.text(txt, 0.4, 0.62);
+      doc.setDrawColor(...ROXO);
+      doc.setLineWidth(0.015);
+      doc.line(0.4, 0.75, W-0.4, 0.75);
       doc.setFont(undefined, 'normal');
     }}
 
@@ -2735,19 +2740,76 @@ async function gerarSlides() {{
       ky += 0.5;
     }});
 
-    // ── Slides 3-4: gráficos ──
-    async function addChartSlide(elId, titulo) {{
-      const el = document.getElementById(elId);
-      if (!el || !window.Plotly) return;
+    // ── Gráficos principais: 1 por página, com observação/sugestão da IA ──
+    const dataFiltrada = filtered();
+    const dadosU = dedupBO(dataFiltrada);
+    function topEntradas(obj, n) {{
+      return sortedEntries(obj).slice(0, n || 6).map(([k,v]) => k + ' ' + v).join(', ');
+    }}
+    const graficos = [
+      {{ id:'chart-tipo',   titulo:'Tipificação das Ocorrências',      dados:() => topEntradas(count(dadosU,'tipo')) }},
+      {{ id:'chart-bairro', titulo:'Bairros com Mais Ocorrências',      dados:() => topEntradas(count(dadosU,'bairro')) }},
+      {{ id:'chart-turno',  titulo:'Ocorrências por Turno',             dados:() => topEntradas(count(dadosU,'turno')) }},
+      {{ id:'chart-dia',    titulo:'Ocorrências por Dia da Semana',     dados:() => topEntradas(count(dadosU,'dia')) }},
+      {{ id:'chart-item',   titulo:'Itens Mais Furtados/Roubados',      dados:() => topEntradas(count(dataFiltrada,'item')) }},
+    ];
+
+    let insightsBlocos = [];
+    try {{
+      const categoriasTxt = graficos.map((g,i) => (i+1) + ') ' + g.titulo + ': ' + g.dados() + '.').join('\\n');
+      const resp = await fetch('/api/insights', {{
+        method: 'POST',
+        headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{categorias: categoriasTxt}})
+      }});
+      const data = await resp.json();
+      if (resp.ok) insightsBlocos = data.texto.split(/###\d+###/).map(b => b.trim()).filter(Boolean);
+    }} catch (e) {{ /* segue sem observações/sugestões se a IA falhar */ }}
+
+    function parseInsight(bloco) {{
+      if (!bloco) return {{ obs:'', sug:'' }};
+      const obsMatch = bloco.match(/Observação:\s*([\s\S]*?)(?=\\nSugestão:|$)/i);
+      const sugMatch = bloco.match(/Sugestão:\s*([\s\S]*)/i);
+      return {{
+        obs: obsMatch ? obsMatch[1].trim() : '',
+        sug: sugMatch ? sugMatch[1].trim() : '',
+      }};
+    }}
+
+    for (let i = 0; i < graficos.length; i++) {{
+      const g = graficos[i];
+      const el = document.getElementById(g.id);
+      if (!el || !window.Plotly) continue;
       try {{
         const img = await Plotly.toImage(el, {{ format:'png', width:900, height:500 }});
         novoSlide();
-        tituloSlide(titulo);
-        doc.addImage(img, 'PNG', 0.7, 1.0, 8.6, 4.2);
+        tituloSlide(g.titulo);
+        doc.addImage(img, 'PNG', 0.9, 0.95, 8.2, 2.95);
+
+        const {{ obs, sug }} = parseInsight(insightsBlocos[i]);
+        let ty = 4.15;
+        if (obs) {{
+          doc.setFontSize(10.5);
+          doc.setTextColor(51,51,51);
+          doc.setFont(undefined, 'bold');
+          doc.text('📌 Observação', 0.6, ty);
+          doc.setFont(undefined, 'normal');
+          const obsLinhas = doc.splitTextToSize(obs, 8.8);
+          doc.text(obsLinhas, 0.6, ty+0.22);
+          ty += 0.22 + 0.19*obsLinhas.length + 0.14;
+        }}
+        if (sug) {{
+          doc.setFontSize(10.5);
+          doc.setTextColor(...AZUL);
+          doc.setFont(undefined, 'bold');
+          doc.text('💡 Sugestão', 0.6, ty);
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(51,51,51);
+          const sugLinhas = doc.splitTextToSize(sug, 8.8);
+          doc.text(sugLinhas, 0.6, ty+0.22);
+        }}
       }} catch (e) {{ /* ignora gráfico que falhar */ }}
     }}
-    await addChartSlide('chart-tipo', 'Tipificação das Ocorrências');
-    await addChartSlide('chart-bairro', '10 Bairros com Mais Ocorrências');
 
     // ── Slide final: Resumo Executivo IA ──
     let resumoTexto = 'Resumo não disponível.';
@@ -2767,6 +2829,17 @@ async function gerarSlides() {{
     doc.setFont(undefined, 'normal');
     const linhas = doc.splitTextToSize(resumoTexto, 8.8);
     doc.text(linhas, 0.6, 1.4, {{ lineHeightFactor:1.4 }});
+
+    // ── Rodapé (numeração + identificação) em todas as páginas, exceto a capa ──
+    const totalPaginas = doc.internal.getNumberOfPages();
+    for (let p = 2; p <= totalPaginas; p++) {{
+      doc.setPage(p);
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(150,150,150);
+      doc.text('Secretaria de Segurança e Ordem Pública — Guarda Municipal BC', 0.4, H-0.18);
+      doc.text(p + ' / ' + totalPaginas, W-0.4, H-0.18, {{ align:'right' }});
+    }}
 
     const blobUrl = doc.output('bloburl');
     if (novaAba) {{
