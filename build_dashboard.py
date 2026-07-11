@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+import re
 import hashlib
 import urllib.request
 import warnings
@@ -60,7 +61,10 @@ pptxgen_js   = fetch_lib('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/ppt
 def _embed_js(code):
     if not code:
         return ''
-    return '<script>' + code.replace('</', '<\\/') + '</script>'
+    # Só escapa "</script" (caso insensível) — trocar todo "</" quebra
+    # regexes legítimas no código das libs, tipo /</g (visto no pptxgenjs).
+    safe = re.sub(r'</script', '<\\/script', code, flags=re.IGNORECASE)
+    return '<script>' + safe + '</script>'
 
 def _embed_css(code):
     return f'<style>{code}</style>' if code else ''
