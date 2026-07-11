@@ -2729,6 +2729,31 @@ async function gerarSlides() {{
       doc.text(pagina + ' / ' + total, W-0.4, H-0.15, {{ align:'right' }});
     }}
 
+    // Escreve texto justificado (esquerda E direita), palavra por palavra.
+    // IMPORTANTE: maxWidth deve ficar abaixo de ~5 in — versões deste jsPDF
+    // truncam silenciosamente texto de uma única chamada text() acima de
+    // ~5.2 in de largura acumulada (bug da biblioteca, não do nosso código).
+    function escreverJustificado(texto, x, y, maxWidth, lineHeight) {{
+      const linhas = doc.splitTextToSize(texto, maxWidth);
+      linhas.forEach((linha, i) => {{
+        const isLast = i === linhas.length - 1;
+        const palavras = linha.trim().split(/\s+/).filter(Boolean);
+        const ly = y + i*lineHeight;
+        if (isLast || palavras.length <= 1) {{
+          doc.text(linha, x, ly);
+          return;
+        }}
+        const larguraPalavras = palavras.reduce((s,p) => s + doc.getTextWidth(p), 0);
+        const espacoPorGap = (maxWidth - larguraPalavras) / (palavras.length - 1);
+        let cx = x;
+        palavras.forEach((p) => {{
+          doc.text(p, cx, ly);
+          cx += doc.getTextWidth(p) + espacoPorGap;
+        }});
+      }});
+      return linhas.length;
+    }}
+
     // ── Slide 1: título ──
     doc.setFillColor(...NAVY);
     doc.rect(0, 0, W, H, 'F');
@@ -2871,9 +2896,8 @@ async function gerarSlides() {{
           doc.setFont(undefined, 'normal');
           doc.setFontSize(10.5);
           doc.setTextColor(...GRAY);
-          const obsLinhas = doc.splitTextToSize(obs, textW);
-          doc.text(obsLinhas, textX, ty+0.22, {{ lineHeightFactor:1.35 }});
-          ty += 0.22 + 0.19*obsLinhas.length + 0.4;
+          const nObsLinhas = escreverJustificado(obs, textX, ty+0.22, textW, 0.19);
+          ty += 0.22 + 0.19*nObsLinhas + 0.4;
         }}
         if (sug) {{
           doc.setFillColor(...GRAY);
@@ -2885,8 +2909,7 @@ async function gerarSlides() {{
           doc.setFont(undefined, 'normal');
           doc.setFontSize(10.5);
           doc.setTextColor(...GRAY);
-          const sugLinhas = doc.splitTextToSize(sug, textW);
-          doc.text(sugLinhas, textX, ty+0.22, {{ lineHeightFactor:1.35 }});
+          escreverJustificado(sug, textX, ty+0.22, textW, 0.19);
         }}
       }} catch (e) {{ /* ignora gráfico que falhar */ }}
     }}
@@ -2904,11 +2927,18 @@ async function gerarSlides() {{
     }} catch (e) {{ /* mantém texto padrão se a IA falhar */ }}
     novoSlide();
     tituloSlide('Resumo Executivo — IA');
-    doc.setFontSize(11.5);
+    doc.setFontSize(11);
     doc.setTextColor(...TXT);
     doc.setFont(undefined, 'normal');
-    const linhas = doc.splitTextToSize(resumoTexto, 8.8);
-    doc.text(linhas, 0.6, 1.4, {{ lineHeightFactor:1.4 }});
+    // Duas colunas estreitas (cada uma bem abaixo do limite de ~5in que
+    // trunca texto no jsPDF) em vez de uma coluna larga só.
+    const colW = 4.2, col1X = 0.6, col2X = 5.2, textY = 1.1, lineH = 0.2;
+    let meio = resumoTexto.indexOf(' ', Math.round(resumoTexto.length/2));
+    if (meio === -1) meio = resumoTexto.length;
+    const parte1 = resumoTexto.slice(0, meio).trim();
+    const parte2 = resumoTexto.slice(meio).trim();
+    escreverJustificado(parte1, col1X, textY, colW, lineH);
+    if (parte2) escreverJustificado(parte2, col2X, textY, colW, lineH);
 
     // ── Slide de encerramento ──
     novoSlide();
