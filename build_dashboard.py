@@ -1734,7 +1734,7 @@ function renderTabela(data) {{
       <td><span style="background:${{TIPO_COLORS[r.tipo]||'#888'}};color:white;
         border-radius:3px;padding:1px 5px;font-size:9px">${{r.tipo}}</span></td>
       <td>${{r.item}}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${{r.descricao||''}}</td>
+      <td style="max-width:380px;white-space:normal;word-break:break-word">${{r.descricao||''}}</td>
       <td>${{r.marca}}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${{r.endereco}}</td>
       <td>${{r.bairro}}</td>
