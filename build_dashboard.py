@@ -2766,7 +2766,7 @@ async function gerarSlides() {{
     // Escreve texto justificado numa única coluna, respeitando os parágrafos
     // (separados por linha em branco), com um espaço extra entre eles.
     function escreverJustificadoParagrafos(texto, x, y, maxWidth, lineHeight, paragraphGap) {{
-      const paragrafos = texto.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+      const paragrafos = texto.split(/\\n\s*\\n/).map(p => p.trim()).filter(Boolean);
       let cy = y;
       paragrafos.forEach((paragrafo) => {{
         const linhas = doc.splitTextToSize(paragrafo, maxWidth);
