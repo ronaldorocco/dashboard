@@ -2973,6 +2973,7 @@ async function gerarSlides() {
     const kpiCards = [
       { label:'Total de Ocorrências',  value: document.getElementById('kpi-total').textContent },
       { label:'Bairro Mais Afetado',   value: document.getElementById('kpi-bairro').textContent, sub: document.getElementById('kpi-bairro-num').textContent+' casos' },
+      { label:'Rua Mais Crítica',      value: document.getElementById('kpi-rua').textContent,    sub: document.getElementById('kpi-rua-num').textContent+' casos' },
       { label:'Turno Mais Crítico',    value: document.getElementById('kpi-turno').textContent,  sub: document.getElementById('kpi-turno-num').textContent+' casos' },
       { label:'Dia Mais Crítico',      value: document.getElementById('kpi-dia').textContent,    sub: document.getElementById('kpi-dia-num').textContent+' casos' },
       { label:'Furtos',                value: document.getElementById('kpi-furtos').textContent, sub: document.getElementById('kpi-furtos-sub').textContent },
@@ -2991,9 +2992,11 @@ async function gerarSlides() {
       doc.setFillColor(...GRAY);
       doc.rect(x, y, cardW, 0.06, 'F');
       doc.setFont(undefined, 'bold');
-      doc.setFontSize(17);
+      const valorTexto = String(c.value);
+      doc.setFontSize(valorTexto.length > 10 ? 12 : 17);
       doc.setTextColor(...LIGHT);
-      doc.text(String(c.value), x+cardW/2, y+0.65, { align:'center' });
+      const valorLinhas = doc.splitTextToSize(valorTexto, cardW-0.3);
+      doc.text(valorLinhas, x+cardW/2, valorLinhas.length > 1 ? y+0.5 : y+0.65, { align:'center' });
       doc.setFont(undefined, 'normal');
       doc.setFontSize(9);
       doc.setTextColor(...GRAY);
