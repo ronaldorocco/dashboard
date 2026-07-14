@@ -2763,21 +2763,22 @@ async function gerarSlides() {{
       return linhas.length;
     }}
 
-    // Escreve texto justificado fluindo em 2 colunas lado a lado, dividindo
-    // as linhas de forma equilibrada entre as duas (evita coluna vazia).
-    function escreverJustificado2Colunas(texto, x1, x2, y, colW, lineHeight) {{
-      const linhas = doc.splitTextToSize(texto, colW);
-      const linhasPorColuna = Math.ceil(linhas.length / 2);
-      linhas.forEach((linha, i) => {{
-        const col = Math.floor(i / linhasPorColuna);
-        const linhaNaCol = i % linhasPorColuna;
-        const x = col === 0 ? x1 : x2;
-        const ly = y + linhaNaCol*lineHeight;
-        const isLastDoTexto = i === linhas.length - 1;
-        const isUltimaDaCol = linhaNaCol === linhasPorColuna - 1;
-        if (isLastDoTexto || isUltimaDaCol) {{ doc.text(linha, x, ly); return; }}
-        linhaJustificada(linha, x, ly, colW);
+    // Escreve texto justificado numa única coluna, respeitando os parágrafos
+    // (separados por linha em branco), com um espaço extra entre eles.
+    function escreverJustificadoParagrafos(texto, x, y, maxWidth, lineHeight, paragraphGap) {{
+      const paragrafos = texto.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+      let cy = y;
+      paragrafos.forEach((paragrafo) => {{
+        const linhas = doc.splitTextToSize(paragrafo, maxWidth);
+        linhas.forEach((linha, i) => {{
+          const isLast = i === linhas.length - 1;
+          if (isLast) {{ doc.text(linha, x, cy); }}
+          else {{ linhaJustificada(linha, x, cy, maxWidth); }}
+          cy += lineHeight;
+        }});
+        cy += paragraphGap;
       }});
+      return cy;
     }}
 
     // ── Slide 1: título ──
@@ -2815,6 +2816,7 @@ async function gerarSlides() {{
     const kpiCards = [
       {{ label:'Total de Ocorrências',  value: document.getElementById('kpi-total').textContent }},
       {{ label:'Bairro Mais Afetado',   value: document.getElementById('kpi-bairro').textContent, sub: document.getElementById('kpi-bairro-num').textContent+' casos' }},
+      {{ label:'Rua Mais Crítica',      value: document.getElementById('kpi-rua').textContent,    sub: document.getElementById('kpi-rua-num').textContent+' casos' }},
       {{ label:'Turno Mais Crítico',    value: document.getElementById('kpi-turno').textContent,  sub: document.getElementById('kpi-turno-num').textContent+' casos' }},
       {{ label:'Dia Mais Crítico',      value: document.getElementById('kpi-dia').textContent,    sub: document.getElementById('kpi-dia-num').textContent+' casos' }},
       {{ label:'Furtos',                value: document.getElementById('kpi-furtos').textContent, sub: document.getElementById('kpi-furtos-sub').textContent }},
@@ -2833,9 +2835,11 @@ async function gerarSlides() {{
       doc.setFillColor(...GRAY);
       doc.rect(x, y, cardW, 0.06, 'F');
       doc.setFont(undefined, 'bold');
-      doc.setFontSize(17);
+      const valorTexto = String(c.value);
+      doc.setFontSize(valorTexto.length > 10 ? 12 : 17);
       doc.setTextColor(...LIGHT);
-      doc.text(String(c.value), x+cardW/2, y+0.65, {{ align:'center' }});
+      const valorLinhas = doc.splitTextToSize(valorTexto, cardW-0.3);
+      doc.text(valorLinhas, x+cardW/2, valorLinhas.length > 1 ? y+0.5 : y+0.65, {{ align:'center' }});
       doc.setFont(undefined, 'normal');
       doc.setFontSize(9);
       doc.setTextColor(...GRAY);
@@ -2957,11 +2961,10 @@ async function gerarSlides() {{
     doc.setFontSize(11);
     doc.setTextColor(...TXT);
     doc.setFont(undefined, 'normal');
-    // Coluna única, mas com largura abaixo do limite de ~5.2in que trunca
-    // texto silenciosamente no jsPDF (bug da biblioteca, ver escreverJustificado).
-    // 2 colunas de 4.2in cada, preenchendo a largura toda do slide sem
-    // ultrapassar o limite seguro de largura por linha (~5.2in, ver acima).
-    escreverJustificado2Colunas(resumoTexto, 0.6, 5.2, 1.1, 4.2, 0.2);
+    // Coluna única, centralizada, com largura abaixo do limite de ~5.2in que
+    // trunca texto silenciosamente no jsPDF (bug da biblioteca, ver
+    // escreverJustificado). Parágrafos preservados, como no resumo da IA.
+    escreverJustificadoParagrafos(resumoTexto, (W-5.0)/2, 1.1, 5.0, 0.24, 0.18);
 
     // ── Slide de encerramento ──
     novoSlide();
