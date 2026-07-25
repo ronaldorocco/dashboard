@@ -2,6 +2,8 @@ name: Bot Consulta GMBC
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'   # verifica mensagens novas a cada 5 minutos
 
 concurrency:
   group: bot-consulta
