@@ -126,9 +126,20 @@ def carregar_dados():
         tmp.write(data); tmp.close()
         return tmp.name
 
+    DASHBOARD_XLSX_URL = 'https://raw.githubusercontent.com/ronaldorocco/dashboard/main/secretario.xlsx'
+
     df = None
-    # 1) Google Drive (fonte principal — você atualiza aqui)
-    if GOOGLE_DRIVE_ID:
+    # 1) Mesma planilha usada pelo dashboard (fonte principal — garante dados identicos)
+    try:
+        tmp_path = _baixar_xlsx(DASHBOARD_XLSX_URL, 'repositorio do dashboard')
+        df = pd.read_excel(tmp_path, sheet_name='DADOS', engine='openpyxl')
+        os.unlink(tmp_path)
+        print("  OK: dados carregados do repositorio do dashboard.")
+    except Exception as e:
+        print(f"  Falha ao baixar do repositorio do dashboard: {e}")
+
+    # 2) Google Drive (fallback)
+    if df is None and GOOGLE_DRIVE_ID:
         try:
             tmp_path = _baixar_xlsx(
                 f"https://docs.google.com/spreadsheets/d/{GOOGLE_DRIVE_ID}/export?format=xlsx",
@@ -140,7 +151,7 @@ def carregar_dados():
         except Exception as e:
             print(f"  Falha ao baixar do Google Drive: {e}")
 
-    # 2) Arquivo local do deployment (fallback)
+    # 3) Arquivo local do deployment (fallback)
     if df is None:
         excel_local = 'secretario.xlsx'
         if os.path.exists(excel_local):
@@ -151,7 +162,7 @@ def carregar_dados():
             except Exception as e:
                 print(f"  Falha ao ler local: {e}")
 
-    # 3) GitHub relatorio-gmbc (último recurso)
+    # 4) GitHub relatorio-gmbc (último recurso)
     if df is None:
         try:
             tmp_path = _baixar_xlsx(GITHUB_URL, 'GitHub')
@@ -349,6 +360,41 @@ def consultar_turno(records, query):
         "",
         "*🔴 Crimes mais frequentes:*",
         *[f"  {i+1}. {t}: *{n}* ({pct(n,total)})" for i,(t,n) in enumerate(tipos)],
+    ]
+    return '\n'.join(linhas)
+
+def consultar_mes(records, query):
+    q = sem_acento(query.strip())
+    mes_num = mes_nome = None
+    for nome, num in MES_PARA_NUM.items():
+        if sem_acento(nome) == q:
+            mes_num, mes_nome = num, nome.capitalize()
+            break
+
+    if not mes_num:
+        return "Meses disponíveis: Janeiro, Fevereiro, Março, Abril, Maio, Junho, Julho, Agosto, Setembro, Outubro, Novembro, Dezembro"
+
+    dados = [r for r in records if r.get('data') and len(r['data']) >= 7 and r['data'][5:7] == mes_num]
+    total = len(dados)
+    if not total:
+        return f"Nenhuma ocorrência encontrada em *{mes_nome}*."
+
+    tipos   = Counter(r['tipo']   for r in dados if r['tipo']).most_common(5)
+    bairros = Counter(r['bairro'] for r in dados if r['bairro']).most_common(5)
+    turnos  = Counter(r['turno']  for r in dados if r['turno']).most_common()
+
+    linhas = [
+        f"🗓 *MÊS: {mes_nome.upper()}*",
+        f"📊 Total: *{total}* ocorrências",
+        "",
+        "*🔴 Tipos de crime:*",
+        *[f"  {i+1}. {t}: *{n}* ({pct(n,total)})" for i,(t,n) in enumerate(tipos)],
+        "",
+        "*📍 Bairros mais afetados:*",
+        *[f"  {i+1}. {b}: *{n}* ({pct(n,total)})" for i,(b,n) in enumerate(bairros)],
+        "",
+        "*⏰ Por turno:*",
+        *[f"  • {t}: *{n}* ({pct(n,total)})" for t,n in turnos],
     ]
     return '\n'.join(linhas)
 
@@ -752,22 +798,33 @@ def processar(text, chat_id, records):
     if tl.startswith('/turno '):
         return send_message(chat_id, consultar_turno(records, t[7:]))
 
-    # Detecta automaticamente se é bairro, tipo ou turno conhecido
+    # Detecta automaticamente se é bairro, tipo, turno ou mês conhecido.
+    # Prioriza match exato antes de match parcial/token para evitar que um
+    # bairro parecido (ex: "Amores" vs "Praia Dos Amores") roube a resposta
+    # de um outro que so bate por substring.
     bairros_lista = sorted(set(r['bairro'] for r in records if r['bairro']))
-    for b in bairros_lista:
-        b_norm = sem_acento(b)
-        if tl_norm == b_norm or tl_norm in b_norm.split() or b_norm == tl_norm:
-            return send_message(chat_id, consultar_bairro(records, t))
+    bairro_match = (
+        next((b for b in bairros_lista if tl_norm == sem_acento(b)), None) or
+        next((b for b in bairros_lista if tl_norm in sem_acento(b).split()), None)
+    )
+    if bairro_match:
+        return send_message(chat_id, consultar_bairro(records, bairro_match))
 
     tipos_lista = sorted(set(r['tipo'] for r in records if r['tipo']))
-    for tp in tipos_lista:
-        tp_norm = sem_acento(tp)
-        if tl_norm == tp_norm or tl_norm in tp_norm:
-            return send_message(chat_id, consultar_tipo(records, t))
+    tipo_match = (
+        next((tp for tp in tipos_lista if tl_norm == sem_acento(tp)), None) or
+        next((tp for tp in tipos_lista if tl_norm in sem_acento(tp)), None)
+    )
+    if tipo_match:
+        return send_message(chat_id, consultar_tipo(records, tipo_match))
 
     turno_palavras = ['madrugada','manha','manhã','tarde','noite']
     if tl_norm in turno_palavras:
         return send_message(chat_id, consultar_turno(records, t))
+
+    meses_norm = {sem_acento(m) for m in MES_PARA_NUM.keys()}
+    if tl_norm in meses_norm:
+        return send_message(chat_id, consultar_mes(records, t))
 
     # Palavras-chave do dashboard
     tl_sa = sem_acento(tl)
