@@ -30,7 +30,7 @@ GOOGLE_DRIVE_ID = _os.environ.get('GOOGLE_DRIVE_ID', '1w_4WgORfWrxonI-tL6uKOkoCZ
 DIA_MAP = {
     'SEGUNDA':'Segunda','TERÇA':'Terça','TERCA':'Terça','QUARTA':'Quarta',
     'QUINTA':'Quinta','SEXTA':'Sexta','SABADO':'Sábado','SÁBADO':'Sábado','DOMINGO':'Domingo',
-}
+} 
 BAIRRO_MAP = {
     'BARRA SUL':'Barra Sul','SÃO J. TADEU':'São J. Tadeu','SAO J. TADEU':'São J. Tadeu',
     'N. ESPERANÇA':'N. Esperança','N. ESPERANCA':'N. Esperança','MUNICIPIOS':'Municípios',
@@ -905,9 +905,3 @@ if __name__ == '__main__':
         run_continuo()
     else:
         run_once()
-
-    # Marca todas as atualizações como lidas
-    if last_offset:
-        get_updates(offset=last_offset)
-
-    print(f"\nConcluído. {processed} mensagem(ns) processada(s).")
