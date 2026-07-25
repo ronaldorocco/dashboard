@@ -208,15 +208,6 @@ def carregar_dados():
 
 
 # ── Telegram API ─────────────────────────────────────────────────────────────
-def close_other_sessions():
-    """Encerra sessões de long-polling concorrentes (resolve HTTP 409 Conflict)."""
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=0&offset=-1"
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            pass
-    except Exception:
-        pass
-
 def get_updates(offset=None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?timeout=0"
     if offset: url += f"&offset={offset}"
@@ -858,7 +849,6 @@ def run_continuo():
 def run_once():
     import time
     print("Bot GMBC - verificando mensagens...")
-    close_other_sessions()
     print("Carregando dados...")
     records = carregar_dados()
     print(f"  {len(records)} registros carregados.")
