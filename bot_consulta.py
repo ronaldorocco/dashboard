@@ -891,7 +891,9 @@ if __name__ == '__main__':
         _os.environ.get('RAILWAY_PROJECT_NAME') or
         _os.environ.get('RAILWAY_SERVICE_NAME')
     )
-    if is_railway:
+    # BOT_RUN_MODE=continuo força o modo long-polling em qualquer host (ex: Easypanel/VPS)
+    run_mode = _os.environ.get('BOT_RUN_MODE', '').strip().lower()
+    if is_railway or run_mode == 'continuo':
         run_continuo()
     else:
         run_once()
