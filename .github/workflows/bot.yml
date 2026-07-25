@@ -1,9 +1,7 @@
 name: Bot Consulta GMBC
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '*/5 * * * *'   # verifica mensagens novas a cada 5 minutos
+  workflow_dispatch:   # bot roda continuo na VPS (Easypanel/bot-gmbc); manter so pra disparo manual/teste
 
 concurrency:
   group: bot-consulta
