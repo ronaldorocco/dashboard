@@ -46,7 +46,7 @@ import os as _os
 
 # Lê das variáveis de ambiente (GitHub Actions) ou usa os valores locais como fallback
 # .strip() remove qualquer espaço ou quebra de linha acidental
-BOT_TOKEN       = _os.environ.get('BOT_TOKEN',       "8971067969:AAF73XtvvHyhkb_KX0dC3Tny6DQ6DtRdjjM").strip()
+BOT_TOKEN       = _os.environ.get('BOT_TOKEN',       "SEU_TOKEN_AQUI").strip()
 GOOGLE_DRIVE_ID = _os.environ.get('GOOGLE_DRIVE_ID', "1w_4WgORfWrxonI-tL6uKOkoCZJQ9K5VN").strip()
 CHAT_ID = _os.environ.get('CHAT_ID', "-1003944282147").strip()  # ID do grupo Alertas GMBC
 
@@ -593,6 +593,7 @@ DESTINATARIOS = [
     "1726984088",     # ID GM Rafaela
     "7515770228",     # ID Minha Linda
     "8621387351",     # ID GM Rambo
+    "8749405941",     # ID Secretario
 ]
 # ─────────────────────────────────────────────────────────────────────────────
 

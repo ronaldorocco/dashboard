@@ -22,7 +22,7 @@ warnings.filterwarnings('ignore')
 
 BRT = timezone(timedelta(hours=-3))
 
-BOT_TOKEN       = _os.environ.get('BOT_TOKEN',       '8971067969:AAF73XtvvHyhkb_KX0dC3Tny6DQ6DtRdjjM').strip()
+BOT_TOKEN       = _os.environ.get('BOT_TOKEN',       'SEU_TOKEN_AQUI').strip()
 CHAT_ID         = _os.environ.get('CHAT_ID',         '1931364088').strip()
 GOOGLE_DRIVE_ID = _os.environ.get('GOOGLE_DRIVE_ID', '1w_4WgORfWrxonI-tL6uKOkoCZJQ9K5VN').strip()
 
