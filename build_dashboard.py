@@ -2658,9 +2658,25 @@ function toggleChatIA() {{
   document.getElementById('chat-ia-panel').classList.toggle('aberto');
 }}
 
+// ── SAÍDA POR VOZ (Web Speech API, nativo do navegador) ───────────────────────
+let _falarResposta = false;
+
+function falarTexto(texto) {{
+  if (!('speechSynthesis' in window) || !texto) return;
+  window.speechSynthesis.cancel();
+  const limpo = texto.replace(/[*_#`]/g, '');
+  const utter = new SpeechSynthesisUtterance(limpo);
+  utter.lang = 'pt-BR';
+  const vozPt = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+  if (vozPt) utter.voice = vozPt;
+  window.speechSynthesis.speak(utter);
+}}
+
 async function enviarPerguntaChat() {{
   const input = document.getElementById('chat-ia-input');
   const pergunta = input.value.trim();
+  const falarEssaResposta = _falarResposta;
+  _falarResposta = false;
   if (!pergunta) return;
   input.value = '';
 
@@ -2681,6 +2697,7 @@ async function enviarPerguntaChat() {{
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
     alvo.innerHTML = data.texto.replace(/</g,'&lt;').replace(/\\n/g,'<br>');
+    if (falarEssaResposta) falarTexto(data.texto);
   }} catch (e) {{
     alvo.innerHTML = '<span style="color:#D13438">Erro: ' + e.message + '</span>';
   }}
@@ -2733,6 +2750,10 @@ async function transcreverAudio(blob) {{
     if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
     input.value = data.texto;
     input.focus();
+    if (data.texto && data.texto.trim()) {{
+      _falarResposta = true;
+      enviarPerguntaChat();
+    }}
   }} catch (e) {{
     alert('Erro ao transcrever: ' + e.message);
   }} finally {{
