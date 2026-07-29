@@ -32,6 +32,66 @@ def buscar_campo(texto, rotulo, fim=None):
     m = re.search(padrao, texto, re.DOTALL)
     return m.group(1).strip() if m else ""
 
+def _calcular_idade(data_nasc, data_fato):
+    try:
+        d1 = datetime.strptime(data_nasc, "%d/%m/%Y")
+        d2 = datetime.strptime(data_fato, "%d/%m/%Y")
+        idade = d2.year - d1.year - ((d2.month, d2.day) < (d1.month, d1.day))
+        return idade if 0 <= idade <= 110 else None
+    except ValueError:
+        return None
+
+# ── Extração de autores (ENVOLVIDOS com participação "Autor") ─────────────────
+# Usada só para alimentar contagens agregadas no chat de Inteligência Criminal
+# (inteligencia_criminal.html, local/gitignored) — nome, CPF, RG, telefone e
+# endereço completo nunca são incluídos no retorno.
+def extrair_autores(texto, data_fato):
+    m = re.search(r'ENVOLVIDOS\s*\n(.*?)(?=\nATENDENTES\b|\nOBJETOS\b|\Z)', texto, re.DOTALL)
+    if not m:
+        return []
+    bloco_geral = "\n" + m.group(1)
+    inicios = [mm.start() for mm in re.finditer(r'\nNome\s*\n', bloco_geral)]
+
+    autores = []
+    for i, ini in enumerate(inicios):
+        fim = inicios[i + 1] if i + 1 < len(inicios) else len(bloco_geral)
+        bloco = bloco_geral[ini:fim]
+        participacoes = buscar_campo(bloco, "Participações")
+        if "autor" not in participacoes.lower():
+            continue
+
+        naturalidade = buscar_campo(bloco, "Naturalidade")
+        cidade_nat, uf_nat = naturalidade, ""
+        if " - " in naturalidade:
+            cidade_nat, uf_nat = [p.strip() for p in naturalidade.rsplit(" - ", 1)]
+
+        idade = _calcular_idade(buscar_campo(bloco, "Data de Nascimento"), data_fato)
+
+        bairro_resid, cidade_resid = "", ""
+        me = re.search(
+            r'Endere[çc]o\(s\)\s*\n.*?\n.+?-\s*([^\n]+?)\s*\n\d{5}-?\d{3}\s+([A-ZÁÉÍÓÚÃÕÇ\s]+?)\s*-\s*[A-Z]{2}',
+            bloco, re.DOTALL,
+        )
+        if me:
+            bairro_resid = me.group(1).strip().title()
+            cidade_resid = me.group(2).strip().title()
+
+        crime_m = re.search(r'Autor\s*\(([^)]+)\)', participacoes)
+
+        autores.append({
+            "naturalidade_cidade": cidade_nat.strip().title() if cidade_nat.strip() else "Não Informado",
+            "naturalidade_uf":     uf_nat.strip().upper(),
+            "sexo":                buscar_campo(bloco, "Sexo") or "Não Informado",
+            "estado_civil":        buscar_campo(bloco, "Estado Civil") or "Não Informado",
+            "profissao":           buscar_campo(bloco, "Profissão") or "Não Informado",
+            "crime":               crime_m.group(1).strip() if crime_m else "",
+            "idade":               idade,
+            "menor":               idade is not None and idade < 18,
+            "bairro_residencia":   bairro_resid or "Não Informado",
+            "cidade_residencia":   cidade_resid or "Não Informado",
+        })
+    return autores
+
 # ── Parser de cada B.O. ────────────────────────────────────────────────────────
 def parse_bo(caminho):
     texto = extrair_texto(caminho)
@@ -55,6 +115,7 @@ def parse_bo(caminho):
         "objetos":      [],
         "vitimas":      [],
         "mo_tags":      [],
+        "autores":      [],
     }
 
     # Número do BO
@@ -175,6 +236,10 @@ def parse_bo(caminho):
     elif 0 <= h < 6:   bo["turno"] = "Madrugada"
     else:              bo["turno"] = "Não informado"
 
+    # Autores (ENVOLVIDOS com participação "Autor") — dados demográficos
+    # agregados para o chat de Inteligência Criminal
+    bo["autores"] = extrair_autores(texto, bo["data_fato"])
+
     return bo
 
 # ── Similaridade entre dois B.O.s ─────────────────────────────────────────────
@@ -242,9 +307,12 @@ def cor_crime(tipo):
             return v
     return COR_RISCO["default"]
 
-def gerar_html(grupos, todos_bos, ts):
+def gerar_html(grupos, todos_bos, ts, autores):
     total_vinculados = sum(len(g) for g in grupos)
     n_grupos = len(grupos)
+    # Só campos demográficos agregáveis viajam para o JS da página — nunca
+    # nome, CPF, RG, telefone ou endereço completo (ver extrair_autores()).
+    autores_json = json.dumps(autores, ensure_ascii=False)
 
     # Estatísticas globais
     bairros_freq = {}
@@ -369,12 +437,32 @@ def gerar_html(grupos, todos_bos, ts):
   .secao h2 {{ font-size:14px; font-weight:700; border-bottom:2px solid #2D0B6E; padding-bottom:6px; margin-bottom:14px; }}
   .aviso {{ background:#FFF8EC; border-left:4px solid #E07B00; padding:10px 14px; border-radius:4px; font-size:11px; color:#555; margin-bottom:20px; }}
   @media print {{ body{{background:white}} .topo{{-webkit-print-color-adjust:exact}} }}
+  .chat-ia-panel {{ position:fixed; top:0; right:-380px; width:360px; max-width:92vw; height:100vh; background:white;
+    box-shadow:-4px 0 24px rgba(0,0,0,.25); z-index:9999; display:flex; flex-direction:column;
+    transition:right .25s ease; font-family:inherit; }}
+  .chat-ia-panel.aberto {{ right:0; }}
+  .chat-ia-header {{ background:linear-gradient(135deg,#2D0B6E,#7B2FBE); color:white; padding:14px 16px;
+    font-weight:700; font-size:14px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }}
+  .chat-ia-log {{ flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }}
+  .chat-msg {{ padding:9px 12px; border-radius:10px; font-size:12px; line-height:1.5; max-width:88%; }}
+  .chat-msg-user {{ background:#2D0B6E; color:white; align-self:flex-end; border-bottom-right-radius:2px; }}
+  .chat-msg-ia {{ background:#F0F0F0; color:#222; align-self:flex-start; border-bottom-left-radius:2px; text-align:justify; white-space:pre-line; }}
+  .chat-ia-inputbar {{ display:flex; gap:8px; padding:12px; border-top:1px solid #EEE; flex-shrink:0; align-items:flex-end; }}
+  .chat-ia-inputbar textarea {{ flex:1; border:1px solid #DDD; border-radius:6px; padding:8px 10px; font-size:12px;
+    font-family:inherit; min-width:0; resize:vertical; min-height:64px; max-height:200px; line-height:1.4; }}
+  .chat-ia-inputbar button {{ background:#2D0B6E; color:white; border:none; border-radius:6px; padding:8px 14px;
+    font-size:12px; font-weight:600; cursor:pointer; flex-shrink:0; }}
+  .chat-ia-inputbar button:hover {{ background:#210853; }}
+  #chat-ia-fab {{ position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%;
+    background:linear-gradient(135deg,#2D0B6E,#7B2FBE); color:white; border:none; font-size:24px;
+    box-shadow:0 4px 16px rgba(0,0,0,.3); cursor:pointer; z-index:9998; }}
+  #chat-ia-fab:hover {{ background:linear-gradient(135deg,#210853,#6425a0); }}
 </style>
 </head>
 <body>
 <div class="topo">
   <h1>🔍 Inteligência Criminal — Análise de Padrões por B.O.</h1>
-  <small>Guarda Municipal de Balneário Camboriú &nbsp;•&nbsp; Gerado em: {ts} &nbsp;•&nbsp; Base: {len(todos_bos)} B.O.s processados</small>
+  <small>Guarda Municipal de Balneário Camboriú &nbsp;•&nbsp; Gerado em: {ts} &nbsp;•&nbsp; Base: {len(todos_bos)} B.O.s processados &nbsp;•&nbsp; {len(autores)} autores com perfil extraído</small>
 </div>
 <div class="container">
 
@@ -389,6 +477,7 @@ def gerar_html(grupos, todos_bos, ts):
     <div class="kpi"><div class="val" style="color:#D13438">{n_grupos}</div><div class="lbl">Grupos com padrão similar</div></div>
     <div class="kpi"><div class="val" style="color:#E07B00">{total_vinculados}</div><div class="lbl">Ocorrências vinculadas</div></div>
     <div class="kpi"><div class="val" style="color:#7B2FBE">{len(todos_bos)-total_vinculados}</div><div class="lbl">Sem vínculo identificado</div></div>
+    <div class="kpi"><div class="val" style="color:#2D0B6E">{len(autores)}</div><div class="lbl">Autores com perfil extraído</div></div>
   </div>
 
   <!-- Distribuição -->
@@ -418,6 +507,133 @@ def gerar_html(grupos, todos_bos, ts):
     <br>Secretaria de Segurança e Ordem Pública — Balneário Camboriú
   </div>
 </div>
+
+<!-- ── CHAT IA FLUTUANTE — Perfil dos Autores (só contagens agregadas, sem PII) ── -->
+<button id="chat-ia-fab" onclick="toggleChatIA()" title="Pergunte à IA">💬</button>
+<div id="chat-ia-panel" class="chat-ia-panel">
+  <div class="chat-ia-header">
+    <span>💬 Pergunte à IA — Autores</span>
+    <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
+  </div>
+  <div id="chat-ia-log" class="chat-ia-log">
+    <div class="chat-msg chat-msg-ia">Olá! Pergunte sobre o perfil dos autores identificados nos B.O.s — ex: "quantos autores são naturais de Curitiba?", "quantos são de Balneário Camboriú?" ou "qual a profissão mais comum entre os autores?"</div>
+  </div>
+  <div class="chat-ia-inputbar">
+    <textarea id="chat-ia-input" rows="3" placeholder="Digite sua pergunta... (Enter envia, Shift+Enter quebra linha)"
+      onkeydown="if(event.key==='Enter' && !event.shiftKey){{ event.preventDefault(); enviarPerguntaChat(); }}"></textarea>
+    <button onclick="enviarPerguntaChat()">Enviar</button>
+  </div>
+</div>
+<script>
+// Só campos demográficos agregáveis — nunca nome, CPF, RG, telefone ou
+// endereço completo (ver extrair_autores() em analisar_bos.py). Toda a
+// contagem roda localmente no navegador; nenhum dado é enviado para fora.
+const AUTORES = {autores_json};
+
+function _normalizarTexto(s) {{
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+}}
+
+// Alguns PDFs têm letras acentuadas que o extrator não decodifica (viram
+// '�'). Para não perder o match de nomes como "Balneário Camboriú",
+// tratamos esse caractere como um coringa de 1 posição na comparação.
+function _correspondeValor(valorArmazenado, textoNormalizado) {{
+  const base = _normalizarTexto(valorArmazenado).replace(/[.*+?^${{}}()|[\]\\\\]/g, '\\\\$&');
+  const padrao = base.replace(/\\uFFFD/g, '.');
+  try {{
+    return new RegExp(padrao).test(textoNormalizado);
+  }} catch (e) {{
+    return textoNormalizado.includes(_normalizarTexto(valorArmazenado));
+  }}
+}}
+
+function _topEntradas(lista, campo, n) {{
+  const c = {{}};
+  lista.forEach(a => {{ const v = a[campo]; if (v && v !== 'Não Informado') c[v] = (c[v]||0) + 1; }});
+  return Object.entries(c).sort((x,y) => y[1]-x[1]).slice(0, n || 5);
+}}
+
+function _fmtTop(pares) {{
+  return pares.length ? pares.map(([k,v]) => `${{k}} (${{v}})`).join(', ') : 'sem dados suficientes';
+}}
+
+function responderPerguntaAutores(pergunta) {{
+  if (!AUTORES.length) {{
+    return 'Nenhum autor com perfil identificado nos B.O.s processados até o momento.';
+  }}
+  const pNorm = _normalizarTexto(pergunta);
+
+  const listaUnica = campo => [...new Set(AUTORES.map(a => a[campo]).filter(v => v && v !== 'Não Informado'))];
+  const categorias = [
+    {{ campo:'naturalidade_cidade', valores:listaUnica('naturalidade_cidade') }},
+    {{ campo:'cidade_residencia',   valores:listaUnica('cidade_residencia') }},
+    {{ campo:'bairro_residencia',   valores:listaUnica('bairro_residencia') }},
+    {{ campo:'profissao',          valores:listaUnica('profissao') }},
+    {{ campo:'estado_civil',       valores:listaUnica('estado_civil') }},
+    {{ campo:'sexo',               valores:listaUnica('sexo') }},
+    {{ campo:'crime',              valores:listaUnica('crime') }},
+  ];
+
+  let subset = AUTORES;
+  const criteriosEncontrados = [];
+  categorias.forEach(({{campo, valores}}) => {{
+    const achados = valores.filter(v => _correspondeValor(v, pNorm));
+    if (achados.length) {{
+      subset = subset.filter(a => achados.includes(a[campo]));
+      criteriosEncontrados.push(...achados);
+    }}
+  }});
+  const pedeMenor = /\\bmenor(es)?\\b|adolescente/.test(pNorm);
+  if (pedeMenor) {{
+    subset = subset.filter(a => a.menor);
+    criteriosEncontrados.push('menor de idade');
+  }}
+
+  const pedeRanking = /mais comum|mais frequente|qual.*profiss|qual.*naturalidade|ranking|top\\s*\\d*/.test(pNorm);
+  if (!criteriosEncontrados.length && pedeRanking) {{
+    return `📊 Perfil dos ${{AUTORES.length}} autores identificados nos B.O.s:\\n` +
+      `• Naturalidade mais comum: ${{_fmtTop(_topEntradas(AUTORES,'naturalidade_cidade',3))}}\\n` +
+      `• Profissão mais comum: ${{_fmtTop(_topEntradas(AUTORES,'profissao',3))}}\\n` +
+      `• Estado civil mais comum: ${{_fmtTop(_topEntradas(AUTORES,'estado_civil',3))}}\\n` +
+      `• Sexo: ${{_fmtTop(_topEntradas(AUTORES,'sexo',2))}}\\n` +
+      `• Menores de idade: ${{AUTORES.filter(a=>a.menor).length}} de ${{AUTORES.length}}.`;
+  }}
+
+  if (!criteriosEncontrados.length) {{
+    return `Não identifiquei um critério conhecido na pergunta (cidade, profissão, estado civil, sexo ou "menor de idade").\\n` +
+      `Total de autores identificados: ${{AUTORES.length}}.\\n` +
+      `Exemplos: "quantos autores são naturais de Curitiba?", "quantos são de Balneário Camboriú?", "qual a profissão mais comum entre os autores?", "quantos são menores de idade?".`;
+  }}
+
+  const criteriosTxt = [...new Set(criteriosEncontrados)].join(', ');
+  if (!subset.length) {{
+    return `Nenhum autor identificado corresponde a "${{criteriosTxt}}" (de um total de ${{AUTORES.length}} autores com perfil extraído).`;
+  }}
+
+  return `📊 ${{subset.length}} de ${{AUTORES.length}} autores identificados correspondem a "${{criteriosTxt}}".\\n` +
+    `• Sexo: ${{_fmtTop(_topEntradas(subset,'sexo',2))}}\\n` +
+    `• Profissão: ${{_fmtTop(_topEntradas(subset,'profissao',4))}}\\n` +
+    `• Estado civil: ${{_fmtTop(_topEntradas(subset,'estado_civil',3))}}\\n` +
+    `• Naturalidade: ${{_fmtTop(_topEntradas(subset,'naturalidade_cidade',4))}}\\n` +
+    `• Menores de idade: ${{subset.filter(a=>a.menor).length}}.`;
+}}
+
+function toggleChatIA() {{
+  document.getElementById('chat-ia-panel').classList.toggle('aberto');
+}}
+
+function enviarPerguntaChat() {{
+  const input = document.getElementById('chat-ia-input');
+  const pergunta = input.value.trim();
+  if (!pergunta) return;
+  input.value = '';
+  const log = document.getElementById('chat-ia-log');
+  log.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-msg-user">${{pergunta.replace(/</g,'&lt;')}}</div>`);
+  const resposta = responderPerguntaAutores(pergunta);
+  log.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-msg-ia">${{resposta.replace(/</g,'&lt;')}}</div>`);
+  log.scrollTop = log.scrollHeight;
+}}
+</script>
 </body>
 </html>"""
 
@@ -445,7 +661,7 @@ def main():
     novos = 0
     for i, pdf in enumerate(pdfs):
         nome = pdf.name
-        if nome in cache:
+        if nome in cache and "autores" in cache[nome]:
             bos.append(cache[nome])
         else:
             print(f"  [{i+1}/{len(pdfs)}] Processando: {nome}", end="\r")
@@ -470,7 +686,8 @@ def main():
 
     # Gera HTML
     ts = datetime.now().strftime("%d/%m/%Y %H:%M")
-    html = gerar_html(grupos, bos, ts)
+    autores_todos = [a for bo in bos for a in bo.get("autores", [])]
+    html = gerar_html(grupos, bos, ts, autores_todos)
     with open(SAIDA_HTML, "w", encoding="utf-8") as f:
         f.write(html)
 
@@ -538,6 +755,10 @@ def main():
         "turnos_freq":      turnos_freq,
         "grupos":           grupos_export,
         "relato_index":     relato_index,
+        # Perfil agregado dos autores (sem nome, CPF, RG, telefone ou
+        # endereço completo — ver extrair_autores()) para o chat "Pergunte
+        # à IA" do dashboard público.
+        "autores":          autores_todos,
     }
     with open(GRUPOS_JSON, "w", encoding="utf-8") as f:
         json.dump(dados_export, f, ensure_ascii=False, indent=2)

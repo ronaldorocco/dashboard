@@ -2522,6 +2522,73 @@ function _normalizarTexto(s) {{
   return (s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
 }}
 
+// Alguns PDFs de B.O. têm letras acentuadas que o extrator não decodifica
+// (viram '�'). Para não perder o match de nomes como "Balneário Camboriú",
+// tratamos esse caractere como um coringa de 1 posição na comparação.
+function _correspondeValor(valorArmazenado, textoNormalizado) {{
+  const base = _normalizarTexto(valorArmazenado).replace(/[.*+?^${{}}()|[\]\\\\]/g, '\\\\$&');
+  const padrao = base.replace(/\\uFFFD/g, '.');
+  try {{
+    return new RegExp(padrao).test(textoNormalizado);
+  }} catch (e) {{
+    return textoNormalizado.includes(_normalizarTexto(valorArmazenado));
+  }}
+}}
+
+// Perfil agregado de autores (naturalidade, profissão, estado civil, sexo).
+// NUNCA inclui nome, CPF, RG, telefone ou endereço completo — só contagens,
+// que é o único formato de dado de autor enviado para a IA (OpenAI).
+function montarContextoAutores(pergunta, pNormParam) {{
+  if (!AUTORES_INTEL.length) return '';
+  const pNorm = pNormParam || _normalizarTexto(pergunta);
+
+  const listaUnica = campo => [...new Set(AUTORES_INTEL.map(a => a[campo]).filter(v => v && v !== 'Não Informado'))];
+  const categorias = [
+    {{ campo:'naturalidade_cidade', valores:listaUnica('naturalidade_cidade') }},
+    {{ campo:'cidade_residencia',   valores:listaUnica('cidade_residencia') }},
+    {{ campo:'bairro_residencia',   valores:listaUnica('bairro_residencia') }},
+    {{ campo:'profissao',          valores:listaUnica('profissao') }},
+    {{ campo:'estado_civil',       valores:listaUnica('estado_civil') }},
+    {{ campo:'sexo',               valores:listaUnica('sexo') }},
+    {{ campo:'crime',              valores:listaUnica('crime') }},
+  ];
+
+  let subset = AUTORES_INTEL;
+  const criteriosEncontrados = [];
+  categorias.forEach(({{campo, valores}}) => {{
+    const achados = valores.filter(v => _correspondeValor(v, pNorm));
+    if (achados.length) {{
+      subset = subset.filter(a => achados.includes(a[campo]));
+      criteriosEncontrados.push(...achados);
+    }}
+  }});
+  const pedeMenor = /\\bmenor(es)?\\b|adolescente/.test(pNorm);
+  if (pedeMenor) {{
+    subset = subset.filter(a => a.menor);
+    criteriosEncontrados.push('menor de idade');
+  }}
+
+  const mencionaPessoas = /\\bautor(es)?\\b|\\bpres[oa]s?\\b|suspeit[oa]s?|naturalidade|natural(is)?\\s+de|profiss(a|ã)o|estado\\s+civil/.test(pNorm);
+  if (!criteriosEncontrados.length && !mencionaPessoas) return '';
+
+  function top(campo, n) {{
+    const c = {{}};
+    subset.forEach(a => {{ const v = a[campo]; if (v && v !== 'Não Informado') c[v] = (c[v]||0)+1; }});
+    return Object.entries(c).sort((x,y)=>y[1]-x[1]).slice(0, n||6).map(([k,v])=>`${{k}}: ${{v}}`).join(', ') || '(sem dados)';
+  }}
+
+  const criteriosTxt = [...new Set(criteriosEncontrados)].join(', ') || '(nenhum critério específico — perfil geral dos autores)';
+
+  return `[PERFIL DE AUTORES — nenhum nome, CPF, RG ou endereço individual é fornecido; responda só com as contagens agregadas abaixo]\n` +
+    `Critérios identificados na pergunta sobre autores/pessoas: ${{criteriosTxt}}.\n` +
+    `Total de autores que atendem aos critérios: ${{subset.length}} (de ${{AUTORES_INTEL.length}} autores com perfil extraído dos B.O.s).\n` +
+    `Distribuição por naturalidade (cidade): ${{top('naturalidade_cidade')}}.\n` +
+    `Distribuição por profissão: ${{top('profissao')}}.\n` +
+    `Distribuição por estado civil: ${{top('estado_civil')}}.\n` +
+    `Distribuição por sexo: ${{top('sexo')}}.\n` +
+    `Menores de idade no subconjunto: ${{subset.filter(a=>a.menor).length}}.`;
+}}
+
 function montarContextoChat(pergunta) {{
   // Respeita os filtros já ativos na sidebar (ano, mês, bairro, item, etc.)
   // e só então aplica os critérios adicionais identificados na pergunta.
@@ -2544,39 +2611,47 @@ function montarContextoChat(pergunta) {{
 
   const semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length && !critItem.length;
   const semFiltroAtivo = dataFiltrada.length === RAW.length;
-  if (semCriterio && semFiltroAtivo) return '';
 
-  let subset = dadosU;
-  if (critBairro.length) subset = subset.filter(r => critBairro.includes(r.bairro));
-  if (critTipo.length)   subset = subset.filter(r => critTipo.includes(r.tipo));
-  if (critTurno.length)  subset = subset.filter(r => critTurno.includes(r.turno));
-  if (critDia.length)    subset = subset.filter(r => critDia.includes(r.dia));
-  if (critItem.length) {{
-    const bosComItem = new Set(dataFiltrada.filter(r => critItem.includes(r.item)).map(r=>r.bo));
-    subset = subset.filter(r => bosComItem.has(r.bo));
+  let contextoOcorrencias = '';
+  if (!(semCriterio && semFiltroAtivo)) {{
+    let subset = dadosU;
+    if (critBairro.length) subset = subset.filter(r => critBairro.includes(r.bairro));
+    if (critTipo.length)   subset = subset.filter(r => critTipo.includes(r.tipo));
+    if (critTurno.length)  subset = subset.filter(r => critTurno.includes(r.turno));
+    if (critDia.length)    subset = subset.filter(r => critDia.includes(r.dia));
+    if (critItem.length) {{
+      const bosComItem = new Set(dataFiltrada.filter(r => critItem.includes(r.item)).map(r=>r.bo));
+      subset = subset.filter(r => bosComItem.has(r.bo));
+    }}
+
+    const criteriosTxt = [...critBairro,...critTipo,...critTurno,...critDia,...critItem].join(', ') || 'filtros já ativos na tela';
+    if (subset.length === 0) {{
+      contextoOcorrencias = `Nenhum registro de ocorrência encontrado para os critérios identificados (${{criteriosTxt}}).`;
+    }} else {{
+      const porTipo   = count(subset,'tipo');
+      const porBairro = count(subset,'bairro');
+      const porTurno  = count(subset,'turno');
+      const porDia    = count(subset,'dia');
+      const fmtObj = o => Object.entries(o).map(([k,v])=>`${{k}}: ${{v}}`).join(', ');
+
+      const amostra = [...subset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,15);
+      const amostraTxt = amostra.map(r =>
+        `${{r.data||'?'}} | ${{r.bairro||'?'}} | ${{r.turno||'?'}} | ${{r.tipo||'?'}} | ${{r.endereco||'?'}}`
+      ).join('\\n');
+
+      contextoOcorrencias = `Critérios identificados na pergunta: ${{criteriosTxt}}.\n` +
+        `Total de registros encontrados: ${{subset.length}}.\n` +
+        `Distribuição por tipo: ${{fmtObj(porTipo)}}.\n` +
+        `Distribuição por bairro: ${{fmtObj(porBairro)}}.\n` +
+        `Distribuição por turno: ${{fmtObj(porTurno)}}.\n` +
+        `Distribuição por dia da semana: ${{fmtObj(porDia)}}.\n` +
+        `Amostra de até 15 registros mais recentes (data | bairro | turno | tipo | endereço):\n${{amostraTxt}}`;
+    }}
   }}
 
-  const criteriosTxt = [...critBairro,...critTipo,...critTurno,...critDia,...critItem].join(', ') || 'filtros já ativos na tela';
-  if (subset.length === 0) return `Nenhum registro encontrado para os critérios identificados (${{criteriosTxt}}).`;
+  const contextoAutores = montarContextoAutores(pergunta, pNorm);
 
-  const porTipo   = count(subset,'tipo');
-  const porBairro = count(subset,'bairro');
-  const porTurno  = count(subset,'turno');
-  const porDia    = count(subset,'dia');
-  const fmtObj = o => Object.entries(o).map(([k,v])=>`${{k}}: ${{v}}`).join(', ');
-
-  const amostra = [...subset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,15);
-  const amostraTxt = amostra.map(r =>
-    `${{r.data||'?'}} | ${{r.bairro||'?'}} | ${{r.turno||'?'}} | ${{r.tipo||'?'}} | ${{r.endereco||'?'}}`
-  ).join('\\n');
-
-  return `Critérios identificados na pergunta: ${{criteriosTxt}}.\n` +
-    `Total de registros encontrados: ${{subset.length}}.\n` +
-    `Distribuição por tipo: ${{fmtObj(porTipo)}}.\n` +
-    `Distribuição por bairro: ${{fmtObj(porBairro)}}.\n` +
-    `Distribuição por turno: ${{fmtObj(porTurno)}}.\n` +
-    `Distribuição por dia da semana: ${{fmtObj(porDia)}}.\n` +
-    `Amostra de até 15 registros mais recentes (data | bairro | turno | tipo | endereço):\n${{amostraTxt}}`;
+  return [contextoOcorrencias, contextoAutores].filter(Boolean).join('\\n\\n---\\n\\n');
 }}
 
 function toggleChatIA() {{
@@ -3285,6 +3360,10 @@ function fecharPrevisao() {{
 // ── PESQUISA GERAL ────────────────────────────────────────────────────────────
 const INTEL_DATA = {INTEL_JSON};
 const RELATO_INDEX = INTEL_DATA ? INTEL_DATA.relato_index || [] : [];
+// Perfil agregado de autores (naturalidade, profissão, estado civil, sexo) —
+// nunca contém nome, CPF, RG, telefone ou endereço completo (ver
+// extrair_autores() em analisar_bos.py). Usado só para contagens no chat.
+const AUTORES_INTEL = INTEL_DATA ? INTEL_DATA.autores || [] : [];
 
 let _pesquisaTimer = null;
 function onPesquisaInput(val) {{
@@ -4951,7 +5030,7 @@ else {{ window.addEventListener('load', init); }}
     <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
   </div>
   <div id="chat-ia-log" class="chat-ia-log">
-    <div class="chat-msg chat-msg-ia">Olá! Pergunte sobre as ocorrências — ex: "quantos furtos aconteceram no Centro?" ou "o que acontece mais aos sábados de madrugada?"</div>
+    <div class="chat-msg chat-msg-ia">Olá! Pergunte sobre as ocorrências — ex: "quantos furtos aconteceram no Centro?", "o que acontece mais aos sábados de madrugada?" ou sobre o perfil dos autores, ex: "quantos autores são naturais de Balneário Camboriú?"</div>
   </div>
   <div class="chat-ia-inputbar">
     <button id="chat-ia-mic" type="button" onclick="toggleGravacao()" title="Falar">🎤</button>

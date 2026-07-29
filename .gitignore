@@ -16,3 +16,5 @@ __pycache__/
 # Inteligência Criminal — dados sensíveis, somente local
 inteligencia_criminal.html
 bos_cache.json
+.vercel
+.env*
