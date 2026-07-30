@@ -92,6 +92,17 @@ INTEL_JSON = json.dumps(INTEL_DATA, ensure_ascii=False) if INTEL_DATA else 'null
 # ── Carregar e limpar dados ───────────────────────────────────────────────────
 df = pd.read_excel('secretario.xlsx', sheet_name='DADOS', engine='openpyxl')
 
+# Normaliza os cabeçalhos pra maiúsculo — a planilha às vezes é resalva com
+# outra capitalização (ex.: "Tipificacao", "B.o.", "Endereço" em vez de
+# "TIPIFICACAO", "B.O.", "ENDEREÇO"), e o resto do script sempre busca as
+# colunas em maiúsculo. Alguns nomes também variam espaço/underscore/acento.
+df.columns = [str(c).strip().upper() for c in df.columns]
+_RENOMEIA_COLUNAS = {
+    "NUMERO DE SÉRIE": "NUMERO_SERIE",
+    "NUMERO DE SERIE": "NUMERO_SERIE",
+}
+df = df.rename(columns=_RENOMEIA_COLUNAS)
+
 def norm_tipo(v):
     if pd.isna(v): return ''
     v = str(v).strip().upper()
@@ -2819,11 +2830,31 @@ function montarContextoChat(pergunta) {{
         `Combinação bairro/turno mais concentrada: ${{topCombo[0]}} (${{topCombo[1]}} casos = ${{pct(topCombo[1])}}%).`;
 
       // Amostra por item (não por B.O. deduplicado) — um B.O. pode ter mais
-      // de um item furtado/roubado, cada um com sua marca/modelo próprios.
-      const amostra = [...itensDoSubset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,20);
-      const amostraTxt = amostra.map(r =>
-        `${{r.data||'?'}} | B.O. ${{r.bo||'?'}} | ${{r.bairro||'?'}} | ${{r.endereco||'?'}} | ${{r.turno||'?'}} | ${{r.tipo||'?'}} | item: ${{r.item||'?'}}${{r.marca ? ' (marca/modelo: '+r.marca+')' : ''}}`
-      ).join('\\n');
+      // de um item furtado/roubado, cada um com seus próprios detalhes.
+      // Inclui todas as colunas da planilha que fazem sentido responder
+      // por chat/voz (fora lat/lon/link/mapa, que não são "faláveis").
+      const camp = v => (v===undefined||v===null||v==='') ? '-' : v;
+      const amostra = [...itensDoSubset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,15);
+      const amostraTxt = amostra.map(r => [
+        `data: ${{camp(r.data)}}`,
+        `hora: ${{camp(r.hora)}}`,
+        `B.O.: ${{camp(r.bo)}}`,
+        `bairro: ${{camp(r.bairro)}}`,
+        `endereço: ${{camp(r.endereco)}}`,
+        `ponto de referência: ${{camp(r.ref)}}`,
+        `turno: ${{camp(r.turno)}}`,
+        `dia da semana: ${{camp(r.dia)}}`,
+        `tipificação: ${{camp(r.tipo)}}`,
+        `item: ${{camp(r.item)}}`,
+        `marca/modelo: ${{camp(r.marca)}}`,
+        `cor: ${{camp(r.cor)}}`,
+        `detalhes: ${{camp(r.detalhes)}}`,
+        `IMEI: ${{camp(r.imei)}}`,
+        `placa: ${{camp(r.placa)}}`,
+        `número de série: ${{camp(r.numero_serie)}}`,
+        `recuperado: ${{camp(r.recuperado)}}`,
+        `descrição: ${{camp((r.descricao||'').slice(0,200))}}`,
+      ].join(' | ')).join('\\n');
 
       contextoOcorrencias = `Critérios identificados na pergunta: ${{criteriosTxt}}.\n` +
         `Total de registros encontrados: ${{subset.length}}.\n` +
@@ -2835,7 +2866,7 @@ function montarContextoChat(pergunta) {{
         `Item mais furtado/roubado (top 6): ${{fmtTop(porItem,6)}}.\n` +
         `Resumo tático com percentuais (use para embasar recomendações de policiamento, sem recalcular %):\n${{resumoTaticoTxt}}\n` +
         `Detalhamento das ruas mais críticas, com tipo/turno/dia predominante (use isso para sugerir posicionamento de guarnições/viaturas):\n${{detalheRuasTxt}}\n` +
-        `Amostra de até 20 itens mais recentes (data | número do B.O. | bairro | endereço | turno | tipo | item e marca/modelo, quando informados):\n${{amostraTxt}}`;
+        `Amostra de até 15 itens mais recentes, com todos os campos disponíveis da planilha (use qualquer um deles se for perguntado — "-" significa que não foi informado):\n${{amostraTxt}}`;
     }}
   }}
 
