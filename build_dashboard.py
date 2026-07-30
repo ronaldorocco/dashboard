@@ -2632,7 +2632,12 @@ function montarContextoChat(pergunta) {{
       const porBairro = count(subset,'bairro');
       const porTurno  = count(subset,'turno');
       const porDia    = count(subset,'dia');
+      const porRua    = count(subset,'endereco');
+      const bosDoSubset  = new Set(subset.map(r=>r.bo));
+      const itensDoSubset = dataFiltrada.filter(r => bosDoSubset.has(r.bo));
+      const porItem   = count(itensDoSubset,'item');
       const fmtObj = o => Object.entries(o).map(([k,v])=>`${{k}}: ${{v}}`).join(', ');
+      const fmtTop = (o, n) => Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0, n||6).map(([k,v])=>`${{k}}: ${{v}}`).join(', ') || '(sem dados)';
 
       const amostra = [...subset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,15);
       const amostraTxt = amostra.map(r =>
@@ -2645,6 +2650,8 @@ function montarContextoChat(pergunta) {{
         `Distribuição por bairro: ${{fmtObj(porBairro)}}.\n` +
         `Distribuição por turno: ${{fmtObj(porTurno)}}.\n` +
         `Distribuição por dia da semana: ${{fmtObj(porDia)}}.\n` +
+        `Rua/endereço com mais ocorrências (top 6): ${{fmtTop(porRua,6)}}.\n` +
+        `Item mais furtado/roubado (top 6): ${{fmtTop(porItem,6)}}.\n` +
         `Amostra de até 15 registros mais recentes (data | bairro | turno | tipo | endereço):\n${{amostraTxt}}`;
     }}
   }}
@@ -5065,14 +5072,14 @@ else {{ window.addEventListener('load', init); }}
 </div>
 
 <!-- ── CHAT IA FLUTUANTE ── -->
-<button id="chat-ia-fab" onclick="toggleChatIA()" title="Pergunte à IA">💬</button>
+<button id="chat-ia-fab" onclick="toggleChatIA()" title="Fale com a Ana">💬</button>
 <div id="chat-ia-panel" class="chat-ia-panel">
   <div class="chat-ia-header">
-    <span>💬 Pergunte à IA</span>
+    <span>💬 Ana — Assistente Virtual</span>
     <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
   </div>
   <div id="chat-ia-log" class="chat-ia-log">
-    <div class="chat-msg chat-msg-ia">Olá! Pergunte sobre as ocorrências — ex: "quantos furtos aconteceram no Centro?", "o que acontece mais aos sábados de madrugada?" ou sobre o perfil dos autores, ex: "quantos autores são naturais de Balneário Camboriú?"</div>
+    <div class="chat-msg chat-msg-ia">Oi! Sou a Ana, assistente virtual da Guarda Municipal. Como posso te ajudar hoje? Pergunte sobre as ocorrências — ex: "quantos furtos aconteceram no bairro Pioneiros?" — ou sobre o perfil dos autores, ex: "quantos autores são naturais de Balneário Camboriú?"</div>
   </div>
   <div class="chat-ia-inputbar">
     <button id="chat-ia-mic" type="button" onclick="toggleGravacao()" title="Falar">🎤</button>
