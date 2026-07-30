@@ -2747,6 +2747,169 @@ function montarContextoAutores(pergunta, pNormParam) {
     `Menores de idade no subconjunto: ${subset.filter(a=>a.menor).length}.`;
 }
 
+// ── RELATÓRIO DE UM DIA ESPECÍFICO ("relatório de hoje", "ocorrências do dia 15/07") ──
+function montarContextoRelatorioDia(pergunta, pNorm) {
+  const hoje = new Date();
+  const fmtYMD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let dataAlvo = null, rotuloData = '';
+
+  if (/\bhoje\b/.test(pNorm)) {
+    dataAlvo = fmtYMD(hoje);
+    rotuloData = 'hoje (' + hoje.toLocaleDateString('pt-BR') + ')';
+  } else if (/\bontem\b/.test(pNorm)) {
+    const ontem = new Date(hoje); ontem.setDate(ontem.getDate()-1);
+    dataAlvo = fmtYMD(ontem);
+    rotuloData = 'ontem (' + ontem.toLocaleDateString('pt-BR') + ')';
+  } else {
+    const m = pergunta.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+    if (m) {
+      const dia = parseInt(m[1],10), mes = parseInt(m[2],10);
+      let ano = m[3] ? parseInt(m[3],10) : hoje.getFullYear();
+      if (ano < 100) ano += 2000;
+      const d = new Date(ano, mes-1, dia);
+      dataAlvo = fmtYMD(d);
+      rotuloData = d.toLocaleDateString('pt-BR');
+    }
+  }
+  if (!dataAlvo) return '';
+
+  const doDia  = RAW.filter(r => r.data === dataAlvo);
+  const doDiaU = dedupBO(doDia);
+  if (!doDiaU.length) {
+    return `Relatório de ${rotuloData}: nenhuma ocorrência registrada nessa data.`;
+  }
+
+  const contar = (arr, campo) => {
+    const c = {};
+    arr.forEach(r => { const v = r[campo]; if (v) c[v] = (c[v]||0)+1; });
+    return Object.entries(c).sort((a,b)=>b[1]-a[1]);
+  };
+  const fmtLista = arr => arr.map(([k,v])=>`${k}: ${v}`).join(', ') || '(sem dados)';
+
+  return `Relatório de ocorrências de ${rotuloData}:
+` +
+    `Total: ${doDiaU.length} ocorrência(s).
+` +
+    `Por tipo: ${fmtLista(contar(doDiaU,'tipo'))}.
+` +
+    `Por bairro: ${fmtLista(contar(doDiaU,'bairro'))}.
+` +
+    `Por turno: ${fmtLista(contar(doDiaU,'turno'))}.
+` +
+    `Itens furtados/roubados: ${fmtLista(contar(doDia,'item'))}.`;
+}
+
+// ── PREVISÃO/ANÁLISE HISTÓRICA POR DIA DA SEMANA ("previsão para sexta", "risco no sábado") ──
+function montarContextoDiaSemana(pergunta, pNorm) {
+  const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const diaEncontrado = DIAS.find(d => _correspondeValor(d, pNorm));
+  const pedePrevisao = /previs[aã]o|preditiv|risco (para|em|de|no|na)|tend[eê]ncia/.test(pNorm);
+  if (!diaEncontrado || !pedePrevisao) return '';
+
+  const hist = dedupBO(RAW).filter(r => r.dia === diaEncontrado);
+  if (!hist.length) {
+    return `Não há histórico de ocorrências registradas em ${diaEncontrado}s.`;
+  }
+  const datas = [...new Set(hist.map(r=>r.data))].sort();
+  const nDias = datas.length;
+  const media = (hist.length/nDias).toFixed(1);
+
+  const contar = (arr, campo) => {
+    const c = {};
+    arr.forEach(r => { const v = r[campo]; if (v) c[v] = (c[v]||0)+1; });
+    return Object.entries(c).sort((a,b)=>b[1]-a[1]);
+  };
+  const fmtLista = arr => arr.map(([k,v])=>`${k}: ${v}`).join(', ') || '(sem dados)';
+
+  let tendencia = 'poucos dados para avaliar tendência';
+  if (nDias >= 4) {
+    const mid  = Math.floor(nDias/2);
+    const avg1 = datas.slice(0,mid).reduce((s,d)=>s+hist.filter(r=>r.data===d).length,0)/mid;
+    const avg2 = datas.slice(mid).reduce((s,d)=>s+hist.filter(r=>r.data===d).length,0)/(nDias-mid);
+    const diff = avg2-avg1;
+    tendencia = diff>1.5 ? 'crescente' : diff<-1.5 ? 'decrescente' : 'estável';
+  }
+
+  return `Previsão/análise histórica para ${diaEncontrado}s (baseada em ${nDias} ${diaEncontrado}(s) já registrado(s) no histórico):
+` +
+    `Total histórico: ${hist.length} ocorrência(s), média de ${media}/dia. Tendência: ${tendencia}.
+` +
+    `Por tipo: ${fmtLista(contar(hist,'tipo'))}.
+` +
+    `Por bairro (top 6): ${contar(hist,'bairro').slice(0,6).map(([k,v])=>`${k}: ${v}`).join(', ') || '(sem dados)'}.
+` +
+    `Por turno: ${fmtLista(contar(hist,'turno'))}.
+` +
+    `Rua mais crítica nesse dia (top 3): ${contar(hist,'endereco').slice(0,3).map(([k,v])=>`${k}: ${v}`).join(', ') || '(sem dados)'}.`;
+}
+
+// ── ANÁLISE PREDITIVA GERAL (tendência mensal, projeção, alertas por bairro) ──
+function montarContextoPreditivo(pNorm) {
+  const pedePreditivo = /preditiv|previs[aã]o (geral|de tend[eê]ncia)|tend[eê]ncia (geral|de crescimento)|\balertas?\b/.test(pNorm);
+  if (!pedePreditivo) return '';
+
+  const RAWU = dedupBO(RAW);
+  const monGlobal = {};
+  RAWU.forEach(r => { if (r.data) { const k = r.data.slice(0,7); monGlobal[k] = (monGlobal[k]||0)+1; } });
+  const mesesGlobal = Object.keys(monGlobal).sort();
+  if (mesesGlobal.length < 2) {
+    return 'Dados insuficientes (menos de 2 meses de histórico) para uma análise preditiva de tendência.';
+  }
+  const contsGlobal = mesesGlobal.map(m => monGlobal[m]);
+  const n = contsGlobal.length;
+  const xs = contsGlobal.map((_,i)=>i);
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = contsGlobal.reduce((a,b)=>a+b,0)/n;
+  const num = xs.reduce((s,x,i)=>s+(x-mx)*(contsGlobal[i]-my),0);
+  const den = xs.reduce((s,x)=>s+(x-mx)**2,0);
+  const decl = den ? num/den : 0;
+  const predizer = x => Math.max(0, Math.round(decl*x + (my - decl*mx)));
+  const tendencia = decl>0.5 ? 'crescente' : decl<-0.5 ? 'decrescente' : 'estável';
+
+  const hoje = new Date();
+  const d30 = new Date(hoje); d30.setDate(d30.getDate()-30);
+  const d60 = new Date(hoje); d60.setDate(d60.getDate()-60);
+  const fmtYMD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const rec30 = RAWU.filter(r => r.data && r.data >= fmtYMD(d30));
+  const ant30 = RAWU.filter(r => r.data && r.data >= fmtYMD(d60) && r.data < fmtYMD(d30));
+
+  const contarBairro = arr => { const c = {}; arr.forEach(r => { if (r.bairro) c[r.bairro] = (c[r.bairro]||0)+1; }); return c; };
+  const recB = contarBairro(rec30), antB = contarBairro(ant30);
+  const bairros = [...new Set(RAWU.map(r=>r.bairro).filter(Boolean))];
+  const alertasBairro = [];
+  bairros.forEach(b => {
+    const r = recB[b]||0, a = antB[b]||0;
+    if (a >= 3) {
+      const delta = Math.round((r-a)/a*100);
+      if (delta > 25) alertasBairro.push(`${b}: alta de ${delta}% nos últimos 30 dias`);
+      else if (delta < -25) alertasBairro.push(`${b}: queda de ${Math.abs(delta)}% nos últimos 30 dias`);
+    }
+  });
+
+  let deltaGeral = '';
+  if (ant30.length > 0) {
+    const d = Math.round((rec30.length-ant30.length)/ant30.length*100);
+    deltaGeral = `${d>0?'alta':'queda'} de ${Math.abs(d)}% no total geral nos últimos 30 dias vs. os 30 dias anteriores`;
+  }
+
+  return `Análise preditiva (regressão linear sobre ${n} meses de histórico):
+` +
+    `Tendência mensal geral: ${tendencia}.
+` +
+    `Projeção para os próximos 3 meses: ${predizer(n)}, ${predizer(n+1)}, ${predizer(n+2)} ocorrências, respectivamente.
+` +
+    (deltaGeral ? `Variação recente: ${deltaGeral}.
+` : '') +
+    `Alertas por bairro (últimos 30 dias vs. 30 dias anteriores): ${alertasBairro.length ? alertasBairro.join('; ') : 'nenhuma variação crítica detectada'}.`;
+}
+
+// ── RESUMO EXECUTIVO GERAL (reaproveita o mesmo texto usado no botão "Resumo IA") ──
+function montarContextoResumoGeral(pNorm) {
+  const pedeResumo = /resumo (executivo|geral|do sistema)|resumo ia|panorama geral/.test(pNorm);
+  if (!pedeResumo) return '';
+  return `Resumo executivo geral (dados atualmente filtrados no dashboard):
+${_resumoExecutivoDados || '(ainda não calculado — aguarde o carregamento dos dados)'}`;
+}
+
 function montarContextoChat(pergunta) {
   // Respeita os filtros já ativos na sidebar (ano, mês, bairro, item, etc.)
   // e só então aplica os critérios adicionais identificados na pergunta.
@@ -2858,9 +3021,14 @@ ${amostraTxt}`;
     }
   }
 
-  const contextoAutores = montarContextoAutores(pergunta, pNorm);
+  const contextoAutores       = montarContextoAutores(pergunta, pNorm);
+  const contextoRelatorioDia  = montarContextoRelatorioDia(pergunta, pNorm);
+  const contextoDiaSemana     = montarContextoDiaSemana(pergunta, pNorm);
+  const contextoPreditivo     = montarContextoPreditivo(pNorm);
+  const contextoResumoGeral   = montarContextoResumoGeral(pNorm);
 
-  return [contextoOcorrencias, contextoAutores].filter(Boolean).join('\n\n---\n\n');
+  return [contextoOcorrencias, contextoAutores, contextoRelatorioDia, contextoDiaSemana, contextoPreditivo, contextoResumoGeral]
+    .filter(Boolean).join('\n\n---\n\n');
 }
 
 // A Ana se apresenta falando (não só em texto) na primeira vez que o
