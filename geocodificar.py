@@ -16,6 +16,7 @@ else:
     cache = {}
 
 df = pd.read_excel('secretario.xlsx', sheet_name='DADOS', engine='openpyxl')
+df.columns = [str(c).strip().upper() for c in df.columns]
 enderecos = df['MAPA'].dropna().unique().tolist()
 print(f"Total de endereços únicos: {len(enderecos)}")
 
