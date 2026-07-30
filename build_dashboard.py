@@ -2639,6 +2639,35 @@ function montarContextoChat(pergunta) {{
       const fmtObj = o => Object.entries(o).map(([k,v])=>`${{k}}: ${{v}}`).join(', ');
       const fmtTop = (o, n) => Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0, n||6).map(([k,v])=>`${{k}}: ${{v}}`).join(', ') || '(sem dados)';
 
+      // Detalhamento por rua (top 5): tipo, turno e dia predominantes em
+      // cada uma — dá base pra sugestão de posicionamento de guarnições.
+      const topRuas = Object.entries(porRua).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const detalheRuasTxt = topRuas.map(([rua, total]) => {{
+        const ocorrRua = subset.filter(r => r.endereco === rua);
+        const topTurno = Object.entries(count(ocorrRua,'turno')).sort((a,b)=>b[1]-a[1])[0];
+        const topDia   = Object.entries(count(ocorrRua,'dia')).sort((a,b)=>b[1]-a[1])[0];
+        const tipoTxt  = fmtObj(count(ocorrRua,'tipo'));
+        return `${{rua}} — ${{total}} ocorrência(s); tipos: ${{tipoTxt}}; turno predominante: ${{topTurno ? topTurno[0]+' ('+topTurno[1]+')' : '—'}}; dia predominante: ${{topDia ? topDia[0]+' ('+topDia[1]+')' : '—'}}`;
+      }}).join('\\n');
+
+      // Resumo tático com percentuais (mesmo estilo dos cards de
+      // Recomendações do dashboard) — evita a IA ter que calcular % sozinha.
+      const totalSub = subset.length;
+      const pct = n => totalSub ? ((n/totalSub)*100).toFixed(1) : '0.0';
+      const top1Rua   = topRuas[0] || ['—', 0];
+      const top1Item  = Object.entries(porItem).sort((a,b)=>b[1]-a[1])[0]  || ['—', 0];
+      const top1Turno = Object.entries(porTurno).sort((a,b)=>b[1]-a[1])[0] || ['—', 0];
+      const top1Dia   = Object.entries(porDia).sort((a,b)=>b[1]-a[1])[0]   || ['—', 0];
+      const combos = {{}};
+      subset.forEach(r=>{{ const k=(r.bairro||'?')+' / '+(r.turno||'?'); combos[k]=(combos[k]||0)+1; }});
+      const topCombo = Object.entries(combos).sort((a,b)=>b[1]-a[1])[0] || ['—', 0];
+      const resumoTaticoTxt =
+        `Rua mais crítica: ${{top1Rua[0]}} (${{top1Rua[1]}} casos = ${{pct(top1Rua[1])}}%). ` +
+        `Item mais visado: ${{top1Item[0]}} (${{top1Item[1]}} casos = ${{pct(top1Item[1])}}%). ` +
+        `Turno mais crítico: ${{top1Turno[0]}} (${{top1Turno[1]}} casos = ${{pct(top1Turno[1])}}%). ` +
+        `Dia mais crítico: ${{top1Dia[0]}} (${{top1Dia[1]}} casos = ${{pct(top1Dia[1])}}%). ` +
+        `Combinação bairro/turno mais concentrada: ${{topCombo[0]}} (${{topCombo[1]}} casos = ${{pct(topCombo[1])}}%).`;
+
       const amostra = [...subset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,15);
       const amostraTxt = amostra.map(r =>
         `${{r.data||'?'}} | ${{r.bairro||'?'}} | ${{r.turno||'?'}} | ${{r.tipo||'?'}} | ${{r.endereco||'?'}}`
@@ -2652,6 +2681,8 @@ function montarContextoChat(pergunta) {{
         `Distribuição por dia da semana: ${{fmtObj(porDia)}}.\n` +
         `Rua/endereço com mais ocorrências (top 6): ${{fmtTop(porRua,6)}}.\n` +
         `Item mais furtado/roubado (top 6): ${{fmtTop(porItem,6)}}.\n` +
+        `Resumo tático com percentuais (use para embasar recomendações de policiamento, sem recalcular %):\n${{resumoTaticoTxt}}\n` +
+        `Detalhamento das ruas mais críticas, com tipo/turno/dia predominante (use isso para sugerir posicionamento de guarnições/viaturas):\n${{detalheRuasTxt}}\n` +
         `Amostra de até 15 registros mais recentes (data | bairro | turno | tipo | endereço):\n${{amostraTxt}}`;
     }}
   }}
