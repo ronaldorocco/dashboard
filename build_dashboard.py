@@ -2818,9 +2818,11 @@ function montarContextoChat(pergunta) {{
         `Dia mais crítico: ${{top1Dia[0]}} (${{top1Dia[1]}} casos = ${{pct(top1Dia[1])}}%). ` +
         `Combinação bairro/turno mais concentrada: ${{topCombo[0]}} (${{topCombo[1]}} casos = ${{pct(topCombo[1])}}%).`;
 
-      const amostra = [...subset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,15);
+      // Amostra por item (não por B.O. deduplicado) — um B.O. pode ter mais
+      // de um item furtado/roubado, cada um com sua marca/modelo próprios.
+      const amostra = [...itensDoSubset].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,20);
       const amostraTxt = amostra.map(r =>
-        `${{r.data||'?'}} | ${{r.bairro||'?'}} | ${{r.turno||'?'}} | ${{r.tipo||'?'}} | ${{r.endereco||'?'}}`
+        `${{r.data||'?'}} | B.O. ${{r.bo||'?'}} | ${{r.bairro||'?'}} | ${{r.endereco||'?'}} | ${{r.turno||'?'}} | ${{r.tipo||'?'}} | item: ${{r.item||'?'}}${{r.marca ? ' (marca/modelo: '+r.marca+')' : ''}}`
       ).join('\\n');
 
       contextoOcorrencias = `Critérios identificados na pergunta: ${{criteriosTxt}}.\n` +
@@ -2833,7 +2835,7 @@ function montarContextoChat(pergunta) {{
         `Item mais furtado/roubado (top 6): ${{fmtTop(porItem,6)}}.\n` +
         `Resumo tático com percentuais (use para embasar recomendações de policiamento, sem recalcular %):\n${{resumoTaticoTxt}}\n` +
         `Detalhamento das ruas mais críticas, com tipo/turno/dia predominante (use isso para sugerir posicionamento de guarnições/viaturas):\n${{detalheRuasTxt}}\n` +
-        `Amostra de até 15 registros mais recentes (data | bairro | turno | tipo | endereço):\n${{amostraTxt}}`;
+        `Amostra de até 20 itens mais recentes (data | número do B.O. | bairro | endereço | turno | tipo | item e marca/modelo, quando informados):\n${{amostraTxt}}`;
     }}
   }}
 
