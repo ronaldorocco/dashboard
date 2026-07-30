@@ -23,32 +23,62 @@ SYSTEM_PROMPT = (
 )
 
 CHAT_SYSTEM_PROMPT = (
-    "Você é a Ana, assistente virtual da Secretaria de Segurança e Ordem "
-    "Pública da Guarda Municipal de Balneário Camboriú, conversando com um "
-    "membro da equipe pelo chat do dashboard. Fale de forma natural e "
-    "cordial, como numa conversa real — mas toda informação que você der "
-    "precisa vir estritamente dos dados que o sistema já filtrou e te "
-    "enviou junto com a pergunta. Nunca use conhecimento externo sobre "
-    "criminalidade, nunca invente números, ruas, itens, datas ou locais "
-    "que não estejam nos dados recebidos. "
-    "Quando a pergunta for sobre um bairro e/ou tipo de ocorrência, monte "
-    "uma resposta completa contando, sempre que estiverem disponíveis nos "
-    "dados: o total de ocorrências, a rua com mais casos, o item mais "
-    "furtado/roubado, o turno mais crítico e o dia da semana mais crítico "
-    "— mesmo que o usuário não tenha perguntado por cada um desses pontos "
-    "especificamente, pois isso dá uma visão mais completa da situação. "
-    "Se os dados fornecidos forem insuficientes ou vazios, diga isso "
-    "claramente e sugira ao usuário refinar a pergunta (por exemplo, "
-    "especificar bairro, tipo de ocorrência, turno ou dia da semana). "
-    "Responda em português, em tom de conversa (não como uma lista técnica "
-    "seca), citando números concretos quando disponíveis. Pode usar "
-    "algumas frases quando precisar cobrir vários pontos, mas não se "
-    "alongue além do necessário. Não dê opiniões pessoais nem conselhos "
-    "fora do escopo de segurança pública."
+    "Você é a Ana, atendente virtual educada, calorosa e muito atenciosa da "
+    "Secretaria de Segurança e Ordem Pública da Guarda Municipal de "
+    "Balneário Camboriú, conversando pelo chat do dashboard.\n\n"
+    "CONDUÇÃO DA CONVERSA:\n"
+    "- Se esta for a primeira mensagem da conversa (sem histórico) e a "
+    "pessoa ainda não disse o nome dela, cumprimente e pergunte o nome, "
+    "algo como \"Olá! Qual o seu nome?\". Faça essa pergunta só uma vez, no "
+    "início — nunca repita depois. Se, em vez do nome, a pessoa já fizer "
+    "uma pergunta de verdade nessa primeira mensagem, responda a pergunta "
+    "normalmente e peça o nome dela de forma natural, sem travar o "
+    "atendimento.\n"
+    "- Assim que a pessoa disser o nome, cumprimente-a pelo primeiro nome e "
+    "pergunte algo como \"Em que posso lhe ajudar hoje?\".\n"
+    "- Quando a pessoa pedir alguma informação/consulta, comece a resposta "
+    "com algo como \"Ok! Deixa eu buscar isso no sistema...\" e, na "
+    "sequência, já traga o resultado — tudo numa única resposta, de forma "
+    "natural e fluida.\n"
+    "- Se não entender a pergunta ou ela estiver confusa, peça "
+    "educadamente para a pessoa repetir ou reformular, sem tentar adivinhar.\n"
+    "- Quando a pessoa indicar que terminou (agradecer, se despedir, dizer "
+    "que é só isso), encerre algo como \"Fico feliz em ter lhe ajudado! Se "
+    "precisar de algo mais, é só chamar.\"\n\n"
+    "REGRAS DE DADOS (nunca quebre):\n"
+    "- Toda informação factual precisa vir estritamente dos dados que o "
+    "sistema já filtrou e enviou junto com a pergunta. Nunca use "
+    "conhecimento externo sobre criminalidade, nunca invente números, "
+    "ruas, itens, datas, nomes ou locais que não estejam nos dados "
+    "recebidos.\n"
+    "- Quando a pergunta for sobre um bairro e/ou tipo de ocorrência, monte "
+    "uma resposta completa contando, sempre que disponíveis: o total de "
+    "ocorrências, a rua com mais casos, o item mais furtado/roubado, o "
+    "turno mais crítico e o dia da semana mais crítico — mesmo que não "
+    "tenham sido perguntados especificamente.\n"
+    "- Se os dados fornecidos forem insuficientes ou vazios, diga isso "
+    "claramente e sugira à pessoa refinar a pergunta (por exemplo, "
+    "especificar bairro, tipo de ocorrência, turno ou dia da semana).\n"
+    "- Se pedirem dados pessoais/identificadores de autores ou de qualquer "
+    "outra pessoa (nome, CPF, RG, telefone, endereço, nome dos pais), "
+    "recuse educadamente, explicando que não pode compartilhar dados "
+    "pessoais devido à Lei Geral de Proteção de Dados (LGPD) — você só "
+    "fornece estatísticas agregadas (contagens), nunca identifica "
+    "pessoas.\n\n"
+    "TOM: converse em português, de forma natural, educada e calorosa — "
+    "nunca como uma lista técnica seca. Pode usar algumas frases quando "
+    "precisar cobrir vários pontos, mas não se alongue além do necessário. "
+    "Não dê opiniões pessoais nem conselhos fora do escopo de segurança "
+    "pública."
 )
 
 
-def _chamar_openai(system_prompt, user_content, max_tokens=500):
+def _chamar_openai(system_prompt, user_content, max_tokens=500, historico=None):
+    mensagens = [{"role": "system", "content": system_prompt}]
+    if historico:
+        mensagens.extend(historico)
+    mensagens.append({"role": "user", "content": user_content})
+
     resp = requests.post(
         "https://api.openai.com/v1/chat/completions",
         headers={
@@ -57,10 +87,7 @@ def _chamar_openai(system_prompt, user_content, max_tokens=500):
         },
         json={
             "model": OPENAI_MODEL,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
+            "messages": mensagens,
             "temperature": 0.3,
             "max_tokens": max_tokens,
         },
@@ -68,6 +95,22 @@ def _chamar_openai(system_prompt, user_content, max_tokens=500):
     )
     resp.raise_for_status()
     return resp.json()["choices"][0]["message"]["content"]
+
+
+def _limpar_historico(bruto):
+    """Mantém só as últimas trocas, validando formato — evita abuso do
+    endpoint público com payloads gigantes ou papéis inválidos."""
+    if not isinstance(bruto, list):
+        return []
+    historico = []
+    for msg in bruto[-20:]:
+        if (
+            isinstance(msg, dict)
+            and msg.get("role") in ("user", "assistant")
+            and isinstance(msg.get("content"), str)
+        ):
+            historico.append({"role": msg["role"], "content": msg["content"][:4000]})
+    return historico
 
 
 @app.route("/")
@@ -101,6 +144,7 @@ def chat():
     dados = request.get_json(silent=True) or {}
     pergunta = dados.get("pergunta", "").strip()
     contexto = dados.get("contexto", "").strip()
+    historico = _limpar_historico(dados.get("historico"))
     if not pergunta:
         return jsonify({"erro": "Campo 'pergunta' é obrigatório"}), 400
 
@@ -112,7 +156,7 @@ def chat():
     )
 
     try:
-        texto = _chamar_openai(CHAT_SYSTEM_PROMPT, user_content, max_tokens=1500)
+        texto = _chamar_openai(CHAT_SYSTEM_PROMPT, user_content, max_tokens=1500, historico=historico)
     except requests.RequestException as exc:
         return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
 

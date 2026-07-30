@@ -2867,6 +2867,10 @@ async function falarTexto(texto) {
   }
 }
 
+// Histórico da conversa (só nesta sessão do navegador) — permite a Ana
+// lembrar se já perguntou o nome e manter a continuidade do diálogo.
+let _chatHistorico = [];
+
 async function enviarPerguntaChat() {
   const input = document.getElementById('chat-ia-input');
   const pergunta = input.value.trim();
@@ -2887,11 +2891,13 @@ async function enviarPerguntaChat() {
     const resp = await fetch('/api/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({pergunta, contexto})
+      body: JSON.stringify({pergunta, contexto, historico: _chatHistorico})
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
     alvo.innerHTML = data.texto.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    _chatHistorico.push({role:'user', content: pergunta}, {role:'assistant', content: data.texto});
+    if (_chatHistorico.length > 20) _chatHistorico = _chatHistorico.slice(-20);
     if (falarEssaResposta) falarTexto(data.texto);
   } catch (e) {
     alvo.innerHTML = '<span style="color:#D13438">Erro: ' + e.message + '</span>';
@@ -5246,7 +5252,7 @@ else { window.addEventListener('load', init); }
     <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
   </div>
   <div id="chat-ia-log" class="chat-ia-log">
-    <div class="chat-msg chat-msg-ia">Oi! Sou a Ana, assistente virtual da Guarda Municipal. Como posso te ajudar hoje? Pergunte sobre as ocorrências — ex: "quantos furtos aconteceram no bairro Pioneiros?" — ou sobre o perfil dos autores, ex: "quantos autores são naturais de Balneário Camboriú?"</div>
+    <div class="chat-msg chat-msg-ia">Olá! Sou a Ana, assistente virtual da Guarda Municipal. Qual o seu nome?</div>
   </div>
   <div class="chat-ia-inputbar">
     <button id="chat-ia-mic" type="button" onclick="toggleGravacao()" title="Falar">🎤</button>
