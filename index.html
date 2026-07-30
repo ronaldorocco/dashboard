@@ -708,6 +708,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
   transition:box-shadow .15s;
 }
 .chart-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.12);}
+.grafico-destacado{animation:pulseGrafico 1s ease-in-out 2;outline:3px solid #0078D4;outline-offset:2px;}
+@keyframes pulseGrafico{0%,100%{box-shadow:0 2px 6px rgba(0,0,0,.07);}50%{box-shadow:0 0 0 8px rgba(0,120,212,.25);}}
 .chart-title{font-size:12px;font-weight:700;color:#1A1A2E;margin-bottom:6px;
   padding-bottom:6px;border-bottom:2px solid var(--azul);display:flex;
   align-items:center;gap:6px;}
@@ -3080,6 +3082,41 @@ async function falarTexto(texto) {
   }
 }
 
+// ── "MOSTRAR GRÁFICO X" — rola a tela até o gráfico pedido e destaca ──────────
+// Os gráficos já existem na tela (Plotly), a Ana só precisa apontar pra eles.
+const MAPA_GRAFICOS = [
+  { id:'chart-heatmap', termos:['mapa de calor','heatmap'] },
+  { id:'chart-hora',    termos:['distribuicao por hora','por hora','horario do dia'] },
+  { id:'chart-dia',     termos:['dia da semana'] },
+  { id:'chart-linha',   termos:['ocorrencias por dia','serie temporal','linha do tempo','evolucao diaria'] },
+  { id:'chart-mes',     termos:['por mes','mensal'] },
+  { id:'chart-tipo',    termos:['tipificacao','tipo de ocorrencia','tipos de ocorrencia','tipo de crime'] },
+  { id:'chart-item',    termos:['item mais furtado','itens furtados','itens roubados','itens mais furtados'] },
+  { id:'chart-refs',    termos:['ponto de referencia','pontos de referencia'] },
+  { id:'chart-ruas',    termos:['rua','ruas'] },
+  { id:'chart-bairro',  termos:['bairro','bairros'] },
+  { id:'chart-turno',   termos:['turno'] },
+];
+
+function localizarGraficoPedido(pNorm) {
+  const pedeGrafico = /mostr[ae]|exib[ei]|\babre\b|\babrir\b|gr[aá]fico/.test(pNorm);
+  if (!pedeGrafico) return null;
+  for (const {id, termos} of MAPA_GRAFICOS) {
+    if (termos.some(t => pNorm.includes(t))) return id;
+  }
+  return null;
+}
+
+function destacarGrafico(id) {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  const card = el.closest('.chart-card') || el;
+  card.scrollIntoView({ behavior:'smooth', block:'center' });
+  card.classList.add('grafico-destacado');
+  setTimeout(() => card.classList.remove('grafico-destacado'), 2500);
+  return true;
+}
+
 // Histórico da conversa (só nesta sessão do navegador) — permite a Ana
 // lembrar se já perguntou o nome e manter a continuidade do diálogo.
 let _chatHistorico = [];
@@ -3091,6 +3128,10 @@ async function enviarPerguntaChat() {
   _falarResposta = false;
   if (!pergunta) return;
   input.value = '';
+
+  const pNormPergunta = _normalizarTexto(pergunta);
+  const graficoAlvo = localizarGraficoPedido(pNormPergunta);
+  if (graficoAlvo) destacarGrafico(graficoAlvo);
 
   const log = document.getElementById('chat-ia-log');
   const respId = 'chat-resp-' + Date.now();
