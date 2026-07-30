@@ -509,14 +509,14 @@ def gerar_html(grupos, todos_bos, ts, autores):
 </div>
 
 <!-- ── CHAT IA FLUTUANTE — Perfil dos Autores (só contagens agregadas, sem PII) ── -->
-<button id="chat-ia-fab" onclick="toggleChatIA()" title="Pergunte à IA">💬</button>
+<button id="chat-ia-fab" onclick="toggleChatIA()" title="Fale com a Ana">💬</button>
 <div id="chat-ia-panel" class="chat-ia-panel">
   <div class="chat-ia-header">
-    <span>💬 Pergunte à IA — Autores</span>
+    <span>💬 Ana — Assistente Virtual</span>
     <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
   </div>
   <div id="chat-ia-log" class="chat-ia-log">
-    <div class="chat-msg chat-msg-ia">Olá! Pergunte sobre o perfil dos autores identificados nos B.O.s — ex: "quantos autores são naturais de Curitiba?", "quantos são de Balneário Camboriú?" ou "qual a profissão mais comum entre os autores?"</div>
+    <div class="chat-msg chat-msg-ia">Olá, eu sou a Ana, a assistente virtual da Guarda Municipal de Balneário Camboriú. Qual o seu nome?</div>
   </div>
   <div class="chat-ia-inputbar">
     <textarea id="chat-ia-input" rows="3" placeholder="Digite sua pergunta... (Enter envia, Shift+Enter quebra linha)"
@@ -622,6 +622,50 @@ function toggleChatIA() {{
   document.getElementById('chat-ia-panel').classList.toggle('aberto');
 }}
 
+// ── Roteiro de atendimento da Ana (nome, saudação, LGPD, despedida) ───────────
+// Tudo aqui roda localmente no navegador, sem chamar nenhuma IA externa —
+// combina com o resto deste painel, que já é 100% offline/local.
+let _nomeUsuario = null;
+
+function _pareceDespedida(pNorm) {{
+  return /\\bobrigad[oa]\\b|\\bvaleu\\b|\\btchau\\b|ate mais|ate logo|\\bso isso\\b|e so isso|foi tudo/.test(pNorm);
+}}
+
+function _pedeDadoPessoal(pNorm) {{
+  return /\\bcpf\\b|\\brg\\b|\\btelefone\\b|nome (do|da|dos|das) autor|quem (e|é) o autor|identificar o autor|endereco (do|da) autor/.test(pNorm);
+}}
+
+function _pareceConsulta(pNorm) {{
+  return /quant[oa]s?|\\bqual\\b|\\bquem\\b|profiss|natural|estado civil|\\bautor(es)?\\b|\\bcrime\\b|\\bmenor(es)?\\b|adolescente|\\bcidade\\b|\\bbairro\\b/.test(pNorm);
+}}
+
+function gerarRespostaAna(pergunta) {{
+  const pNorm = _normalizarTexto(pergunta);
+
+  if (_pareceDespedida(pNorm)) {{
+    return 'Fico feliz em ter lhe ajudado! Se precisar de algo mais, é só chamar.';
+  }}
+
+  if (_pedeDadoPessoal(pNorm)) {{
+    return 'Não posso compartilhar nome, CPF, RG ou qualquer outro dado que identifique uma pessoa — isso é protegido pela Lei Geral de Proteção de Dados (LGPD). Posso te passar estatísticas agregadas, como naturalidade, profissão ou estado civil mais comuns, se ajudar.';
+  }}
+
+  if (!_nomeUsuario) {{
+    if (_pareceConsulta(pNorm)) {{
+      const resposta = responderPerguntaAutores(pergunta);
+      return `Ok! Deixa eu buscar isso no sistema...\\n\\n${{resposta}}\\n\\nA propósito, qual o seu nome?`;
+    }}
+    const primeiraPalavra = pergunta.trim().split(/\\s+/)[0].replace(/[^A-Za-zÀ-ÿ]/g, '');
+    if (primeiraPalavra) {{
+      _nomeUsuario = primeiraPalavra.charAt(0).toUpperCase() + primeiraPalavra.slice(1).toLowerCase();
+      return `Oi, ${{_nomeUsuario}}! Em que posso lhe ajudar hoje?`;
+    }}
+  }}
+
+  const resposta = responderPerguntaAutores(pergunta);
+  return `Ok! Deixa eu buscar isso no sistema...\\n\\n${{resposta}}`;
+}}
+
 function enviarPerguntaChat() {{
   const input = document.getElementById('chat-ia-input');
   const pergunta = input.value.trim();
@@ -629,7 +673,7 @@ function enviarPerguntaChat() {{
   input.value = '';
   const log = document.getElementById('chat-ia-log');
   log.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-msg-user">${{pergunta.replace(/</g,'&lt;')}}</div>`);
-  const resposta = responderPerguntaAutores(pergunta);
+  const resposta = gerarRespostaAna(pergunta);
   log.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-msg-ia">${{resposta.replace(/</g,'&lt;')}}</div>`);
   log.scrollTop = log.scrollHeight;
 }}

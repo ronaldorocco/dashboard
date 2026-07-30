@@ -1,5 +1,5 @@
 {
-  "gerado_em": "29/07/2026 17:16",
+  "gerado_em": "30/07/2026 09:10",
   "total_bos": 639,
   "total_grupos": 39,
   "total_vinculados": 207,
@@ -62,31 +62,31 @@
         "30/06/2026"
       ],
       "bairros": [
-        "PIONEIROS",
-        "CENTRO",
         "MUNICÍPIOS",
-        "Pioneiros",
-        "ESTADOS",
+        "PIONEIROS",
+        "Centro",
         "Dos Estados",
-        "Das Nações",
-        "VILA REAL",
+        "Pioneiros",
         "NAÇÕES",
+        "Das Nações",
+        "ESTADOS",
         "Vila Real",
-        "Centro"
+        "VILA REAL",
+        "CENTRO"
       ],
       "objetos": [
-        "Fio/Fiação elétrica",
-        "Smartphone/Telefone celular",
         "Bicicleta",
+        "Outra ferramenta",
+        "Outro aparelho eletroeletrônico",
         "Chip de celular",
-        "Outra ferramenta"
+        "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "solicitou PIX",
-        "celular furtado/roubado",
-        "furto de bolsa",
         "arrombamento",
-        "bicicleta furtada"
+        "furto de bolsa",
+        "bicicleta furtada",
+        "solicitou PIX",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -677,14 +677,14 @@
         "Centro"
       ],
       "objetos": [
-        "Smartphone/Telefone celular",
-        "Bicicleta"
+        "Bicicleta",
+        "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
         "arrombamento",
+        "furto de bolsa",
         "bicicleta furtada",
-        "furto de bolsa"
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -975,13 +975,13 @@
         "28/06/2026"
       ],
       "bairros": [
-        "Barra",
+        "Centro",
         "Pioneiros",
         "Das Nações",
+        "Vila Real",
         "Nova Esperança",
         "Dos Municípios",
-        "Vila Real",
-        "Centro"
+        "Barra"
       ],
       "objetos": [
         "Bicicleta",
@@ -1228,30 +1228,30 @@
       ],
       "bairros": [
         "MUNICÍPIOS",
-        "Da Praia dos Amores",
-        "NOVA ESPERANÇA",
-        "Estados",
-        "Municípios",
-        "ESTADOS",
-        "Vila Real",
         "Centro",
+        "Municípios",
+        "NOVA ESPERANÇA",
         "Ariribá",
-        "CENTRO"
+        "Da Praia dos Amores",
+        "Vila Real",
+        "ESTADOS",
+        "CENTRO",
+        "Estados"
       ],
       "objetos": [
-        "Outra joia/bijuteria",
         "Bolsa",
-        "Eletrodoméstico",
-        "Placa de veículo",
-        "Patinete"
+        "Patinete",
+        "Calçado",
+        "Cartão de crédito/débito",
+        "Roupa"
       ],
       "mo_tags": [
+        "bicicleta furtada",
         "celular furtado/roubado",
-        "carteira furtada/roubada",
-        "veículo estacionado",
         "notebook furtado/roubado",
-        "furto de mochila",
-        "bicicleta furtada"
+        "veículo estacionado",
+        "carteira furtada/roubada",
+        "furto de mochila"
       ],
       "crimes": [
         {
@@ -1682,24 +1682,24 @@
         "27/06/2026"
       ],
       "bairros": [
-        "Ilhota",
-        "ESTADOS",
         "Centro",
-        "ARIRIBÁ",
+        "Ilhota",
         "Ariribá",
+        "ARIRIBÁ",
+        "ESTADOS",
         "CENTRO"
       ],
       "objetos": [
-        "Smartphone/Telefone celular",
-        "Notebook",
         "Outro bem/objeto",
-        "Carteira de Documentos"
+        "Smartphone/Telefone celular",
+        "Carteira de Documentos",
+        "Notebook"
       ],
       "mo_tags": [
         "furto de bolsa",
         "celular furtado/roubado",
-        "carteira furtada/roubada",
         "notebook furtado/roubado",
+        "carteira furtada/roubada",
         "furto de mochila"
       ],
       "crimes": [
@@ -1844,19 +1844,19 @@
         "27/05/2026"
       ],
       "bairros": [
-        "Região das Praias",
         "MUNICÍPIOS",
-        "NOVA ESPERANÇA",
-        "Nações",
         "Dos Estados",
+        "NOVA ESPERANÇA",
+        "Região das Praias",
+        "Nações",
         "CENTRO"
       ],
       "objetos": [
-        "Fio/Fiação elétrica",
-        "Bebida alcoólica",
         "Outra ferramenta",
-        "Tablet",
-        "Gênero alimentício"
+        "Gênero alimentício",
+        "Bebida alcoólica",
+        "Outro bem/objeto",
+        "Tablet"
       ],
       "mo_tags": [
         "furto de mochila"
@@ -1983,24 +1983,24 @@
         "31/05/2026"
       ],
       "bairros": [
-        "NOVA ESPERANÇA",
         "SÃO JUDAS TADEU",
         "Vila Real",
+        "NOVA ESPERANÇA",
         "Centro"
       ],
       "objetos": [
-        "Relógio",
         "Bolsa",
         "Óculos",
         "Smartphone/Telefone celular",
-        "Dinheiro"
+        "Outro bem/objeto",
+        "Relógio"
       ],
       "mo_tags": [
+        "bicicleta furtada",
         "solicitou PIX",
-        "celular furtado/roubado",
+        "furto de mochila",
         "golpe/estelionato",
         "expressão 'perdeu'",
-        "furto de mochila",
         "capacete (não identificado)"
       ],
       "crimes": [
@@ -2129,17 +2129,17 @@
         "Centro"
       ],
       "objetos": [
-        "Relógio",
         "Bolsa",
-        "Aparelho de som automotivo",
-        "Smartphone/Telefone celular",
+        "Outra ferramenta",
+        "Calçado",
+        "Cartão de crédito/débito",
         "Carteira de Documentos"
       ],
       "mo_tags": [
-        "carteira furtada/roubada",
         "veículo estacionado",
+        "furto de bolsa",
         "bicicleta furtada",
-        "furto de bolsa"
+        "carteira furtada/roubada"
       ],
       "crimes": [
         {
@@ -2162,7 +2162,7 @@
             "crime: Furto",
             "1 suspeito(s)",
             "bairro: Centro",
-            "objeto: Roupa, Outro bem/objeto"
+            "objeto: Outro bem/objeto, Roupa"
           ]
         },
         {
@@ -2411,8 +2411,8 @@
         "Outro bem/objeto"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
-        "furto de bolsa"
+        "furto de bolsa",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -2551,8 +2551,8 @@
         "Televisor"
       ],
       "mo_tags": [
-        "veículo estacionado",
-        "arrombamento"
+        "arrombamento",
+        "veículo estacionado"
       ],
       "crimes": [
         {
@@ -2614,8 +2614,8 @@
         "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
-        "bicicleta furtada"
+        "bicicleta furtada",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -2732,15 +2732,15 @@
       ],
       "bairros": [
         "Dos Municípios",
-        "Centro",
-        "CENTRO"
+        "CENTRO",
+        "Centro"
       ],
       "objetos": [
         "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
-        "bicicleta furtada"
+        "bicicleta furtada",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -2776,7 +2776,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: bicicleta",
-            "MO: celular furtado/roubado, bicicleta furtada",
+            "MO: bicicleta furtada, celular furtado/roubado",
             "objeto: Smartphone/Telefone celular"
           ]
         }
@@ -3238,12 +3238,12 @@
         "CENTRO"
       ],
       "objetos": [
-        "Smartphone/Telefone celular",
-        "Placa de veículo"
+        "Placa de veículo",
+        "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
-        "carteira furtada/roubada"
+        "carteira furtada/roubada",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -3336,12 +3336,12 @@
         "PRAIA DO ESTALEIRO"
       ],
       "objetos": [
-        "Notebook",
-        "Outro bem/objeto"
+        "Outro bem/objeto",
+        "Notebook"
       ],
       "mo_tags": [
-        "notebook furtado/roubado",
         "veículo estacionado",
+        "notebook furtado/roubado",
         "furto de mochila"
       ],
       "crimes": [
@@ -3392,8 +3392,8 @@
       ],
       "mo_tags": [
         "anúncio verbal",
-        "celular furtado/roubado",
-        "carteira furtada/roubada"
+        "carteira furtada/roubada",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -3484,12 +3484,12 @@
         "Centro"
       ],
       "objetos": [
-        "Notebook",
-        "Dinheiro"
+        "Dinheiro",
+        "Notebook"
       ],
       "mo_tags": [
-        "notebook furtado/roubado",
         "veículo estacionado",
+        "notebook furtado/roubado",
         "furto de mochila"
       ],
       "crimes": [
@@ -3537,8 +3537,8 @@
         "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
-        "furto de bolsa"
+        "furto de bolsa",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -3582,8 +3582,8 @@
         "NOVA ESPERANÇA"
       ],
       "objetos": [
-        "Computador",
-        "Outro bem/objeto"
+        "Outro bem/objeto",
+        "Computador"
       ],
       "mo_tags": [],
       "crimes": [
@@ -3768,9 +3768,9 @@
         "NOVA ESPERANÇA"
       ],
       "objetos": [
-        "Roupa",
         "Bolsa",
-        "Outro bem/objeto"
+        "Outro bem/objeto",
+        "Roupa"
       ],
       "mo_tags": [],
       "crimes": [
