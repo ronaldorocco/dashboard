@@ -3163,7 +3163,7 @@ async function enviarPerguntaChat() {
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.erro || 'Erro desconhecido');
-    alvo.innerHTML = data.texto.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    alvo.innerHTML = data.texto.replace(/[*_#`]/g,'').replace(/</g,'&lt;').replace(/\n/g,'<br>');
     _chatHistorico.push({role:'user', content: pergunta}, {role:'assistant', content: data.texto});
     if (_chatHistorico.length > 20) _chatHistorico = _chatHistorico.slice(-20);
     if (falarEssaResposta) {
