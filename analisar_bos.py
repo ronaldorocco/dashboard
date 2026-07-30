@@ -516,7 +516,7 @@ def gerar_html(grupos, todos_bos, ts, autores):
     <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
   </div>
   <div id="chat-ia-log" class="chat-ia-log">
-    <div class="chat-msg chat-msg-ia">Olá, eu sou a Ana, a assistente virtual da Guarda Municipal de Balneário Camboriú. Qual o seu nome?</div>
+    <div class="chat-msg chat-msg-ia">Olá, eu sou a Ana, a assistente virtual da Guarda Municipal de Balneário Camboriú. Qual o seu nome? (Exemplo: "meu nome é Ronaldo")</div>
   </div>
   <div class="chat-ia-inputbar">
     <textarea id="chat-ia-input" rows="3" placeholder="Digite sua pergunta... (Enter envia, Shift+Enter quebra linha)"
@@ -639,6 +639,14 @@ function _pareceConsulta(pNorm) {{
   return /quant[oa]s?|\\bqual\\b|\\bquem\\b|profiss|natural|estado civil|\\bautor(es)?\\b|\\bcrime\\b|\\bmenor(es)?\\b|adolescente|\\bcidade\\b|\\bbairro\\b/.test(pNorm);
 }}
 
+// Aceita tanto "Ronaldo" quanto "meu nome é Ronaldo" / "me chamo Ronaldo" —
+// sem isso, a resposta exemplo sugerida na saudação capturaria "meu" como nome.
+function _extrairNome(pergunta) {{
+  const m = pergunta.match(/(?:meu nome (?:e|é)|me chamo|eu sou|sou (?:o|a))\\s+([A-Za-zÀ-ÿ]+)/i);
+  const bruto = (m ? m[1] : pergunta.trim().split(/\\s+/)[0] || '').replace(/[^A-Za-zÀ-ÿ]/g, '');
+  return bruto ? bruto.charAt(0).toUpperCase() + bruto.slice(1).toLowerCase() : '';
+}}
+
 function gerarRespostaAna(pergunta) {{
   const pNorm = _normalizarTexto(pergunta);
 
@@ -653,17 +661,17 @@ function gerarRespostaAna(pergunta) {{
   if (!_nomeUsuario) {{
     if (_pareceConsulta(pNorm)) {{
       const resposta = responderPerguntaAutores(pergunta);
-      return `Ok! Deixa eu buscar isso no sistema...\\n\\n${{resposta}}\\n\\nA propósito, qual o seu nome?`;
+      return `Ok! Aguarde um momento que vou buscar as informações e já lhe informo...\\n\\n${{resposta}}\\n\\nA propósito, qual o seu nome?`;
     }}
-    const primeiraPalavra = pergunta.trim().split(/\\s+/)[0].replace(/[^A-Za-zÀ-ÿ]/g, '');
-    if (primeiraPalavra) {{
-      _nomeUsuario = primeiraPalavra.charAt(0).toUpperCase() + primeiraPalavra.slice(1).toLowerCase();
-      return `Oi, ${{_nomeUsuario}}! Em que posso lhe ajudar hoje?`;
+    const nome = _extrairNome(pergunta);
+    if (nome) {{
+      _nomeUsuario = nome;
+      return `Ok! Como posso te ajudar hoje, ${{_nomeUsuario}}?`;
     }}
   }}
 
   const resposta = responderPerguntaAutores(pergunta);
-  return `Ok! Deixa eu buscar isso no sistema...\\n\\n${{resposta}}`;
+  return `Ok! Aguarde um momento que vou buscar as informações e já lhe informo...\\n\\n${{resposta}}`;
 }}
 
 function enviarPerguntaChat() {{

@@ -2863,8 +2863,18 @@ ${amostraTxt}`;
   return [contextoOcorrencias, contextoAutores].filter(Boolean).join('\n\n---\n\n');
 }
 
+// A Ana se apresenta falando (não só em texto) na primeira vez que o
+// painel é aberto, pra soar como o início de uma conversa de verdade.
+const SAUDACAO_FALADA_ANA = 'Olá, eu sou a Ana, a assistente virtual da Guarda Municipal de Balneário Camboriú. Qual o seu nome?';
+let _apresentacaoFalada = false;
+
 function toggleChatIA() {
-  document.getElementById('chat-ia-panel').classList.toggle('aberto');
+  const painel = document.getElementById('chat-ia-panel');
+  painel.classList.toggle('aberto');
+  if (painel.classList.contains('aberto') && !_apresentacaoFalada) {
+    _apresentacaoFalada = true;
+    falarTexto(SAUDACAO_FALADA_ANA);
+  }
 }
 
 // ── SAÍDA POR VOZ (ElevenLabs, com voz do navegador como reserva) ─────────────
@@ -5287,7 +5297,7 @@ else { window.addEventListener('load', init); }
     <button onclick="toggleChatIA()" title="Fechar" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">✕</button>
   </div>
   <div id="chat-ia-log" class="chat-ia-log">
-    <div class="chat-msg chat-msg-ia">Olá, eu sou a Ana, a assistente virtual da Guarda Municipal de Balneário Camboriú. Qual o seu nome?</div>
+    <div class="chat-msg chat-msg-ia">Olá, eu sou a Ana, a assistente virtual da Guarda Municipal de Balneário Camboriú. Qual o seu nome? (Exemplo: "meu nome é Ronaldo")</div>
   </div>
   <div class="chat-ia-inputbar">
     <button id="chat-ia-mic" type="button" onclick="toggleGravacao()" title="Falar">🎤</button>
