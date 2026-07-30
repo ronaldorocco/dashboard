@@ -35,7 +35,7 @@ Write-Host "[3/6] Fazendo commit..." -ForegroundColor Yellow
 git config gc.auto 0
 git config gc.autoPackLimit 0
 git config maintenance.auto false
-git -c gc.auto=0 -c gc.autoPackLimit=0 -c maintenance.auto=false add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py geocache.json
+git -c gc.auto=0 -c gc.autoPackLimit=0 -c maintenance.auto=false add secretario.xlsx dashboard_interativo.html index.html build_dashboard.py geocache.json app.py prompt_ana.txt Dockerfile
 
 if ($mensagem -eq "") {
     $data = Get-Date -Format "dd/MM/yyyy HH:mm"

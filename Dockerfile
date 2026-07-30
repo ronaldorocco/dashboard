@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements-web.txt .
 RUN pip install --no-cache-dir -r requirements-web.txt
 
-COPY app.py .
+COPY app.py prompt_ana.txt ./
 COPY dashboard_interativo.html index.html ./
 
 VOLUME ["/app/data"]
