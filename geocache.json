@@ -1460,5 +1460,12 @@
   "Rua paulo marciano cunha, balneário camboriú, sc, brasil": {
     "lat": -27.0291233,
     "lon": -48.6082893
-  }
+  },
+  "Rua Fortaleza, balneário camboriú, sc, brasil": null,
+  "Rua Francisco Manoel de Souza, balneário camboriú, sc, brasil": {
+    "lat": -26.9732705,
+    "lon": -48.6375877
+  },
+  "Rua Antônio Bitencourt, balneário camboriú, sc, brasil": null,
+  "Rua Currupião, balneário camboriú, sc, brasil": null
 }
