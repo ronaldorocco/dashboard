@@ -3043,7 +3043,12 @@ function toggleChatIA() {
   painel.classList.toggle('aberto');
   if (painel.classList.contains('aberto') && !_apresentacaoFalada) {
     _apresentacaoFalada = true;
-    falarTexto(SAUDACAO_FALADA_ANA);
+    // Depois que a Ana termina de se apresentar falando, já liga o
+    // microfone sozinha — a pessoa não precisa clicar em nada pra responder.
+    falarTexto(SAUDACAO_FALADA_ANA).then(() => {
+      _modoVozContinuo = true;
+      iniciarGravacao();
+    });
   }
 }
 
@@ -3052,15 +3057,21 @@ let _falarResposta = false;
 let _audioResposta = null;
 
 function _falarTextoNavegador(texto) {
-  if (!('speechSynthesis' in window) || !texto) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(texto);
-  utter.lang = 'pt-BR';
-  const vozPt = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
-  if (vozPt) utter.voice = vozPt;
-  window.speechSynthesis.speak(utter);
+  return new Promise(resolve => {
+    if (!('speechSynthesis' in window) || !texto) { resolve(); return; }
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(texto);
+    utter.lang = 'pt-BR';
+    const vozPt = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    if (vozPt) utter.voice = vozPt;
+    utter.onend = resolve;
+    utter.onerror = resolve;
+    window.speechSynthesis.speak(utter);
+  });
 }
 
+// Retorna uma Promise resolvida quando a fala termina — usado pra só ligar
+// o microfone de novo depois que a Ana parar de falar (evita ela "se ouvir").
 async function falarTexto(texto) {
   if (!texto) return;
   const limpo = texto.replace(/[*_#`]/g, '');
@@ -3075,10 +3086,13 @@ async function falarTexto(texto) {
     const url = URL.createObjectURL(blob);
     if (_audioResposta) { _audioResposta.pause(); URL.revokeObjectURL(_audioResposta.src); }
     _audioResposta = new Audio(url);
-    _audioResposta.onended = () => URL.revokeObjectURL(url);
-    await _audioResposta.play();
+    await new Promise((resolve) => {
+      _audioResposta.onended = () => { URL.revokeObjectURL(url); resolve(); };
+      _audioResposta.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      _audioResposta.play().catch(resolve);
+    });
   } catch (e) {
-    _falarTextoNavegador(limpo);
+    await _falarTextoNavegador(limpo);
   }
 }
 
@@ -3152,43 +3166,98 @@ async function enviarPerguntaChat() {
     alvo.innerHTML = data.texto.replace(/</g,'&lt;').replace(/\n/g,'<br>');
     _chatHistorico.push({role:'user', content: pergunta}, {role:'assistant', content: data.texto});
     if (_chatHistorico.length > 20) _chatHistorico = _chatHistorico.slice(-20);
-    if (falarEssaResposta) falarTexto(data.texto);
+    if (falarEssaResposta) {
+      falarTexto(data.texto).then(() => {
+        // Continua a conversa por voz sozinha, sem precisar clicar no microfone de novo.
+        if (_modoVozContinuo) iniciarGravacao();
+      });
+    }
   } catch (e) {
     alvo.innerHTML = '<span style="color:#D13438">Erro: ' + e.message + '</span>';
   }
   log.scrollTop = log.scrollHeight;
 }
 
-// ── ENTRADA POR VOZ (Whisper via backend) ─────────────────────────────────────
-let _mediaRecorder = null;
-let _audioChunks = [];
-let _gravando = false;
+// ── ENTRADA POR VOZ (Whisper via backend) — com detecção automática de silêncio ──
+// Depois que a Ana fala, o microfone liga sozinho (_modoVozContinuo); a
+// pessoa só precisa falar — quando parar de falar por um instante, a
+// gravação é enviada automaticamente, sem precisar clicar em nada.
+let _mediaRecorder   = null;
+let _audioChunks     = [];
+let _gravando        = false;
+let _modoVozContinuo = false;
+let _audioCtxGravacao = null;
 
-async function toggleGravacao() {
+function _pararGravacaoInterna() {
+  if (!_gravando || !_mediaRecorder) return;
+  _gravando = false;
   const btn = document.getElementById('chat-ia-mic');
-  if (!_gravando) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      _audioChunks = [];
-      _mediaRecorder = new MediaRecorder(stream);
-      _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
-      _mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(_audioChunks, { type: 'audio/webm' });
-        await transcreverAudio(blob);
-      };
-      _mediaRecorder.start();
-      _gravando = true;
-      btn.textContent = '⏹';
-      btn.classList.add('gravando');
-    } catch (e) {
-      alert('Não foi possível acessar o microfone: ' + e.message);
+  if (btn) { btn.textContent = '🎤'; btn.classList.remove('gravando'); }
+  _mediaRecorder.stop();
+}
+
+async function iniciarGravacao() {
+  if (_gravando) return;
+  const btn = document.getElementById('chat-ia-mic');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _audioChunks = [];
+    _mediaRecorder = new MediaRecorder(stream);
+    _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
+    _mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      if (_audioCtxGravacao) { _audioCtxGravacao.close().catch(()=>{}); _audioCtxGravacao = null; }
+      const blob = new Blob(_audioChunks, { type: 'audio/webm' });
+      // Grava vazia/silêncio (ninguém falou) — encerra o modo contínuo em
+      // silêncio, em vez de mandar áudio vazio pra IA e ficar num loop.
+      if (blob.size < 3000) { _modoVozContinuo = false; return; }
+      await transcreverAudio(blob);
+    };
+    _mediaRecorder.start();
+    _gravando = true;
+    if (btn) { btn.textContent = '⏹'; btn.classList.add('gravando'); }
+
+    // Detecção de silêncio via Web Audio API — só ativa no modo contínuo
+    // (o clique manual no microfone continua parando só quando clicar de novo).
+    if (_modoVozContinuo) {
+      _audioCtxGravacao = new (window.AudioContext || window.webkitAudioContext)();
+      const source   = _audioCtxGravacao.createMediaStreamSource(stream);
+      const analyser = _audioCtxGravacao.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      const dados = new Uint8Array(analyser.frequencyBinCount);
+      const LIMIAR_VOLUME = 12, SILENCIO_MS = 1600, TEMPO_MAX_MS = 15000;
+      const inicio = Date.now();
+      let falouAlgumaVez = false, silencioDesde = null;
+
+      (function checar() {
+        if (!_gravando) return;
+        analyser.getByteFrequencyData(dados);
+        const volume = dados.reduce((s,v)=>s+v,0)/dados.length;
+        if (volume > LIMIAR_VOLUME) {
+          falouAlgumaVez = true;
+          silencioDesde = null;
+        } else if (falouAlgumaVez) {
+          if (silencioDesde === null) silencioDesde = Date.now();
+          if (Date.now()-silencioDesde > SILENCIO_MS) { _pararGravacaoInterna(); return; }
+        }
+        if (Date.now()-inicio > TEMPO_MAX_MS) { _pararGravacaoInterna(); return; }
+        requestAnimationFrame(checar);
+      })();
     }
+  } catch (e) {
+    _modoVozContinuo = false;
+    alert('Não foi possível acessar o microfone: ' + e.message);
+  }
+}
+
+function toggleGravacao() {
+  if (_gravando) {
+    _modoVozContinuo = false;
+    _pararGravacaoInterna();
   } else {
-    _mediaRecorder.stop();
-    _gravando = false;
-    btn.textContent = '🎤';
-    btn.classList.remove('gravando');
+    _modoVozContinuo = false; // clique manual: para quando clicar de novo, não por silêncio
+    iniciarGravacao();
   }
 }
 
@@ -3208,8 +3277,11 @@ async function transcreverAudio(blob) {
     if (data.texto && data.texto.trim()) {
       _falarResposta = true;
       enviarPerguntaChat();
+    } else {
+      _modoVozContinuo = false;
     }
   } catch (e) {
+    _modoVozContinuo = false;
     alert('Erro ao transcrever: ' + e.message);
   } finally {
     input.disabled = false;
