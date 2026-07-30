@@ -1,12 +1,14 @@
 import os
 
 import requests
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 app = Flask(__name__)
 
 SYSTEM_PROMPT = (
@@ -171,6 +173,38 @@ def transcrever():
 
     texto = resp.json().get("text", "")
     return jsonify({"texto": texto})
+
+
+@app.route("/api/falar", methods=["POST"])
+def falar():
+    if not ELEVENLABS_API_KEY:
+        return jsonify({"erro": "ELEVENLABS_API_KEY não configurada no servidor"}), 500
+
+    dados = request.get_json(silent=True) or {}
+    texto = dados.get("texto", "").strip()
+    if not texto:
+        return jsonify({"erro": "Campo 'texto' é obrigatório"}), 400
+
+    try:
+        resp = requests.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+            headers={
+                "xi-api-key": ELEVENLABS_API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "audio/mpeg",
+            },
+            json={
+                "text": texto,
+                "model_id": "eleven_multilingual_v2",
+                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        return jsonify({"erro": f"Falha ao gerar áudio: {exc}"}), 502
+
+    return Response(resp.content, mimetype="audio/mpeg")
 
 
 @app.route("/<path:filename>")

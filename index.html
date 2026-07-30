@@ -2823,18 +2823,39 @@ function toggleChatIA() {
   document.getElementById('chat-ia-panel').classList.toggle('aberto');
 }
 
-// ── SAÍDA POR VOZ (Web Speech API, nativo do navegador) ───────────────────────
+// ── SAÍDA POR VOZ (ElevenLabs, com voz do navegador como reserva) ─────────────
 let _falarResposta = false;
+let _audioResposta = null;
 
-function falarTexto(texto) {
+function _falarTextoNavegador(texto) {
   if (!('speechSynthesis' in window) || !texto) return;
   window.speechSynthesis.cancel();
-  const limpo = texto.replace(/[*_#`]/g, '');
-  const utter = new SpeechSynthesisUtterance(limpo);
+  const utter = new SpeechSynthesisUtterance(texto);
   utter.lang = 'pt-BR';
   const vozPt = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
   if (vozPt) utter.voice = vozPt;
   window.speechSynthesis.speak(utter);
+}
+
+async function falarTexto(texto) {
+  if (!texto) return;
+  const limpo = texto.replace(/[*_#`]/g, '');
+  try {
+    const resp = await fetch('/api/falar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({texto: limpo})
+    });
+    if (!resp.ok) throw new Error('falha na síntese de voz');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    if (_audioResposta) { _audioResposta.pause(); URL.revokeObjectURL(_audioResposta.src); }
+    _audioResposta = new Audio(url);
+    _audioResposta.onended = () => URL.revokeObjectURL(url);
+    await _audioResposta.play();
+  } catch (e) {
+    _falarTextoNavegador(limpo);
+  }
 }
 
 async function enviarPerguntaChat() {
