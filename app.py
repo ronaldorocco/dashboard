@@ -9,6 +9,9 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
+# Turbo é o modelo de menor latência da ElevenLabs (troca um pouco de
+# qualidade por velocidade) — bom pra conversa em tempo real como a da Ana.
+ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5")
 app = Flask(__name__)
 
 SYSTEM_PROMPT = (
@@ -127,7 +130,7 @@ def chat():
     )
 
     try:
-        texto = _chamar_openai(carregar_prompt_ana(), user_content, max_tokens=1500, historico=historico)
+        texto = _chamar_openai(carregar_prompt_ana(), user_content, max_tokens=600, historico=historico)
     except requests.RequestException as exc:
         return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
 
@@ -219,7 +222,7 @@ def falar():
             },
             json={
                 "text": texto,
-                "model_id": "eleven_multilingual_v2",
+                "model_id": ELEVENLABS_MODEL_ID,
                 "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
             },
             timeout=30,
