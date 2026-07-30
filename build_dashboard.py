@@ -243,8 +243,14 @@ def clean_text_cell(row, col):
     txt = str(val).strip()
     return '' if txt.lower() in ('', 'nan') else txt
 
+_GEOCACHE_LOWER = {str(k).strip().lower(): v for k, v in GEOCACHE.items()}
+
 def get_coords(mapa_str):
-    geo = GEOCACHE.get(str(mapa_str).strip())
+    chave = str(mapa_str).strip()
+    # Tenta a chave exata primeiro; se a planilha vier com outra
+    # capitalização (ex.: "rua x, balneário..." em vez de "Rua X,
+    # Balneário..."), cai para comparação sem diferenciar maiúsculas.
+    geo = GEOCACHE.get(chave) or _GEOCACHE_LOWER.get(chave.lower())
     if geo:
         return geo['lat'], geo['lon']
     return None, None
