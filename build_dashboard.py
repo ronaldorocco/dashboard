@@ -100,6 +100,10 @@ df.columns = [str(c).strip().upper() for c in df.columns]
 _RENOMEIA_COLUNAS = {
     "NUMERO DE SÉRIE": "NUMERO_SERIE",
     "NUMERO DE SERIE": "NUMERO_SERIE",
+    "BOLETIM_OCORRENCIA": "B.O.",
+    "BOLETIM OCORRENCIA": "B.O.",
+    "BOLETIM_OCORRÊNCIA": "B.O.",
+    "BOLETIM OCORRÊNCIA": "B.O.",
 }
 df = df.rename(columns=_RENOMEIA_COLUNAS)
 
