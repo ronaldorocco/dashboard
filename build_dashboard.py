@@ -2925,13 +2925,33 @@ function toggleChatIA() {{
       }});
     }}
   }} else {{
-    // Fechou o painel (botão X) — encerra qualquer escuta/fala em
-    // andamento, pra não ficar ouvindo ou falando com o chat fechado.
-    _modoVozContinuo = false;
-    if (typeof _gravando !== 'undefined' && _gravando) _pararGravacaoInterna();
-    if (_audioResposta) _audioResposta.pause();
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    // Fechou o painel (botão X) — encerra qualquer escuta/fala em andamento
+    // e reseta a conversa: a próxima vez que abrir, começa um chat novo.
+    _pararEscutaEFala();
+    _chatHistorico = [];
+    _apresentacaoFalada = false;
   }}
+}}
+
+// Para qualquer escuta (microfone) ou fala (TTS) em andamento, sem mexer
+// no painel nem no histórico — usado tanto ao fechar manualmente quanto
+// ao encerrar a conversa automaticamente por despedida.
+function _pararEscutaEFala() {{
+  _modoVozContinuo = false;
+  if (typeof _gravando !== 'undefined' && _gravando) _pararGravacaoInterna();
+  if (_audioResposta) _audioResposta.pause();
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+}}
+
+// Chamada quando a própria conversa chega ao fim (despedida reconhecida):
+// para de escutar/falar, fecha o painel e reseta o histórico — a próxima
+// abertura do chat começa uma conversa nova, com nova apresentação.
+function encerrarConversaChat() {{
+  _pararEscutaEFala();
+  const painel = document.getElementById('chat-ia-panel');
+  if (painel) painel.classList.remove('aberto');
+  _chatHistorico = [];
+  _apresentacaoFalada = false;
 }}
 
 // ── SAÍDA POR VOZ (ElevenLabs, com voz do navegador como reserva) ─────────────
@@ -3028,9 +3048,9 @@ async function enviarPerguntaChat() {{
   const pNormPergunta = _normalizarTexto(pergunta);
   const graficoAlvo = localizarGraficoPedido(pNormPergunta);
   if (graficoAlvo) destacarGrafico(graficoAlvo);
-  // Se a pessoa está encerrando a conversa, não liga o microfone de novo
-  // depois da despedida da Ana — senão ela fica escutando à toa.
-  const ehDespedidaUsuario = /\bobrigad[oa]\b|\bvaleu\b|\btchau\b|ate mais|ate logo|nao precis[oa]|\bso isso\b|e so isso|foi tudo|pode (fechar|encerrar)/.test(pNormPergunta);
+  // Se a pessoa está encerrando a conversa, a Ana não liga o microfone de
+  // novo nem fica esperando outra pergunta — encerra e fecha o chat.
+  const ehDespedidaUsuario = /\bobrigad[oa]\b|\bvaleu\b|\btchau\b|ate mais|ate logo|ate a proxima|ate breve|nao precis[oa]|\bso isso\b|e so isso|era so isso|era isso|foi tudo|nada mais|pode (fechar|encerrar)/.test(pNormPergunta);
 
   const log = document.getElementById('chat-ia-log');
   const respId = 'chat-resp-' + Date.now();
@@ -3051,15 +3071,17 @@ async function enviarPerguntaChat() {{
     alvo.innerHTML = data.texto.replace(/[*_#`]/g,'').replace(/</g,'&lt;').replace(/\\n/g,'<br>');
     _chatHistorico.push({{role:'user', content: pergunta}}, {{role:'assistant', content: data.texto}});
     if (_chatHistorico.length > 20) _chatHistorico = _chatHistorico.slice(-20);
-    if (falarEssaResposta) {{
+    if (ehDespedidaUsuario) {{
+      // Conversa encerrada pela pessoa — fala a despedida (se for o caso) e
+      // fecha o chat sozinha. Da próxima vez que abrir, começa um chat novo.
+      if (falarEssaResposta) {{
+        falarTexto(data.texto).then(encerrarConversaChat);
+      }} else {{
+        setTimeout(encerrarConversaChat, 2500);
+      }}
+    }} else if (falarEssaResposta) {{
       falarTexto(data.texto).then(() => {{
-        if (ehDespedidaUsuario) {{
-          // Conversa encerrada pela pessoa — não volta a escutar sozinha.
-          _modoVozContinuo = false;
-        }} else if (_modoVozContinuo) {{
-          // Continua a conversa por voz sozinha, sem precisar clicar no microfone de novo.
-          iniciarGravacao();
-        }}
+        if (_modoVozContinuo) iniciarGravacao();
       }});
     }}
   }} catch (e) {{
