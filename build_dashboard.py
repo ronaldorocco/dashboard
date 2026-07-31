@@ -2776,6 +2776,13 @@ function montarContextoResumoGeral(pNorm) {{
   return `Resumo executivo geral (dados atualmente filtrados no dashboard):\n${{_resumoExecutivoDados || '(ainda não calculado — aguarde o carregamento dos dados)'}}`;
 }}
 
+// Guarda os últimos critérios de ocorrência identificados na conversa, pra
+// reaproveitar em perguntas de acompanhamento (ex.: "qual foi o dia, o
+// horário e o B.O.?") que não repetem bairro/tipo/item — sem isso, essas
+// perguntas não batiam com nenhum critério e a Ana ficava sem dado nenhum
+// pra responder, mesmo já tendo mostrado a ocorrência na resposta anterior.
+let _ultimoCriteriosChat = null;
+
 function montarContextoChat(pergunta) {{
   // Respeita os filtros já ativos na sidebar (ano, mês, bairro, item, etc.)
   // e só então aplica os critérios adicionais identificados na pergunta.
@@ -2790,13 +2797,22 @@ function montarContextoChat(pergunta) {{
 
   const acharNaLista = lista => lista.filter(v => pNorm.includes(_normalizarTexto(v)));
 
-  const critBairro = acharNaLista(bairros);
-  const critTipo   = acharNaLista(tipos);
-  const critTurno  = acharNaLista(turnos);
-  const critDia    = acharNaLista(DIA_ORDER);
-  const critItem   = acharNaLista(itens);
+  let critBairro = acharNaLista(bairros);
+  let critTipo   = acharNaLista(tipos);
+  let critTurno  = acharNaLista(turnos);
+  let critDia    = acharNaLista(DIA_ORDER);
+  let critItem   = acharNaLista(itens);
 
-  const semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length && !critItem.length;
+  let semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length && !critItem.length;
+
+  // Pergunta de acompanhamento sem nenhum critério novo, no meio de uma
+  // conversa já em andamento — reaproveita os critérios da pergunta anterior
+  // pra continuar falando da mesma ocorrência/consulta.
+  if (semCriterio && _ultimoCriteriosChat && _chatHistorico.length) {{
+    ({{critBairro, critTipo, critTurno, critDia, critItem}} = _ultimoCriteriosChat);
+    semCriterio = false;
+  }}
+
   const semFiltroAtivo = dataFiltrada.length === RAW.length;
 
   let contextoOcorrencias = '';
@@ -2815,6 +2831,7 @@ function montarContextoChat(pergunta) {{
     if (subset.length === 0) {{
       contextoOcorrencias = `Nenhum registro de ocorrência encontrado para os critérios identificados (${{criteriosTxt}}).`;
     }} else {{
+      _ultimoCriteriosChat = {{critBairro, critTipo, critTurno, critDia, critItem}};
       const porTipo   = count(subset,'tipo');
       const porBairro = count(subset,'bairro');
       const porTurno  = count(subset,'turno');
@@ -2930,6 +2947,7 @@ function toggleChatIA() {{
     _pararEscutaEFala();
     _chatHistorico = [];
     _apresentacaoFalada = false;
+    _ultimoCriteriosChat = null;
   }}
 }}
 
@@ -2952,6 +2970,7 @@ function encerrarConversaChat() {{
   if (painel) painel.classList.remove('aberto');
   _chatHistorico = [];
   _apresentacaoFalada = false;
+  _ultimoCriteriosChat = null;
 }}
 
 // ── SAÍDA POR VOZ (ElevenLabs, com voz do navegador como reserva) ─────────────
