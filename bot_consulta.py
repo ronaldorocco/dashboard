@@ -172,6 +172,20 @@ def carregar_dados():
         except Exception as e:
             print(f"ERRO ao baixar planilha: {e}"); sys.exit(1)
 
+    # Normaliza os cabeçalhos pra maiúsculo — a planilha às vezes é resalva com
+    # outra capitalização (ex.: "Tipificacao", "Dia_Semana" em vez de
+    # "TIPIFICACAO", "DIA_SEMANA") e o resto do script busca as colunas em maiúsculo.
+    df.columns = [str(c).strip().upper() for c in df.columns]
+    _RENOMEIA_COLUNAS = {
+        "NUMERO DE SÉRIE": "NUMERO_SERIE",
+        "NUMERO DE SERIE": "NUMERO_SERIE",
+        "BOLETIM_OCORRENCIA": "B.O.",
+        "BOLETIM OCORRENCIA": "B.O.",
+        "BOLETIM_OCORRÊNCIA": "B.O.",
+        "BOLETIM OCORRÊNCIA": "B.O.",
+    }
+    df = df.rename(columns=_RENOMEIA_COLUNAS)
+
     df['TIPIFICACAO'] = df['TIPIFICACAO'].apply(norm_tipo)
     df['DIA_SEMANA']  = df['DIA_SEMANA'].apply(lambda v: norm(v, DIA_MAP))
     df['TURNO']       = df.apply(lambda r: calcular_turno(r['HORA']), axis=1)
