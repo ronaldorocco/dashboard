@@ -563,6 +563,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
   background:linear-gradient(135deg,#0078D4,#00B7C3);color:white;border:none;font-size:24px;
   box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer;z-index:9998;}
 #chat-ia-fab:hover{background:linear-gradient(135deg,#005A9E,#008B96);}
+#chat-ia-encerrar:hover{background:#A82C2F;}
 /* ── MODAL RELATÓRIO ── */
 .rel-date-bar{background:#f2f4f8;padding:11px 18px;border-bottom:1px solid #ddd;
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;}
@@ -5711,6 +5712,9 @@ else { window.addEventListener('load', init); }
       onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); enviarPerguntaChat(); }"></textarea>
     <button onclick="enviarPerguntaChat()">Enviar</button>
   </div>
+  <button id="chat-ia-encerrar" onclick="encerrarConversaChat()" title="Encerrar a conversa e fechar o chat"
+    style="margin:0 12px 12px;padding:9px;border:none;border-radius:6px;background:#D13438;color:white;
+    font-weight:600;font-size:12.5px;cursor:pointer">⏹ Encerrar conversa</button>
 </div>
 <!-- ── MODAL PREVISÃO ── -->
 <div class="analise-overlay" id="prev-overlay" onclick="if(event.target===this)fecharPrevisao()">
