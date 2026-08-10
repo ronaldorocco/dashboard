@@ -3106,6 +3106,10 @@ function toggleChatIA() {
       // Depois que a Ana termina de se apresentar falando, já liga o
       // microfone sozinha — a pessoa não precisa clicar em nada pra responder.
       falarTexto(SAUDACAO_FALADA_ANA).then(() => {
+        // Só liga o microfone se o painel ainda estiver aberto — se a
+        // pessoa fechou no X enquanto a Ana ainda falava, essa promise
+        // resolve depois e não pode reativar a escuta.
+        if (!painel.classList.contains('aberto')) return;
         _modoVozContinuo = true;
         iniciarGravacao();
       });
@@ -3152,7 +3156,11 @@ function _falarTextoNavegador(texto) {
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(texto);
     utter.lang = 'pt-BR';
-    const vozPt = window.speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    // Essa é só a voz de reserva (usada quando a ElevenLabs falha) — entre
+    // as vozes em português do navegador, prioriza uma de nome feminino
+    // pra não soar tão diferente da voz (feminina) escolhida pra Ana.
+    const vozesPt = window.speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    const vozPt = vozesPt.find(v => /female|mulher|maria|luciana|francisca|fernanda|camila|vitória|vitoria/i.test(v.name)) || vozesPt[0];
     if (vozPt) utter.voice = vozPt;
     utter.onend = resolve;
     utter.onerror = resolve;
@@ -3171,7 +3179,14 @@ async function falarTexto(texto) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({texto: limpo})
     });
-    if (!resp.ok) throw new Error('falha na síntese de voz');
+    if (!resp.ok) {
+      // Lê o motivo real da falha (ex: API key não configurada, cota
+      // esgotada na ElevenLabs) pra aparecer no console — sem isso, a troca
+      // pra voz do navegador acontecia em silêncio e ninguém via o motivo.
+      let detalhe = '';
+      try { detalhe = (await resp.json()).erro || ''; } catch (_) {}
+      throw new Error(detalhe || ('falha na síntese de voz (HTTP ' + resp.status + ')'));
+    }
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     if (_audioResposta) { _audioResposta.pause(); URL.revokeObjectURL(_audioResposta.src); }
@@ -3182,6 +3197,7 @@ async function falarTexto(texto) {
       _audioResposta.play().catch(resolve);
     });
   } catch (e) {
+    console.error('Voz da Ana (ElevenLabs) indisponível, usando voz de reserva do navegador:', e.message || e);
     await _falarTextoNavegador(limpo);
   }
 }
@@ -3298,6 +3314,11 @@ function _pararGravacaoInterna() {
 
 async function iniciarGravacao() {
   if (_gravando) return;
+  // Trava de segurança: nunca liga o microfone se o painel do chat não
+  // estiver aberto — evita que uma promise de fala/gravação pendente de
+  // antes de fechar o X religue a escuta com o painel já fechado.
+  const painelChat = document.getElementById('chat-ia-panel');
+  if (!painelChat || !painelChat.classList.contains('aberto')) { _modoVozContinuo = false; return; }
   const btn = document.getElementById('chat-ia-mic');
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -3307,6 +3328,10 @@ async function iniciarGravacao() {
     _mediaRecorder.onstop = async () => {
       stream.getTracks().forEach(t => t.stop());
       if (_audioCtxGravacao) { _audioCtxGravacao.close().catch(()=>{}); _audioCtxGravacao = null; }
+      // Se o painel foi fechado enquanto gravava, descarta o áudio em vez de
+      // transcrever e mandar pra IA com o chat já fechado.
+      const painelAoParar = document.getElementById('chat-ia-panel');
+      if (!painelAoParar || !painelAoParar.classList.contains('aberto')) return;
       const blob = new Blob(_audioChunks, { type: 'audio/webm' });
       // Grava vazia/silêncio (ninguém falou) — encerra o modo contínuo em
       // silêncio, em vez de mandar áudio vazio pra IA e ficar num loop.
