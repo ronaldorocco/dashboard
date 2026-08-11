@@ -219,15 +219,17 @@ df = df[
     (df['B.O.'].astype(str).str.strip() != '') &
     (df['TIPIFICACAO'] != '')
 ].copy()
+_ano_int = pd.to_numeric(df['ANO'], errors='coerce').astype('Int64')
+_dia_int = pd.to_numeric(df['DATA'], errors='coerce').astype('Int64')
 df['DATA_COMPLETA'] = pd.to_datetime(
-    df['ANO'].astype(str) + '-' +
+    _ano_int.astype(str) + '-' +
     df['MES'].str.upper().map({
         'JANEIRO':'01','FEVEREIRO':'02','MARÇO':'03','MARCO':'03',
         'ABRIL':'04','MAIO':'05','JUNHO':'06','JULHO':'07',
         'AGOSTO':'08','SETEMBRO':'09','OUTUBRO':'10',
         'NOVEMBRO':'11','DEZEMBRO':'12'
     }) + '-' +
-    df['DATA'].astype(str).str.zfill(2),
+    _dia_int.astype(str).str.zfill(2),
     format='%Y-%m-%d', errors='coerce'
 )
 df['DATA_STR'] = df['DATA_COMPLETA'].dt.strftime('%Y-%m-%d').fillna('')
