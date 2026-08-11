@@ -556,6 +556,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .chat-ia-inputbar button:hover{background:#005A9E;}
 #chat-ia-mic{background:#F0F0F0;color:#333;border:none;border-radius:6px;padding:8px 10px;
   font-size:14px;cursor:pointer;flex-shrink:0;}
+.chat-ia-footer{padding:8px 12px 12px;border-top:1px solid #EEE;flex-shrink:0;text-align:center;}
+.chat-ia-footer button{background:none;border:1px solid #D13438;color:#D13438;border-radius:6px;
+  padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+.chat-ia-footer button:hover{background:#D13438;color:white;}
 #chat-ia-mic:hover{background:#E0E0E0;}
 #chat-ia-mic.gravando{background:#D13438;color:white;animation:pulseGravando 1s infinite;}
 @keyframes pulseGravando{0%{opacity:1;}50%{opacity:.5;}100%{opacity:1;}}
@@ -5689,6 +5693,9 @@ else { window.addEventListener('load', init); }
     <textarea id="chat-ia-input" rows="3" placeholder="Digite ou cole sua pergunta... (Enter envia, Shift+Enter quebra linha)"
       onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); enviarPerguntaChat(); }"></textarea>
     <button onclick="enviarPerguntaChat()">Enviar</button>
+  </div>
+  <div class="chat-ia-footer">
+    <button onclick="encerrarConversaChat()">Encerrar conversa</button>
   </div>
 </div>
 <!-- ── MODAL PREVISÃO ── -->
