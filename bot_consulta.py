@@ -286,6 +286,25 @@ def send_message(chat_id, text):
 def pct(n, total):
     return f"{round(n/total*100)}%" if total else "0%"
 
+# Deduplica por número de B.O.: um B.O. com vários itens conta como 1
+# ocorrência só — mesma regra usada no card "Total de Ocorrências" do
+# dashboard (build_dashboard.py/dedupBO), pra bater os números nos dois
+# lugares. Registros sem B.O. (não deveria acontecer, carregar_dados já
+# filtra) são mantidos, nunca descartados por engano.
+def dedup_bo(registros):
+    vistos = set()
+    out = []
+    for r in registros:
+        k = (r.get('bo') or '').strip()
+        if not k:
+            out.append(r)
+            continue
+        if k in vistos:
+            continue
+        vistos.add(k)
+        out.append(r)
+    return out
+
 def consultar_bairro(records, query):
     bairros = sorted(set(r['bairro'] for r in records if r['bairro']))
     q = sem_acento(query.strip())
@@ -295,7 +314,7 @@ def consultar_bairro(records, query):
         lista = '\n'.join(f"• {b}" for b in bairros[:15])
         return f"Bairro *'{query}'* não encontrado.\n\n*Bairros disponíveis:*\n{lista}"
 
-    dados  = [r for r in records if r['bairro'] == match]
+    dados  = dedup_bo([r for r in records if r['bairro'] == match])
     total  = len(dados)
     tipos  = Counter(r['tipo']     for r in dados if r['tipo']).most_common(5)
     turnos = Counter(r['turno']    for r in dados if r['turno']).most_common()
@@ -331,7 +350,7 @@ def consultar_tipo(records, query):
         lista = '\n'.join(f"• {t}" for t in tipos)
         return f"Tipo *'{query}'* não encontrado.\n\n*Tipos disponíveis:*\n{lista}"
 
-    dados   = [r for r in records if r['tipo'] == match]
+    dados   = dedup_bo([r for r in records if r['tipo'] == match])
     total   = len(dados)
     bairros = Counter(r['bairro'] for r in dados if r['bairro']).most_common(5)
     turnos  = Counter(r['turno']  for r in dados if r['turno']).most_common()
@@ -360,7 +379,7 @@ def consultar_turno(records, query):
     if not match:
         return "Turnos disponíveis: *Madrugada*, *Manhã*, *Tarde*, *Noite*"
 
-    dados   = [r for r in records if r['turno'] == match]
+    dados   = dedup_bo([r for r in records if r['turno'] == match])
     total   = len(dados)
     bairros = Counter(r['bairro'] for r in dados if r['bairro']).most_common(5)
     tipos   = Counter(r['tipo']   for r in dados if r['tipo']).most_common(5)
@@ -388,7 +407,7 @@ def consultar_mes(records, query):
     if not mes_num:
         return "Meses disponíveis: Janeiro, Fevereiro, Março, Abril, Maio, Junho, Julho, Agosto, Setembro, Outubro, Novembro, Dezembro"
 
-    dados = [r for r in records if r.get('data') and len(r['data']) >= 7 and r['data'][5:7] == mes_num]
+    dados = dedup_bo([r for r in records if r.get('data') and len(r['data']) >= 7 and r['data'][5:7] == mes_num])
     total = len(dados)
     if not total:
         return f"Nenhuma ocorrência encontrada em *{mes_nome}*."
@@ -413,6 +432,7 @@ def consultar_mes(records, query):
     return '\n'.join(linhas)
 
 def consultar_resumo(records):
+    records = dedup_bo(records)
     total   = len(records)
     bairros = Counter(r['bairro'] for r in records if r['bairro']).most_common(3)
     tipos   = Counter(r['tipo']   for r in records if r['tipo']).most_common(3)
@@ -438,26 +458,34 @@ def consultar_resumo(records):
     return '\n'.join(linhas)
 
 def busca_universal(records, query):
-    """Busca em todos os campos: bairro, tipo, item, marca, IMEI, turno, logradouro, dia."""
-    q = sem_acento(query.strip())
+    """Busca em todos os campos: bairro, tipo, item, marca, IMEI, turno, logradouro, dia.
+    Quebra a pergunta em palavras e cruza cada uma com E — permite perguntas tipo
+    'furto celular sabado' (tipo + item + dia na mesma frase), cada palavra podendo
+    bater num campo diferente do registro."""
     campos = ['bairro','tipo','item','marca','imei','turno','endereco','dia','bo']
+    tokens = [t for t in sem_acento(query.strip()).split() if t] or [sem_acento(query.strip())]
 
-    # Variações da busca: original, sem 's' final, sem 'es' final
-    variacoes = {q}
-    if q.endswith('s') and len(q) > 3:
-        variacoes.add(q[:-1])     # bicicletas → bicicleta
-    if q.endswith('es') and len(q) > 4:
-        variacoes.add(q[:-2])     # veiculos → veiculo
+    def variacoes_de(tok):
+        # Variações da busca: original, sem 's' final, sem 'es' final
+        vs = {tok}
+        if tok.endswith('s') and len(tok) > 3:
+            vs.add(tok[:-1])      # bicicletas → bicicleta
+        if tok.endswith('es') and len(tok) > 4:
+            vs.add(tok[:-2])      # veiculos → veiculo
+        return vs
 
-    def campo_match(valor):
-        v = sem_acento(valor)
-        return any(var in v for var in variacoes)
+    variacoes_por_token = [variacoes_de(tok) for tok in tokens]
 
-    def item_match_exato(valor):
-        v = sem_acento(valor)
-        return any(var == v for var in variacoes)
+    def token_bate_registro(variacoes, r):
+        return any(
+            any(var in sem_acento(r.get(c,'')) for var in variacoes)
+            for c in campos
+        )
 
-    matches = [r for r in records if any(campo_match(r.get(c,'')) for c in campos)]
+    matches = [
+        r for r in records
+        if all(token_bate_registro(variacoes, r) for variacoes in variacoes_por_token)
+    ]
 
     if not matches:
         return (
@@ -466,17 +494,29 @@ def busca_universal(records, query):
             "Digite /ajuda para ver todos os comandos."
         )
 
-    # Registros onde a busca bateu no campo ITEM (igual ao filtro do dashboard)
+    # Registros onde algum token da busca bateu exatamente no campo ITEM
+    # (igual ao filtro do dashboard) — prioriza esse subconjunto pras
+    # estatísticas quando a busca menciona um item específico.
+    todas_variacoes = set().union(*variacoes_por_token)
+
+    def item_match_exato(valor):
+        return sem_acento(valor) in todas_variacoes
+
+    def item_match_qualquer(valor):
+        v = sem_acento(valor)
+        return any(var in v for var in todas_variacoes)
+
     matches_item_exato = [r for r in matches if item_match_exato(r.get('item',''))]
-    matches_item = matches_item_exato or [r for r in matches if campo_match(r.get('item',''))]
+    matches_item = matches_item_exato or [r for r in matches if item_match_qualquer(r.get('item',''))]
     total_item = len(matches_item)
 
     MES_NOME = {'01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio',
                 '06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro',
                 '11':'Novembro','12':'Dezembro'}
 
-    # Usa registros do item principal para estatísticas (igual ao dashboard)
-    base = matches_item if total_item > 0 else matches
+    # Usa registros do item principal para estatísticas (igual ao dashboard),
+    # deduplicado por B.O. — 1 boletim com vários itens conta 1 ocorrência.
+    base = dedup_bo(matches_item if total_item > 0 else matches)
     total_base = len(base)
 
     tipos   = Counter(r['tipo']    for r in base if r['tipo']).most_common(5)
@@ -547,7 +587,7 @@ def gerar_analise_diaria(records):
     data_atual = now.strftime('%d/%m/%Y')
     hora_atual = now.strftime('%H:%M')
 
-    hist  = [r for r in records if r['dia'] == dia_semana]
+    hist  = dedup_bo([r for r in records if r['dia'] == dia_semana])
     datas = sorted(set(r['data'] for r in hist))
     nDias = len(datas)
 
@@ -602,7 +642,7 @@ def gerar_previsao(records):
     t_atual    = turno_atual()
     t_proximo  = proxima_turno(t_atual)
 
-    hist  = [r for r in records if r['dia'] == dia_semana]
+    hist  = dedup_bo([r for r in records if r['dia'] == dia_semana])
     datas = sorted(set(r['data'] for r in hist))
     nDias = len(datas)
 
@@ -704,10 +744,15 @@ def gerar_relatorio_diario(records):
     ano_r, mes_r, dia_r = data_ref.split('-')
     label_data = f"{dia_r}/{mes_r}/{ano_r}"
 
+    # itens fica com as linhas cruas (não deduplicadas): 2 celulares no mesmo
+    # B.O. contam como 2 pra "itens mais furtados hoje" — igual ao gráfico de
+    # itens do dashboard. O resto (total/tipos/bairros/turnos) é por
+    # ocorrência (1 B.O. = 1), deduplicado.
+    itens   = Counter(r['item']   for r in registros_dia if r.get('item')).most_common(5)
+    registros_dia = dedup_bo(registros_dia)
     total = len(registros_dia)
     tipos   = Counter(r['tipo']   for r in registros_dia if r['tipo']).most_common(8)
     bairros = Counter(r['bairro'] for r in registros_dia if r['bairro']).most_common(5)
-    itens   = Counter(r['item']   for r in registros_dia if r.get('item')).most_common(5)
 
     ORDEM_T = ['Madrugada', 'Manhã', 'Tarde', 'Noite']
     turnos_cnt = Counter(r['turno'] for r in registros_dia if r['turno'])
