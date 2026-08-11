@@ -3013,10 +3013,14 @@ async function falarTexto(texto) {{
     const url = URL.createObjectURL(blob);
     if (_audioResposta) {{ _audioResposta.pause(); URL.revokeObjectURL(_audioResposta.src); }}
     _audioResposta = new Audio(url);
-    await new Promise((resolve) => {{
+    await new Promise((resolve, reject) => {{
       _audioResposta.onended = () => {{ URL.revokeObjectURL(url); resolve(); }};
-      _audioResposta.onerror = () => {{ URL.revokeObjectURL(url); resolve(); }};
-      _audioResposta.play().catch(resolve);
+      _audioResposta.onerror = () => {{ URL.revokeObjectURL(url); reject(new Error('erro ao reproduzir áudio')); }};
+      // Se o navegador bloquear o autoplay (ex.: play() chamado após a
+      // resposta de rede, fora da janela de gesto do usuário), o play()
+      // rejeita — precisa propagar pro catch externo pra cair no fallback
+      // de voz do navegador em vez de ficar muda sem avisar.
+      _audioResposta.play().catch(reject);
     }});
   }} catch (e) {{
     await _falarTextoNavegador(limpo);
