@@ -230,7 +230,7 @@ df['DATA_COMPLETA'] = pd.to_datetime(
     df['DATA'].astype(str).str.zfill(2),
     format='%Y-%m-%d', errors='coerce'
 )
-df['DATA_STR'] = df['DATA_COMPLETA'].dt.strftime('%Y-%m-%d')
+df['DATA_STR'] = df['DATA_COMPLETA'].dt.strftime('%Y-%m-%d').fillna('')
 df['HORA_STR'] = df['HORA'].apply(lambda x: x.strftime('%H:%M') if hasattr(x,'strftime') else str(x)[:5] if pd.notna(x) else '')
 df['BO']       = df['B.O.'].fillna('').astype(str)
 df['ENDERECO'] = df['ENDEREÇO'].fillna('').astype(str)
@@ -290,7 +290,7 @@ for _, r in df.iterrows():
         'link': str(r['LINK']).strip() if 'LINK' in df.columns and pd.notna(r['LINK']) and str(r['LINK']).strip() not in ('', 'nan') else '',
     })
 
-data_json = json.dumps(records, ensure_ascii=True)
+data_json = json.dumps(records, ensure_ascii=True, allow_nan=False)
 data_json = data_json.replace('</', '<\\/')            # impede </script> fechar a tag
 
 # ── Template HTML ─────────────────────────────────────────────────────────────
