@@ -4968,7 +4968,13 @@ function buildSidebar() {
   buildCheckboxes('filter-turno',      'turno',      turnos,      ocCounts('turno'));
   buildCheckboxes('filter-tipo',       'tipo',        tipos,      ocCounts('tipo'));
   buildCheckboxes('filter-bairro',     'bairro',     bairros,     ocCounts('bairro'));
-  buildCheckboxes('filter-item',       'item',        itens,      count(RAW,'item')); // itens: conta cada item
+  // O número ao lado do checkbox de item agora é por ocorrência (B.O.), igual
+  // a todos os outros filtros — antes contava cada linha de item separado
+  // (RAW), o que divergia do card "Total de Ocorrências" ao aplicar o filtro
+  // e confundia quem comparava com o bot do Telegram. O gráfico "10 Itens Mais
+  // Furtados/Roubados" (renderItem) continua com a contagem bruta por item,
+  // que é a métrica certa ali (quantidade de itens levados, não de boletins).
+  buildCheckboxes('filter-item',       'item',        itens,      ocCounts('item'));
   buildCheckboxes('filter-dia',        'dia',         dias,       ocCounts('dia'));
   buildCheckboxes('filter-logradouro', 'logradouro', logradouros, count(RAWU,'endereco'));
   buildCheckboxes('filter-recuperado', 'recuperado', recuperados, ocCounts('recuperado'));
