@@ -218,6 +218,7 @@ def carregar_dados():
         if not r['DATA_STR']: continue
         records.append({
             'data':    r['DATA_STR'],
+            'ano':     r['DATA_STR'][:4],
             'dia':     r['DIA_SEMANA'],
             'turno':   r['TURNO'],
             'tipo':    r['TIPIFICACAO'],
@@ -460,9 +461,10 @@ def consultar_resumo(records):
 def busca_universal(records, query):
     """Busca em todos os campos: bairro, tipo, item, marca, IMEI, turno, logradouro, dia.
     Quebra a pergunta em palavras e cruza cada uma com E — permite perguntas tipo
-    'furto celular sabado' (tipo + item + dia na mesma frase), cada palavra podendo
-    bater num campo diferente do registro."""
-    campos = ['bairro','tipo','item','marca','imei','turno','endereco','dia','bo']
+    'furto celular sabado' (tipo + item + dia na mesma frase) ou 'celular 2026'
+    (item + ano), cada palavra podendo bater num campo diferente do registro.
+    Sem ano na pergunta, busca em todos os anos disponíveis (padrão)."""
+    campos = ['bairro','tipo','item','marca','imei','turno','endereco','dia','bo','ano']
     tokens = [t for t in sem_acento(query.strip()).split() if t] or [sem_acento(query.strip())]
 
     def variacoes_de(tok):
