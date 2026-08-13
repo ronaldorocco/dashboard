@@ -5390,44 +5390,77 @@ function limparPeriodos() {
 }
 
 function imprimirComparaPeriodos() {
-  const kpiRow = document.getElementById('periodo-kpi-row');
-  const charts = document.getElementById('periodo-charts-wrap');
-  if (!charts || charts.style.display === 'none') {
+  if (!_periodoCache) {
     alert('Selecione as datas de ao menos um período antes de gerar o PDF.');
     return;
   }
-  const validos     = periodos.filter(p => p.inicio && p.fim);
-  const periodosTxt = validos.map(_periodoLabel).join('  vs  ');
-  const w = window.open('','_blank','width=1000,height=760');
+  const { dadosPorPeriodo, nomes, cores, periodosTxt, kpiHTML } = _periodoCache;
+
+  // Largura fixa e modesta (bem menor que a página), coluna única: elimina o
+  // risco de estouro horizontal que forçava o navegador a criar páginas extras.
+  const LARG = 460, ALT = 220, ALT_BAIRRO = 280;
+  const LCOMP_PDF = {
+    ...LAYOUT_BASE, barmode:'group', showlegend:true,
+    legend:{orientation:'h',x:0,y:1.2,font:{size:10}},
+    width:LARG, height:ALT,
+  };
+  const TIPOS_ORD2 = ['Furto','Roubo','Arrombamento','Tentativa de Furto','Tentativa de Roubo'];
+  const TURN_ORD2  = ['Manhã','Tarde','Noite','Madrugada'];
+  const {traces:bairroTraces} = _periodoTraceBairro(dadosPorPeriodo,nomes,cores);
+
+  const w = window.open('','_blank','width=700,height=900');
   w.document.write(`<!DOCTYPE html><html><head>
     <meta charset="utf-8">
     <title>Comparação de Períodos — Guarda Municipal BC</title>
     <style>
       *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-      body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;padding:24px;margin:0;}
+      @page{size:A4;margin:15mm;}
+      body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;margin:0;}
+      .pdf-page{padding:10px 0;}
+      .pdf-page:not(:last-child){page-break-after:always;break-after:page;}
       h2{color:#1A1A2E;font-size:16px;border-bottom:3px solid #0078D4;padding-bottom:6px;margin-bottom:6px;}
-      .sub{font-size:11px;color:#888;margin-bottom:18px;}
-      .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
-      .comp-kpi-delta{background:white;border-radius:8px;padding:12px 14px;
+      .sub{font-size:11px;color:#888;margin-bottom:14px;}
+      .kpi-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+      .comp-kpi-delta{background:white;border-radius:8px;padding:10px 12px;
         border:1px solid #eee;text-align:center;}
-      .comp-delta-val{font-size:22px;font-weight:800;margin:4px 0;line-height:1;}
+      .comp-delta-val{font-size:20px;font-weight:800;margin:4px 0;line-height:1;}
       .comp-delta-label{font-size:10px;color:#666;margin-top:3px;font-weight:600;}
       .delta-up{color:#D13438;} .delta-down{color:#107C10;} .delta-eq{color:#888;}
-      .row2{display:block;margin-bottom:14px;
-        break-inside:avoid;page-break-inside:avoid;}
-      .row2:first-of-type{break-after:page;page-break-after:always;}
-      .chart-card{border:1px solid #ddd;border-radius:8px;padding:10px 12px;
-        break-inside:avoid;page-break-inside:avoid;margin-bottom:14px;}
-      .chart-title{font-size:11px;font-weight:700;color:#1A1A2E;margin-bottom:6px;}
-      svg{max-width:100%;}
+      .chart-card{border:1px solid #ddd;border-radius:8px;padding:8px 10px;
+        width:${LARG+20}px;margin:0 auto 16px;}
+      .chart-title{font-size:11px;font-weight:700;color:#1A1A2E;margin-bottom:2px;}
     </style></head><body>
-    <h2>🆚 Comparação de Períodos</h2>
-    <div class="sub">${periodosTxt} &nbsp;·&nbsp; gerado em ${new Date().toLocaleString('pt-BR')}</div>
-    ${kpiRow ? `<div class="kpi-row">${kpiRow.innerHTML}</div>` : ''}
-    ${charts.innerHTML}
+    <div class="pdf-page">
+      <h2>🆚 Comparação de Períodos</h2>
+      <div class="sub">${periodosTxt} &nbsp;·&nbsp; gerado em ${new Date().toLocaleString('pt-BR')}</div>
+      ${kpiHTML ? `<div class="kpi-row">${kpiHTML}</div>` : ''}
+      <div class="chart-card"><div class="chart-title">📊 Por Tipificação</div><div id="pdf-chart-tipo"></div></div>
+      <div class="chart-card"><div class="chart-title">🕐 Por Turno</div><div id="pdf-chart-turno"></div></div>
+    </div>
+    <div class="pdf-page">
+      <div class="chart-card"><div class="chart-title">📍 Por Bairro — Top 10</div><div id="pdf-chart-bairro"></div></div>
+      <div class="chart-card"><div class="chart-title">📆 Dia da Semana</div><div id="pdf-chart-dia"></div></div>
+    </div>
     </body></html>`);
   w.document.close();
-  w.print();
+
+  Promise.all([
+    Plotly.newPlot(w.document.getElementById('pdf-chart-tipo'),
+      _periodoTraceCategorico('tipo',TIPOS_ORD2,dadosPorPeriodo,nomes,cores),
+      {...LCOMP_PDF, xaxis:{tickfont:{size:9},tickangle:-15}, yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:8}}, margin:{l:30,r:10,t:36,b:55}},
+      {staticPlot:true}),
+    Plotly.newPlot(w.document.getElementById('pdf-chart-turno'),
+      _periodoTraceCategorico('turno',TURN_ORD2,dadosPorPeriodo,nomes,cores),
+      {...LCOMP_PDF, xaxis:{tickfont:{size:9}}, yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:8}}, margin:{l:30,r:10,t:36,b:32}},
+      {staticPlot:true}),
+    Plotly.newPlot(w.document.getElementById('pdf-chart-bairro'), bairroTraces,
+      {...LCOMP_PDF, height:ALT_BAIRRO, xaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:8}}, yaxis:{tickfont:{size:9},automargin:true}, margin:{l:95,r:30,t:36,b:24}},
+      {staticPlot:true}),
+    Plotly.newPlot(w.document.getElementById('pdf-chart-dia'),
+      _periodoTraceCategorico('dia',DIA_ORDER,dadosPorPeriodo,nomes,cores),
+      {...LCOMP_PDF, height:ALT_BAIRRO, xaxis:{tickfont:{size:9}}, yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:8}}, margin:{l:30,r:10,t:36,b:32}},
+      {staticPlot:true}),
+  ]).then(() => setTimeout(() => w.print(), 200));
 }
 
 function renderPeriodoSelector() {
@@ -5453,6 +5486,41 @@ function renderPeriodoSelector() {
     + `<button onclick="imprimirComparaPeriodos()" class="comp-ano-btn" style="background:#107C10;color:white;border:2px solid #107C10" title="Gerar PDF só desta comparação">🖨️ Gerar PDF</button>`;
 }
 
+// Traços reutilizados tanto pelos gráficos ao vivo quanto pelo PDF (que os
+// redesenha do zero com largura fixa, em vez de clonar o SVG já renderizado).
+function _periodoTraceCategorico(campo, categorias, dadosPorPeriodo, nomes, cores) {
+  return dadosPorPeriodo.map((d,i) => ({
+    type:'bar', name:nomes[i],
+    x:categorias,
+    y:categorias.map(c => d.filter(r=>r[campo]===c).length),
+    marker:{color:cores[i]},
+    text:categorias.map(c => { const v=d.filter(r=>r[campo]===c).length; return v>0?String(v):''; }),
+    textposition:'outside', cliponaxis:false,
+    hovertemplate:'<b>%{x} %{data.name}</b><br>%{y} ocorrências<extra></extra>',
+  }));
+}
+function _periodoTraceBairro(dadosPorPeriodo, nomes, cores) {
+  const bairroTotais = {};
+  dadosPorPeriodo.forEach(d => d.forEach(r => { if(r.bairro) bairroTotais[r.bairro]=(bairroTotais[r.bairro]||0)+1; }));
+  const top10B2 = sortedEntries(bairroTotais).slice(0,10).map(e=>e[0]).reverse();
+  return {
+    top10B2,
+    traces: dadosPorPeriodo.map((d,i) => ({
+      type:'bar', orientation:'h', name:nomes[i],
+      y:top10B2,
+      x:top10B2.map(b => d.filter(r=>r.bairro===b).length),
+      marker:{color:cores[i]},
+      text:top10B2.map(b => { const v=d.filter(r=>r.bairro===b).length; return v>0?String(v):''; }),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{y} %{data.name}</b><br>%{x} ocorrências<extra></extra>',
+    })),
+  };
+}
+
+// Guarda os últimos dados calculados para o PDF poder redesenhar os gráficos
+// com largura fixa (evita cortes/estouros que dependiam do tamanho de tela).
+let _periodoCache = null;
+
 function renderComparaPeriodos() {
   if (typeof Plotly === 'undefined') return;
   initPeriodosDefault();
@@ -5470,6 +5538,7 @@ function renderComparaPeriodos() {
     if (msgEl)      msgEl.style.display      = 'block';
     if (chartsWrap) chartsWrap.style.display = 'none';
     chartIds.forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
+    _periodoCache = null;
     return;
   }
   if (msgEl)      msgEl.style.display      = 'none';
@@ -5515,43 +5584,27 @@ function renderComparaPeriodos() {
   }
 
   const LCOMP = {...LAYOUT_BASE, barmode:'group', showlegend:true, legend:{orientation:'h',x:0,y:1.18,font:{size:11}}};
-  function barTrace(campo, categorias) {
-    return dadosPorPeriodo.map((d,i) => ({
-      type:'bar', name:nomes[i],
-      x:categorias,
-      y:categorias.map(c => d.filter(r=>r[campo]===c).length),
-      marker:{color:cores[i]},
-      text:categorias.map(c => { const v=d.filter(r=>r[campo]===c).length; return v>0?String(v):''; }),
-      textposition:'outside', cliponaxis:false,
-      hovertemplate:'<b>%{x} %{data.name}</b><br>%{y} ocorrências<extra></extra>',
-    }));
-  }
 
   const TIPOS_ORD2 = ['Furto','Roubo','Arrombamento','Tentativa de Furto','Tentativa de Roubo'];
-  Plotly.react('periodo-chart-tipo', barTrace('tipo',TIPOS_ORD2),
+  Plotly.react('periodo-chart-tipo', _periodoTraceCategorico('tipo',TIPOS_ORD2,dadosPorPeriodo,nomes,cores),
     {...LCOMP, xaxis:{tickfont:{size:10},tickangle:-15}, yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}}, margin:{l:30,r:12,t:44,b:60}}, CONFIG);
 
   const TURN_ORD2 = ['Manhã','Tarde','Noite','Madrugada'];
-  Plotly.react('periodo-chart-turno', barTrace('turno',TURN_ORD2),
+  Plotly.react('periodo-chart-turno', _periodoTraceCategorico('turno',TURN_ORD2,dadosPorPeriodo,nomes,cores),
     {...LCOMP, xaxis:{tickfont:{size:10}}, yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}}, margin:{l:30,r:12,t:44,b:36}}, CONFIG);
 
-  Plotly.react('periodo-chart-dia', barTrace('dia',DIA_ORDER),
+  Plotly.react('periodo-chart-dia', _periodoTraceCategorico('dia',DIA_ORDER,dadosPorPeriodo,nomes,cores),
     {...LCOMP, xaxis:{tickfont:{size:10}}, yaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}}, margin:{l:30,r:12,t:44,b:36}}, CONFIG);
 
-  const bairroTotais = {};
-  dadosPorPeriodo.forEach(d => d.forEach(r => { if(r.bairro) bairroTotais[r.bairro]=(bairroTotais[r.bairro]||0)+1; }));
-  const top10B2 = sortedEntries(bairroTotais).slice(0,10).map(e=>e[0]).reverse();
-  Plotly.react('periodo-chart-bairro',
-    dadosPorPeriodo.map((d,i) => ({
-      type:'bar', orientation:'h', name:nomes[i],
-      y:top10B2,
-      x:top10B2.map(b => d.filter(r=>r.bairro===b).length),
-      marker:{color:cores[i]},
-      text:top10B2.map(b => { const v=d.filter(r=>r.bairro===b).length; return v>0?String(v):''; }),
-      textposition:'outside', cliponaxis:false,
-      hovertemplate:'<b>%{y} %{data.name}</b><br>%{x} ocorrências<extra></extra>',
-    })),
+  const {traces:bairroTraces} = _periodoTraceBairro(dadosPorPeriodo,nomes,cores);
+  Plotly.react('periodo-chart-bairro', bairroTraces,
     {...LCOMP, xaxis:{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{size:9}}, yaxis:{tickfont:{size:10},automargin:true}, margin:{l:80,r:40,t:44,b:30}}, CONFIG);
+
+  _periodoCache = {
+    dadosPorPeriodo, nomes, cores,
+    periodosTxt: nomes.join('  vs  '),
+    kpiHTML: kpiRow ? kpiRow.innerHTML : '',
+  };
 }
 
 // ── PLANO POLICIAL DINÂMICO ───────────────────────────────────────────────────
