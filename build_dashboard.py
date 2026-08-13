@@ -5235,10 +5235,10 @@ function imprimirComparaPeriodos() {{
 
   // Largura fixa e modesta (bem menor que a página), coluna única: elimina o
   // risco de estouro horizontal que forçava o navegador a criar páginas extras.
-  const LARG = 460, ALT = 220, ALT_BAIRRO = 280;
+  const LARG = 440, ALT = 175, ALT_BAIRRO = 220;
   const LCOMP_PDF = {{
     ...LAYOUT_BASE, barmode:'group', showlegend:true,
-    legend:{{orientation:'h',x:0,y:1.2,font:{{size:10}}}},
+    legend:{{orientation:'h',x:0,y:1.16,font:{{size:9}}}},
     width:LARG, height:ALT,
   }};
   const TIPOS_ORD2 = ['Furto','Roubo','Arrombamento','Tentativa de Furto','Tentativa de Roubo'];
@@ -5257,14 +5257,14 @@ function imprimirComparaPeriodos() {{
       .pdf-page:not(:last-child){{page-break-after:always;break-after:page;}}
       h2{{color:#1A1A2E;font-size:16px;border-bottom:3px solid #0078D4;padding-bottom:6px;margin-bottom:6px;}}
       .sub{{font-size:11px;color:#888;margin-bottom:14px;}}
-      .kpi-row{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}}
-      .comp-kpi-delta{{background:white;border-radius:8px;padding:10px 12px;
+      .kpi-row{{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;}}
+      .comp-kpi-delta{{background:white;border-radius:8px;padding:8px 10px;
         border:1px solid #eee;text-align:center;}}
-      .comp-delta-val{{font-size:20px;font-weight:800;margin:4px 0;line-height:1;}}
-      .comp-delta-label{{font-size:10px;color:#666;margin-top:3px;font-weight:600;}}
+      .comp-delta-val{{font-size:18px;font-weight:800;margin:3px 0;line-height:1;}}
+      .comp-delta-label{{font-size:9px;color:#666;margin-top:2px;font-weight:600;}}
       .delta-up{{color:#D13438;}} .delta-down{{color:#107C10;}} .delta-eq{{color:#888;}}
-      .chart-card{{border:1px solid #ddd;border-radius:8px;padding:8px 10px;
-        width:${{LARG+20}}px;margin:0 auto 16px;}}
+      .chart-card{{border:1px solid #ddd;border-radius:8px;padding:6px 8px;
+        width:${{LARG+16}}px;margin:0 auto 10px;break-inside:avoid;page-break-inside:avoid;}}
       .chart-title{{font-size:11px;font-weight:700;color:#1A1A2E;margin-bottom:2px;}}
     </style></head><body>
     <div class="pdf-page">
@@ -5295,7 +5295,7 @@ function imprimirComparaPeriodos() {{
       {{staticPlot:true}}),
     Plotly.newPlot(w.document.getElementById('pdf-chart-dia'),
       _periodoTraceCategorico('dia',DIA_ORDER,dadosPorPeriodo,nomes,cores),
-      {{...LCOMP_PDF, height:ALT_BAIRRO, xaxis:{{tickfont:{{size:9}}}}, yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:8}}}}, margin:{{l:30,r:10,t:36,b:32}}}},
+      {{...LCOMP_PDF, xaxis:{{tickfont:{{size:9}}}}, yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:8}}}}, margin:{{l:30,r:10,t:36,b:32}}}},
       {{staticPlot:true}}),
   ]).then(() => setTimeout(() => w.print(), 200));
 }}
