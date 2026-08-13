@@ -1428,6 +1428,7 @@ function sair(){
       padding:10px 14px;background:#f5f7fa;border-radius:8px;border:1px solid #e0e6f0"></div>
     <div id="periodo-msg" style="display:none;font-size:12px;color:#888;margin-bottom:12px">Selecione as datas dos períodos acima para comparar.</div>
     <div class="kpi-row" id="periodo-kpi-row" style="display:none;margin-bottom:12px"></div>
+    <div id="periodo-charts-wrap" style="display:none">
     <div class="row row2">
       <div class="chart-card">
         <div class="chart-title"><span class="icon">📊</span> Por Tipificação — Comparativo de Períodos</div>
@@ -1447,6 +1448,7 @@ function sair(){
         <div class="chart-title"><span class="icon">📆</span> Dia da Semana — Comparativo de Períodos</div>
         <div id="periodo-chart-dia" style="height:240px"></div>
       </div>
+    </div>
     </div>
 
     <!-- ANALISTA DE SEGURANÇA -->
@@ -5387,6 +5389,45 @@ function limparPeriodos() {
   renderComparaPeriodos();
 }
 
+function imprimirComparaPeriodos() {
+  const kpiRow = document.getElementById('periodo-kpi-row');
+  const charts = document.getElementById('periodo-charts-wrap');
+  if (!charts || charts.style.display === 'none') {
+    alert('Selecione as datas de ao menos um período antes de gerar o PDF.');
+    return;
+  }
+  const validos     = periodos.filter(p => p.inicio && p.fim);
+  const periodosTxt = validos.map(_periodoLabel).join('  vs  ');
+  const w = window.open('','_blank','width=1000,height=760');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>Comparação de Períodos — Guarda Municipal BC</title>
+    <style>
+      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+      body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#222;padding:24px;margin:0;}
+      h2{color:#1A1A2E;font-size:16px;border-bottom:3px solid #0078D4;padding-bottom:6px;margin-bottom:6px;}
+      .sub{font-size:11px;color:#888;margin-bottom:18px;}
+      .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+      .comp-kpi-delta{background:white;border-radius:8px;padding:12px 14px;
+        border:1px solid #eee;text-align:center;}
+      .comp-delta-val{font-size:22px;font-weight:800;margin:4px 0;line-height:1;}
+      .comp-delta-label{font-size:10px;color:#666;margin-top:3px;font-weight:600;}
+      .delta-up{color:#D13438;} .delta-down{color:#107C10;} .delta-eq{color:#888;}
+      .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+      .chart-card{border:1px solid #ddd;border-radius:8px;padding:10px 12px;break-inside:avoid;}
+      .chart-title{font-size:11px;font-weight:700;color:#1A1A2E;margin-bottom:6px;}
+      svg{max-width:100%;}
+      @media print{ .row2{page-break-inside:avoid;} }
+    </style></head><body>
+    <h2>🆚 Comparação de Períodos</h2>
+    <div class="sub">${periodosTxt} &nbsp;·&nbsp; gerado em ${new Date().toLocaleString('pt-BR')}</div>
+    ${kpiRow ? `<div class="kpi-row">${kpiRow.innerHTML}</div>` : ''}
+    ${charts.innerHTML}
+    </body></html>`);
+  w.document.close();
+  w.print();
+}
+
 function renderPeriodoSelector() {
   const el = document.getElementById('periodo-selector');
   if (!el) return;
@@ -5406,7 +5447,8 @@ function renderPeriodoSelector() {
   }).join('') + (periodos.length<6
     ? `<button onclick="addPeriodo()" class="comp-ano-btn" style="background:#e8ecf0;color:#555;border:2px dashed #ccc">+ Período</button>`
     : '')
-    + `<button onclick="limparPeriodos()" class="comp-ano-btn" style="background:#D13438;color:white;border:2px solid #D13438" title="Limpar datas dos períodos">⟳ Limpar</button>`;
+    + `<button onclick="limparPeriodos()" class="comp-ano-btn" style="background:#D13438;color:white;border:2px solid #D13438" title="Limpar datas dos períodos">⟳ Limpar</button>`
+    + `<button onclick="imprimirComparaPeriodos()" class="comp-ano-btn" style="background:#107C10;color:white;border:2px solid #107C10" title="Gerar PDF só desta comparação">🖨️ Gerar PDF</button>`;
 }
 
 function renderComparaPeriodos() {
@@ -5414,19 +5456,22 @@ function renderComparaPeriodos() {
   initPeriodosDefault();
   if (document.getElementById('periodo-selector').innerHTML === '') renderPeriodoSelector();
 
-  const base    = filteredNonDate();
-  const validos = periodos.filter(p => p.inicio && p.fim);
-  const kpiRow  = document.getElementById('periodo-kpi-row');
-  const msgEl   = document.getElementById('periodo-msg');
-  const chartIds = ['periodo-chart-tipo','periodo-chart-turno','periodo-chart-bairro','periodo-chart-dia'];
+  const base       = filteredNonDate();
+  const validos    = periodos.filter(p => p.inicio && p.fim);
+  const kpiRow     = document.getElementById('periodo-kpi-row');
+  const msgEl      = document.getElementById('periodo-msg');
+  const chartsWrap = document.getElementById('periodo-charts-wrap');
+  const chartIds   = ['periodo-chart-tipo','periodo-chart-turno','periodo-chart-bairro','periodo-chart-dia'];
 
   if (validos.length === 0) {
-    if (kpiRow) kpiRow.style.display = 'none';
-    if (msgEl)  msgEl.style.display  = 'block';
+    if (kpiRow)     kpiRow.style.display     = 'none';
+    if (msgEl)      msgEl.style.display      = 'block';
+    if (chartsWrap) chartsWrap.style.display = 'none';
     chartIds.forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=''; });
     return;
   }
-  if (msgEl) msgEl.style.display = 'none';
+  if (msgEl)      msgEl.style.display      = 'none';
+  if (chartsWrap) chartsWrap.style.display = 'block';
 
   const dadosPorPeriodo = validos.map(p => dedupBO(base.filter(r => r.data >= p.inicio && r.data <= p.fim)));
   const nomes = validos.map(_periodoLabel);
