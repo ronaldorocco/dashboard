@@ -5250,11 +5250,11 @@ function imprimirComparaPeriodos() {{
       .comp-delta-val{{font-size:22px;font-weight:800;margin:4px 0;line-height:1;}}
       .comp-delta-label{{font-size:10px;color:#666;margin-top:3px;font-weight:600;}}
       .delta-up{{color:#D13438;}} .delta-down{{color:#107C10;}} .delta-eq{{color:#888;}}
-      .row2{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}}
-      .chart-card{{border:1px solid #ddd;border-radius:8px;padding:10px 12px;break-inside:avoid;}}
+      .row2{{display:block;margin-bottom:14px;}}
+      .chart-card{{border:1px solid #ddd;border-radius:8px;padding:10px 12px;
+        break-inside:avoid;page-break-inside:avoid;margin-bottom:14px;}}
       .chart-title{{font-size:11px;font-weight:700;color:#1A1A2E;margin-bottom:6px;}}
       svg{{max-width:100%;}}
-      @media print{{ .row2{{page-break-inside:avoid;}} }}
     </style></head><body>
     <h2>🆚 Comparação de Períodos</h2>
     <div class="sub">${{periodosTxt}} &nbsp;·&nbsp; gerado em ${{new Date().toLocaleString('pt-BR')}}</div>
