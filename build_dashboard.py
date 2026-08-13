@@ -1292,6 +1292,35 @@ function sair(){{
       </div>
     </div>
 
+    <!-- COMPARAÇÃO DE PERÍODOS PERSONALIZADOS -->
+    <div class="section-header">🆚 Comparar Períodos
+      <span style="font-size:10px;font-weight:400;color:#aaa;margin-left:4px">(escolha as datas — dia com dia, semana com semana, ano com ano etc.)</span>
+    </div>
+    <div id="periodo-selector" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;
+      padding:10px 14px;background:#f5f7fa;border-radius:8px;border:1px solid #e0e6f0"></div>
+    <div id="periodo-msg" style="display:none;font-size:12px;color:#888;margin-bottom:12px">Selecione as datas dos períodos acima para comparar.</div>
+    <div class="kpi-row" id="periodo-kpi-row" style="display:none;margin-bottom:12px"></div>
+    <div class="row row2">
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">📊</span> Por Tipificação — Comparativo de Períodos</div>
+        <div id="periodo-chart-tipo" style="height:240px"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">🕐</span> Por Turno — Comparativo de Períodos</div>
+        <div id="periodo-chart-turno" style="height:240px"></div>
+      </div>
+    </div>
+    <div class="row row2">
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">📍</span> Por Bairro — Top 10 Comparativo de Períodos</div>
+        <div id="periodo-chart-bairro" style="height:300px"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="icon">📆</span> Dia da Semana — Comparativo de Períodos</div>
+        <div id="periodo-chart-dia" style="height:240px"></div>
+      </div>
+    </div>
+
     <!-- ANALISTA DE SEGURANÇA -->
     <div class="section-header">👮 Plano de Distribuição Policial <span style="font-size:10px;font-weight:400;color:#888">(gerado automaticamente com base nos dados)</span></div>
     <div id="plano-policial"></div>
@@ -1414,10 +1443,10 @@ const LAYOUT_BASE = {{
 const CONFIG = {{responsive:true,displayModeBar:false,locale:'pt-BR'}};
 
 // ── FILTRAR DADOS ─────────────────────────────────────────────────────────────
-function filtered() {{
-  return RAW.filter(r =>
-    (state.mes.size        === 0 || state.mes.has(r.mes))        &&
-    (state.turno.size      === 0 || state.turno.has(r.turno))    &&
+// Filtros que NÃO dizem respeito a data (usados também na comparação de períodos,
+// onde a própria data é escolhida diretamente pelo usuário em vez de ano/mês/dia).
+function passesNonDateFilters(r) {{
+  return (state.turno.size      === 0 || state.turno.has(r.turno))    &&
     (state.tipo.size       === 0 || state.tipo.has(r.tipo))      &&
     (state.bairro.size     === 0 || state.bairro.has(r.bairro))  &&
     (state.item.size       === 0 || state.item.has(r.item))      &&
@@ -1429,10 +1458,19 @@ function filtered() {{
     (numeroSerieQ === '' || (r.numero_serie && r.numero_serie.toLowerCase().includes(numeroSerieQ.toLowerCase()))) &&
     (pesquisaQ === '' || [r.bairro,r.tipo,r.endereco,r.item,r.marca,r.cor,r.detalhes,r.dia,r.turno,r.mes,r.bo].some(v=>v&&String(v).toLowerCase().includes(pesquisaQ.toLowerCase()))) &&
     (state.recuperado.size === 0 || state.recuperado.has(r.recuperado)) &&
-    (state.dia.size        === 0 || state.dia.has(r.dia))        &&
-    (state.logradouro.size === 0 || state.logradouro.has(r.endereco)) &&
-    (state.ano.size        === 0 || state.ano.has(String(r.ano)))
+    (state.logradouro.size === 0 || state.logradouro.has(r.endereco));
+}}
+function filtered() {{
+  return RAW.filter(r => passesNonDateFilters(r) &&
+    (state.mes.size === 0 || state.mes.has(r.mes)) &&
+    (state.dia.size === 0 || state.dia.has(r.dia)) &&
+    (state.ano.size === 0 || state.ano.has(String(r.ano)))
   );
+}}
+// Igual a filtered(), mas ignora ano/mês/dia-da-semana: usado na comparação de
+// períodos personalizados, onde a data exata de cada período é escolhida à mão.
+function filteredNonDate() {{
+  return RAW.filter(passesNonDateFilters);
 }}
 
 // ── CONTAR ────────────────────────────────────────────────────────────────────
@@ -2191,6 +2229,7 @@ function renderAll() {{
   renderHeatmap(ocs);
   renderHora(ocs);
   renderComparacao(ocs);
+  renderComparaPeriodos();
   renderPlanoPolicial(ocs);
   renderDiagnostico(ocs);
   renderRecomendacoes(ocs);
@@ -5127,6 +5166,176 @@ function renderComparacao(data) {{
       yaxis:{{tickfont:{{size:10}},automargin:true}},
       margin:{{l:160,r:40,t:44,b:30}},
     }}, CONFIG);
+}}
+
+// ── COMPARAÇÃO DE PERÍODOS PERSONALIZADOS ─────────────────────────────────────
+// Compara datas escolhidas livremente (dia com dia, semana com semana, mês com
+// mês, ano com ano...), diferente da "Comparação Anual" que sempre usa anos inteiros.
+const PERIODO_PALETTE = ['#0078D4','#D13438','#107C10','#8764B8','#E07B00','#0097A7'];
+let periodos = [{{inicio:'',fim:''}},{{inicio:'',fim:''}}];
+let periodosInit = false;
+
+function _addDays(dataStr, dias) {{
+  const d = new Date(dataStr+'T00:00:00');
+  d.setDate(d.getDate()+dias);
+  return d.toISOString().slice(0,10);
+}}
+function _addAnos(dataStr, anos) {{
+  const [y,m,d] = dataStr.split('-');
+  return `${{String(Number(y)+anos).padStart(4,'0')}}-${{m}}-${{d}}`;
+}}
+function _periodoLabel(p) {{
+  if (!p.inicio || !p.fim) return '';
+  const fmt = d => {{ const [y,m,dd]=d.split('-'); return `${{dd}}/${{m}}/${{y}}`; }};
+  return p.inicio===p.fim ? fmt(p.inicio) : `${{fmt(p.inicio)}}–${{fmt(p.fim)}}`;
+}}
+
+function initPeriodosDefault() {{
+  if (periodosInit || RAW.length===0) return;
+  periodosInit = true;
+  const datas = RAW.map(r=>r.data).filter(Boolean).sort();
+  if (datas.length===0) return;
+  const maxData = datas[datas.length-1];
+  const p1fim = maxData, p1ini = _addDays(maxData,-6);
+  const p2fim = _addAnos(maxData,-1), p2ini = _addDays(p2fim,-6);
+  periodos = [{{inicio:p1ini,fim:p1fim}}, {{inicio:p2ini,fim:p2fim}}];
+}}
+
+function addPeriodo() {{
+  if (periodos.length >= 6) return;
+  periodos.push({{inicio:'',fim:''}});
+  renderPeriodoSelector();
+  renderComparaPeriodos();
+}}
+function removePeriodo(i) {{
+  if (periodos.length <= 2) return;
+  periodos.splice(i,1);
+  renderPeriodoSelector();
+  renderComparaPeriodos();
+}}
+function setPeriodoData(i, campo, val) {{
+  periodos[i][campo] = val;
+  renderPeriodoSelector();
+  renderComparaPeriodos();
+}}
+
+function renderPeriodoSelector() {{
+  const el = document.getElementById('periodo-selector');
+  if (!el) return;
+  el.innerHTML = periodos.map((p,i) => {{
+    const cor = PERIODO_PALETTE[i % PERIODO_PALETTE.length];
+    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:white;
+      border-radius:6px;border:2px solid ${{cor}}">
+      <span style="width:10px;height:10px;border-radius:50%;background:${{cor}};display:inline-block;flex-shrink:0"></span>
+      <input type="date" value="${{p.inicio}}" onchange="setPeriodoData(${{i}},'inicio',this.value)"
+        style="border:1px solid #ccc;border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit">
+      <span style="font-size:11px;color:#888">até</span>
+      <input type="date" value="${{p.fim}}" onchange="setPeriodoData(${{i}},'fim',this.value)"
+        style="border:1px solid #ccc;border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit">
+      ${{periodos.length>2 ? `<button onclick="removePeriodo(${{i}})" title="Remover período"
+        style="border:none;background:none;color:#D13438;cursor:pointer;font-size:15px;font-weight:700;padding:0 2px">×</button>` : ''}}
+    </div>`;
+  }}).join('') + (periodos.length<6
+    ? `<button onclick="addPeriodo()" class="comp-ano-btn" style="background:#e8ecf0;color:#555;border:2px dashed #ccc">+ Período</button>`
+    : '');
+}}
+
+function renderComparaPeriodos() {{
+  if (typeof Plotly === 'undefined') return;
+  initPeriodosDefault();
+  if (document.getElementById('periodo-selector').innerHTML === '') renderPeriodoSelector();
+
+  const base    = filteredNonDate();
+  const validos = periodos.filter(p => p.inicio && p.fim);
+  const kpiRow  = document.getElementById('periodo-kpi-row');
+  const msgEl   = document.getElementById('periodo-msg');
+  const chartIds = ['periodo-chart-tipo','periodo-chart-turno','periodo-chart-bairro','periodo-chart-dia'];
+
+  if (validos.length === 0) {{
+    if (kpiRow) kpiRow.style.display = 'none';
+    if (msgEl)  msgEl.style.display  = 'block';
+    chartIds.forEach(id => {{ const el=document.getElementById(id); if(el) el.innerHTML=''; }});
+    return;
+  }}
+  if (msgEl) msgEl.style.display = 'none';
+
+  const dadosPorPeriodo = validos.map(p => dedupBO(base.filter(r => r.data >= p.inicio && r.data <= p.fim)));
+  const nomes = validos.map(_periodoLabel);
+  const cores = validos.map((_,i) => PERIODO_PALETTE[i % PERIODO_PALETTE.length]);
+
+  // ── KPI: total + deltas entre o 1º e o último período ─────────────────────
+  if (kpiRow) {{
+    kpiRow.style.display = 'grid';
+    function mkDelta(vA, vB, label, corB, labelA, labelB) {{
+      const diff = vB - vA;
+      const pct  = vA > 0 ? ((diff/vA)*100).toFixed(0) : (diff > 0 ? '+∞' : '0');
+      const seta = diff > 0 ? '▲' : diff < 0 ? '▼' : '=';
+      const cls  = diff > 0 ? 'delta-up' : diff < 0 ? 'delta-down' : 'delta-eq';
+      const col  = diff > 0 ? '#D13438' : diff < 0 ? '#107C10' : '#888';
+      return `<div class="comp-kpi-delta" style="border-top:4px solid ${{corB}}">
+        <div style="font-size:9px;color:#aaa;margin-bottom:2px;font-weight:600;text-transform:uppercase">${{labelA}} → ${{labelB}}</div>
+        <div class="comp-delta-val ${{cls}}">${{seta}} ${{diff>0?'+':''}}${{diff}}</div>
+        <div style="font-size:12px;font-weight:800;color:${{col}}">${{diff>0?'+':''}}${{pct}}%</div>
+        <div class="comp-delta-label">${{label}}</div>
+        <div style="font-size:9px;color:#888;margin-top:2px">${{labelA}}: ${{vA}} &nbsp;|&nbsp; ${{labelB}}: ${{vB}}</div>
+      </div>`;
+    }}
+    if (dadosPorPeriodo.length >= 2) {{
+      const dA = dadosPorPeriodo[0], dB = dadosPorPeriodo[dadosPorPeriodo.length-1];
+      const corB = cores[cores.length-1];
+      kpiRow.innerHTML = [
+        mkDelta(dA.length,                                    dB.length,                                    'Total de Ocorrências', corB, nomes[0], nomes[nomes.length-1]),
+        mkDelta(dA.filter(r=>r.tipo==='Furto').length,        dB.filter(r=>r.tipo==='Furto').length,        'Furtos',                corB, nomes[0], nomes[nomes.length-1]),
+        mkDelta(dA.filter(r=>r.tipo==='Roubo').length,        dB.filter(r=>r.tipo==='Roubo').length,        'Roubos',                corB, nomes[0], nomes[nomes.length-1]),
+        mkDelta(dA.filter(r=>r.tipo==='Arrombamento').length, dB.filter(r=>r.tipo==='Arrombamento').length, 'Arrombamentos',         corB, nomes[0], nomes[nomes.length-1]),
+      ].join('');
+    }} else {{
+      kpiRow.innerHTML = `<div class="comp-kpi-delta" style="border-top:4px solid ${{cores[0]}}">
+        <div style="font-size:9px;color:#aaa;margin-bottom:2px;font-weight:600;text-transform:uppercase">${{nomes[0]}}</div>
+        <div class="comp-delta-val">${{dadosPorPeriodo[0].length}}</div>
+        <div class="comp-delta-label">Total de Ocorrências</div>
+      </div>`;
+    }}
+  }}
+
+  const LCOMP = {{...LAYOUT_BASE, barmode:'group', showlegend:true, legend:{{orientation:'h',x:0,y:1.18,font:{{size:11}}}}}};
+  function barTrace(campo, categorias) {{
+    return dadosPorPeriodo.map((d,i) => ({{
+      type:'bar', name:nomes[i],
+      x:categorias,
+      y:categorias.map(c => d.filter(r=>r[campo]===c).length),
+      marker:{{color:cores[i]}},
+      text:categorias.map(c => {{ const v=d.filter(r=>r[campo]===c).length; return v>0?String(v):''; }}),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{{x}} %{{data.name}}</b><br>%{{y}} ocorrências<extra></extra>',
+    }}));
+  }}
+
+  const TIPOS_ORD2 = ['Furto','Roubo','Arrombamento','Tentativa de Furto','Tentativa de Roubo'];
+  Plotly.react('periodo-chart-tipo', barTrace('tipo',TIPOS_ORD2),
+    {{...LCOMP, xaxis:{{tickfont:{{size:10}},tickangle:-15}}, yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}}}}, margin:{{l:30,r:12,t:44,b:60}}}}, CONFIG);
+
+  const TURN_ORD2 = ['Manhã','Tarde','Noite','Madrugada'];
+  Plotly.react('periodo-chart-turno', barTrace('turno',TURN_ORD2),
+    {{...LCOMP, xaxis:{{tickfont:{{size:10}}}}, yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}}}}, margin:{{l:30,r:12,t:44,b:36}}}}, CONFIG);
+
+  Plotly.react('periodo-chart-dia', barTrace('dia',DIA_ORDER),
+    {{...LCOMP, xaxis:{{tickfont:{{size:10}}}}, yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}}}}, margin:{{l:30,r:12,t:44,b:36}}}}, CONFIG);
+
+  const bairroTotais = {{}};
+  dadosPorPeriodo.forEach(d => d.forEach(r => {{ if(r.bairro) bairroTotais[r.bairro]=(bairroTotais[r.bairro]||0)+1; }}));
+  const top10B2 = sortedEntries(bairroTotais).slice(0,10).map(e=>e[0]).reverse();
+  Plotly.react('periodo-chart-bairro',
+    dadosPorPeriodo.map((d,i) => ({{
+      type:'bar', orientation:'h', name:nomes[i],
+      y:top10B2,
+      x:top10B2.map(b => d.filter(r=>r.bairro===b).length),
+      marker:{{color:cores[i]}},
+      text:top10B2.map(b => {{ const v=d.filter(r=>r.bairro===b).length; return v>0?String(v):''; }}),
+      textposition:'outside', cliponaxis:false,
+      hovertemplate:'<b>%{{y}} %{{data.name}}</b><br>%{{x}} ocorrências<extra></extra>',
+    }})),
+    {{...LCOMP, xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:9}}}}, yaxis:{{tickfont:{{size:10}},automargin:true}}, margin:{{l:80,r:40,t:44,b:30}}}}, CONFIG);
 }}
 
 // ── PLANO POLICIAL DINÂMICO ───────────────────────────────────────────────────
