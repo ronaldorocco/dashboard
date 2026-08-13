@@ -5218,6 +5218,11 @@ function setPeriodoData(i, campo, val) {{
   renderPeriodoSelector();
   renderComparaPeriodos();
 }}
+function limparPeriodos() {{
+  periodos = [{{inicio:'',fim:''}}, {{inicio:'',fim:''}}];
+  renderPeriodoSelector();
+  renderComparaPeriodos();
+}}
 
 function renderPeriodoSelector() {{
   const el = document.getElementById('periodo-selector');
@@ -5237,7 +5242,8 @@ function renderPeriodoSelector() {{
     </div>`;
   }}).join('') + (periodos.length<6
     ? `<button onclick="addPeriodo()" class="comp-ano-btn" style="background:#e8ecf0;color:#555;border:2px dashed #ccc">+ Período</button>`
-    : '');
+    : '')
+    + `<button onclick="limparPeriodos()" class="comp-ano-btn" style="background:#D13438;color:white;border:2px solid #D13438" title="Limpar datas dos períodos">⟳ Limpar</button>`;
 }}
 
 function renderComparaPeriodos() {{
