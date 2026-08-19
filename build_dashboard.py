@@ -1327,6 +1327,20 @@ function sair(){{
     <div class="section-header">👮 Plano de Distribuição Policial <span style="font-size:10px;font-weight:400;color:#888">(gerado automaticamente com base nos dados)</span></div>
     <div id="plano-policial"></div>
 
+    <!-- ANÁLISE DE BAIRRO -->
+    <div class="section-header">🏘️ Análise de Segurança por Bairro <span style="font-size:10px;font-weight:400;color:#888">(pesquisa independente dos filtros da barra lateral)</span></div>
+    <div class="plano-card" style="margin-bottom:16px">
+      <div class="plano-body" style="padding-top:14px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <select id="ab-bairro-select" style="flex:1;min-width:220px;padding:9px 12px;border-radius:6px;border:1px solid #DDD;font-size:12px;color:#1A1A2E">
+            <option value="">Selecione um bairro…</option>
+          </select>
+          <button class="btn-analise" onclick="analisarBairro()" style="white-space:nowrap">🔎 Analisar Bairro</button>
+        </div>
+        <div id="analise-bairro-result"></div>
+      </div>
+    </div>
+
     <!-- MAPA -->
     <div class="section-header">🗺️ Mapa de Ocorrências <span style="font-size:10px;font-weight:400;color:#888">(atualiza com os filtros)</span></div>
     <div class="mapa-card">
@@ -4856,6 +4870,7 @@ function buildSidebar() {{
   buildCheckboxes('filter-dia',        'dia',         dias,       ocCounts('dia'));
   buildCheckboxes('filter-logradouro', 'logradouro', logradouros, count(RAWU,'endereco'));
   buildCheckboxes('filter-recuperado', 'recuperado', recuperados, ocCounts('recuperado'));
+  populateAnaliseBairroSelect(bairros);
 }}
 
 // ── RUAS ─────────────────────────────────────────────────────────────────────
@@ -5637,6 +5652,150 @@ function renderPlanoPolicial(data) {{
       </div>
     </div>
   </div>`;
+}}
+
+// ── ANÁLISE DE BAIRRO (busca + ruas críticas + rota de patrulhamento) ────────
+let rotaBairroLayer = null, rotaBairroMarkers = null;
+let ultimaAnaliseBairro = null;
+
+function populateAnaliseBairroSelect(bairros) {{
+  const sel = document.getElementById('ab-bairro-select');
+  if(!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Selecione um bairro…</option>' +
+    bairros.map(b => `<option value="${{b}}">${{b}}</option>`).join('');
+  if(bairros.includes(atual)) sel.value = atual;
+}}
+
+function analisarBairro() {{
+  const bairro = document.getElementById('ab-bairro-select').value;
+  const cont = document.getElementById('analise-bairro-result');
+  if(!bairro) {{
+    cont.innerHTML = '<div class="alerta-box" style="margin-top:10px">⚠ Selecione um bairro para analisar.</div>';
+    return;
+  }}
+
+  const dataBairro = dedupBO(RAW.filter(r => r.bairro === bairro));
+  if(dataBairro.length === 0) {{
+    cont.innerHTML = '<div class="alerta-box" style="margin-top:10px">Nenhuma ocorrência registrada neste bairro.</div>';
+    ultimaAnaliseBairro = null;
+    return;
+  }}
+
+  // Índice de risco: compara o total do bairro com o bairro mais crítico da base
+  const totaisPorBairro = count(dedupBO(RAW), 'bairro');
+  const maxBairro = Math.max(...Object.values(totaisPorBairro));
+  const indice = Math.round((dataBairro.length / maxBairro) * 100);
+  const nivel = indice >= 70 ? ['CRÍTICO', COLORS.vermelho]
+              : indice >= 40 ? ['ALTO', COLORS.laranja]
+              : indice >= 15 ? ['MÉDIO', COLORS.amarelo]
+              : ['BAIXO', COLORS.verde];
+
+  const tipoCounts = count(dataBairro, 'tipo');
+  const tipoChips = Object.entries(tipoCounts).sort((a,b)=>b[1]-a[1]).map(([t,c]) =>
+    `<span class="filter-chip" style="background:${{TIPO_COLORS[t]||'#888'}};color:white;cursor:default">${{t}}: ${{c}}</span>`
+  ).join('');
+
+  const noturno = dataBairro.filter(r => r.turno==='Noite'||r.turno==='Madrugada').length;
+  const pctNoturno = Math.round((noturno/dataBairro.length)*100);
+
+  // Ruas críticas com coordenadas médias (usadas depois para traçar a rota)
+  const porRua = {{}};
+  dataBairro.forEach(r => {{
+    if(!r.endereco) return;
+    if(!porRua[r.endereco]) porRua[r.endereco] = {{count:0, lats:[], lons:[]}};
+    porRua[r.endereco].count++;
+    if(r.lat && r.lon) {{ porRua[r.endereco].lats.push(r.lat); porRua[r.endereco].lons.push(r.lon); }}
+  }});
+  const topRuas = Object.entries(porRua).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
+  const maxRua = topRuas[0] ? topRuas[0][1].count : 1;
+
+  const waypoints = topRuas
+    .filter(([,v]) => v.lats.length > 0)
+    .map(([nome,v]) => ({{
+      nome, count:v.count,
+      lat: v.lats.reduce((a,b)=>a+b,0)/v.lats.length,
+      lon: v.lons.reduce((a,b)=>a+b,0)/v.lons.length,
+    }}));
+  ultimaAnaliseBairro = {{ bairro, waypoints }};
+
+  const ruasHtml = topRuas.map(([nome,v],i) => {{
+    const pct = Math.round((v.count/maxRua)*100);
+    const risco = pct>=50 ? ['Alto',COLORS.vermelho] : pct>=20 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.azul];
+    return `<div class="posto-item">
+      <div class="posto-num">${{i+1}}</div>
+      <div class="posto-info">
+        <div class="posto-local">${{nome}} <span style="font-size:9.5px;font-weight:700;color:white;background:${{risco[1]}};border-radius:3px;padding:1px 6px;margin-left:4px">Risco ${{risco[0]}}</span></div>
+        <div class="posto-detalhe">${{v.count}} ocorrência${{v.count>1?'s':''}}${{v.lats.length===0?' · sem coordenadas (fora da rota)':''}}</div>
+        <div class="risco-bar"><div class="risco-fill" style="width:${{pct}}%;background:${{risco[1]}}"></div></div>
+      </div></div>`;
+  }}).join('');
+
+  cont.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0">
+      <div style="text-align:center">
+        <div style="font-size:26px;font-weight:800;color:${{nivel[1]}}">${{indice}}<span style="font-size:13px">/100</span></div>
+        <div style="font-size:9.5px;font-weight:700;color:${{nivel[1]}}">RISCO ${{nivel[0]}}</div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:12px;color:#333"><strong>${{dataBairro.length}}</strong> ocorrências registradas em <strong>${{bairro}}</strong></div>
+        <div style="font-size:11px;color:#888;margin-top:2px">${{pctNoturno}}% no período noturno (Noite/Madrugada)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${{tipoChips}}</div>
+      </div>
+    </div>
+    <div class="plano-card" style="margin-top:6px">
+      <div class="plano-head" style="background:linear-gradient(135deg,#004E8C,#0078D4)">🛣️ Ruas Críticas — ${{bairro}}</div>
+      <div class="plano-body">${{ruasHtml}}</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn-analise" id="btn-rota-bairro" onclick="tracarRotaBairro()" ${{waypoints.length<2?'disabled title="Coordenadas insuficientes para traçar rota"':''}}>🚓 Traçar Rota de Patrulhamento</button>
+      <button class="btn-pdf" onclick="limparRotaBairro()">✖ Limpar Rota</button>
+    </div>`;
+}}
+
+async function tracarRotaBairro() {{
+  if(!ultimaAnaliseBairro || ultimaAnaliseBairro.waypoints.length < 2) return;
+  const btn = document.getElementById('btn-rota-bairro');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Calculando rota…';
+
+  try {{
+    initMapa();
+    limparRotaBairro();
+
+    const pts = ultimaAnaliseBairro.waypoints;
+    const coordsStr = pts.map(p => `${{p.lon}},${{p.lat}}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${{coordsStr}}?overview=full&geometries=geojson`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if(!json.routes || !json.routes[0]) throw new Error('Rota não encontrada');
+
+    rotaBairroLayer = L.geoJSON(json.routes[0].geometry, {{
+      style: {{ color:'#D13438', weight:5, opacity:0.85 }}
+    }}).addTo(mapaInst);
+
+    rotaBairroMarkers = L.layerGroup(pts.map((p,i) => L.marker([p.lat,p.lon], {{
+      icon: L.divIcon({{
+        html:`<div style="background:#1A1A2E;color:white;border-radius:50%;width:26px;height:26px;
+          display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;
+          border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4)">${{i+1}}</div>`,
+        className:'', iconSize:[26,26], iconAnchor:[13,13],
+      }})
+    }}).bindPopup(`<strong>${{i+1}}. ${{p.nome}}</strong><br>${{p.count}} ocorrência${{p.count>1?'s':''}}`))).addTo(mapaInst);
+
+    mapaInst.fitBounds(rotaBairroLayer.getBounds(), {{padding:[40,40]}});
+    document.getElementById('mapa-crime').scrollIntoView({{behavior:'smooth', block:'center'}});
+  }} catch(e) {{
+    alert('Não foi possível calcular a rota agora (serviço de rotas indisponível). Tente novamente em instantes.');
+    console.error('Erro OSRM:', e);
+  }} finally {{
+    btn.disabled = false; btn.textContent = original;
+  }}
+}}
+
+function limparRotaBairro() {{
+  if(rotaBairroLayer)   {{ mapaInst.removeLayer(rotaBairroLayer);   rotaBairroLayer = null; }}
+  if(rotaBairroMarkers) {{ mapaInst.removeLayer(rotaBairroMarkers); rotaBairroMarkers = null; }}
 }}
 
 // ── MAPA LEAFLET ─────────────────────────────────────────────────────────────
