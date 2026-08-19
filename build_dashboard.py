@@ -5699,6 +5699,11 @@ function analisarBairro() {{
   const noturno = dataBairro.filter(r => r.turno==='Noite'||r.turno==='Madrugada').length;
   const pctNoturno = Math.round((noturno/dataBairro.length)*100);
 
+  const horasCount = {{}};
+  dataBairro.forEach(r=>{{ if(r.hora){{ const h=parseInt(r.hora); if(!isNaN(h)) horasCount[h]=(horasCount[h]||0)+1; }} }});
+  const horasPico = sortedEntries(horasCount).slice(0,3).map(e=>`${{String(e[0]).padStart(2,'0')}}h`).join(', ');
+  const topDias = sortedEntries(count(dataBairro,'dia')).slice(0,2).map(e=>e[0]).join(', ');
+
   // Ruas críticas com coordenadas médias (usadas depois para traçar a rota)
   const porRua = {{}};
   dataBairro.forEach(r => {{
@@ -5717,7 +5722,11 @@ function analisarBairro() {{
       lat: v.lats.reduce((a,b)=>a+b,0)/v.lats.length,
       lon: v.lons.reduce((a,b)=>a+b,0)/v.lons.length,
     }}));
-  ultimaAnaliseBairro = {{ bairro, waypoints }};
+  ultimaAnaliseBairro = {{
+    bairro, waypoints, indice, nivel: nivel[0], total: dataBairro.length,
+    pctNoturno, horasPico, topDias, tipoCounts,
+    topRuas: topRuas.map(([nome,v]) => ({{ nome, count: v.count }})),
+  }};
 
   const ruasHtml = topRuas.map(([nome,v],i) => {{
     const pct = Math.round((v.count/maxRua)*100);
@@ -5750,7 +5759,28 @@ function analisarBairro() {{
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="btn-analise" id="btn-rota-bairro" onclick="tracarRotaBairro()" ${{waypoints.length<2?'disabled title="Coordenadas insuficientes para traçar rota"':''}}>🚓 Traçar Rota de Patrulhamento</button>
       <button class="btn-pdf" onclick="limparRotaBairro()">✖ Limpar Rota</button>
-    </div>`;
+      <button class="btn-resumoia" id="btn-ia-bairro" data-label="🤖 Analisar Bairro com IA" onclick="analisarBairroComIA()">🤖 Analisar Bairro com IA</button>
+    </div>
+    <div id="ab-ia-resultado" style="display:none;margin-top:12px;padding:14px 16px;background:#F5F8FC;border:1px solid #D6E4F0;border-radius:8px;font-size:12.5px"></div>`;
+}}
+
+function analisarBairroComIA() {{
+  if(!ultimaAnaliseBairro) return;
+  const a = ultimaAnaliseBairro;
+  const tiposTxt = Object.entries(a.tipoCounts).sort((x,y)=>y[1]-x[1]).map(([t,c])=>`${{t}}: ${{c}}`).join(', ');
+  const ruasTxt  = a.topRuas.slice(0,5).map(r=>`${{r.nome}} (${{r.count}})`).join(', ');
+  const resumoTexto = [
+    `Bairro: ${{a.bairro}}`,
+    `Índice de risco calculado: ${{a.indice}}/100 (nível ${{a.nivel}})`,
+    `Total de ocorrências: ${{a.total}}`,
+    `Distribuição por tipo: ${{tiposTxt}}`,
+    `Percentual de ocorrências no período noturno (Noite/Madrugada): ${{a.pctNoturno}}%`,
+    a.horasPico ? `Horários de pico: ${{a.horasPico}}` : '',
+    a.topDias ? `Dias mais críticos: ${{a.topDias}}` : '',
+    `Ruas com mais ocorrências: ${{ruasTxt}}`,
+  ].filter(Boolean).join('\\n');
+
+  explicarComIA(resumoTexto, 'ab-ia-resultado', 'btn-ia-bairro');
 }}
 
 async function tracarRotaBairro() {{
