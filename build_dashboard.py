@@ -5682,6 +5682,10 @@ function populateAnaliseBairroSelect(bairros) {{
   if(bairros.includes(atual)) sel.value = atual;
 }}
 
+function riscoNivel(pct) {{
+  return pct>=50 ? ['Alto',COLORS.vermelho] : pct>=20 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.azul];
+}}
+
 function analisarBairro() {{
   const bairro = document.getElementById('ab-bairro-select').value;
   const cont = document.getElementById('analise-bairro-result');
@@ -5756,11 +5760,15 @@ function analisarBairro() {{
     topRuas: topRuas.map(([nome,v]) => ({{ nome, count: v.count }})),
   }};
 
-  window._ruasBairroAtual = topRuasComDist.map(([nome,v,c]) => c ? {{nome, lat:c.lat, lon:c.lon, count:v.count}} : null);
+  window._ruasBairroAtual = topRuasComDist.map(([nome,v,c]) => {{
+    if(!c) return null;
+    const pct = Math.round((v.count/maxRua)*100);
+    return {{nome, lat:c.lat, lon:c.lon, count:v.count, pct, risco:riscoNivel(pct)[0]}};
+  }});
 
   const ruasHtml = topRuasComDist.map(([nome,v,c],i) => {{
     const pct = Math.round((v.count/maxRua)*100);
-    const risco = pct>=50 ? ['Alto',COLORS.vermelho] : pct>=20 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.azul];
+    const risco = riscoNivel(pct);
     const obs = !c ? ' · sem coordenadas (fora da rota)'
               : c.dist > RAIO_MAX_M ? ' · coordenada distante do bairro, possível erro de geocode (fora da rota)'
               : '';
@@ -5793,6 +5801,7 @@ function analisarBairro() {{
     </div>
     <div class="plano-card" style="margin-top:6px">
       <div class="plano-head" style="background:linear-gradient(135deg,#004E8C,#0078D4)">🛣️ Ruas Críticas — ${{bairro}}</div>
+      <div id="ab-correlacao-resumo" style="padding:8px 14px 0;font-size:11px;color:#555"></div>
       <div class="plano-body">${{ruasHtml}}</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -5824,18 +5833,36 @@ function _triagemBadgeHtml() {{
   return '<span style="font-size:9px;font-weight:700;color:white;background:#107C10;border-radius:3px;padding:1px 5px;margin-left:4px">✔ avaliada</span>';
 }}
 
+function _correlacaoBadgeHtml() {{
+  return '<span style="font-size:9px;font-weight:700;color:white;background:#D13438;border-radius:3px;padding:1px 5px;margin-left:4px">🎯 Prioridade</span>';
+}}
+
 async function carregarTriagemBairro(bairro) {{
   try {{
     const resp = await fetch(`/api/triagem?bairro=${{encodeURIComponent(bairro)}}`);
     _triagemCache = await resp.json();
+    // Correlação: rua com risco de crime Médio/Alto que já tem vulnerabilidade
+    // física confirmada na triagem manual — prioridade real de patrulhamento.
+    const correlacao = [];
     (window._ruasBairroAtual||[]).forEach((r,i) => {{
       if(!r) return;
       const chave = `${{bairro}}|${{r.nome}}`;
-      if(_triagemCache[chave]) {{
-        const badge = document.getElementById('triagem-badge-'+i);
-        if(badge) badge.innerHTML = _triagemBadgeHtml();
-      }}
+      const triagem = _triagemCache[chave];
+      if(!triagem) return;
+      const fatores = TRIAGEM_CAMPOS.filter(([campo]) => triagem[campo]).map(([,label]) => label);
+      const correlacionada = r.risco !== 'Baixo' && fatores.length > 0;
+      const badge = document.getElementById('triagem-badge-'+i);
+      if(badge) badge.innerHTML = _triagemBadgeHtml() + (correlacionada ? _correlacaoBadgeHtml() : '');
+      if(correlacionada) correlacao.push({{nome:r.nome, count:r.count, fatores}});
     }});
+    if(ultimaAnaliseBairro) ultimaAnaliseBairro.correlacao = correlacao;
+    const resumo = document.getElementById('ab-correlacao-resumo');
+    if(resumo) {{
+      resumo.innerHTML = correlacao.length
+        ? `🎯 <strong>${{correlacao.length}}</strong> de ${{(window._ruasBairroAtual||[]).filter(Boolean).length}} ruas críticas têm vulnerabilidade física confirmada em campo: ` +
+          correlacao.map(c => `${{c.nome}} (${{c.fatores.join(', ')}})`).join('; ')
+        : '';
+    }}
   }} catch(e) {{ console.error('Erro ao carregar triagem:', e); }}
 }}
 
@@ -5965,6 +5992,7 @@ function analisarBairroComIA() {{
   const a = ultimaAnaliseBairro;
   const tiposTxt = Object.entries(a.tipoCounts).sort((x,y)=>y[1]-x[1]).map(([t,c])=>`${{t}}: ${{c}}`).join(', ');
   const ruasTxt  = a.topRuas.slice(0,5).map(r=>`${{r.nome}} (${{r.count}})`).join(', ');
+  const correlacaoTxt = (a.correlacao||[]).map(c => `${{c.nome}} (${{c.fatores.join(', ')}})`).join('; ');
   const resumoTexto = [
     `Bairro: ${{a.bairro}}`,
     `Índice de risco calculado: ${{a.indice}}/100 (nível ${{a.nivel}})`,
@@ -5974,6 +6002,7 @@ function analisarBairroComIA() {{
     a.horasPico ? `Horários de pico: ${{a.horasPico}}` : '',
     a.topDias ? `Dias mais críticos: ${{a.topDias}}` : '',
     `Ruas com mais ocorrências: ${{ruasTxt}}`,
+    correlacaoTxt ? `Ruas de risco alto/médio com vulnerabilidade física confirmada em campo (triagem manual): ${{correlacaoTxt}}` : '',
   ].filter(Boolean).join('\\n');
 
   explicarComIA(resumoTexto, 'ab-ia-resultado', 'btn-ia-bairro');
