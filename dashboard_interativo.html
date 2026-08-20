@@ -6402,17 +6402,6 @@ async function abrirApresentacaoBairro() {
         <div id="apresent-mapa" class="apresent-mapa"></div>
       </div>
       <div class="apresent-panel">
-        <h3>🤖 Análise com IA <span class="badge-resumo" style="background:${nivelCor}">Índice ${a.indice}/100 — ${a.nivel}</span></h3>
-        <div id="apresent-ia-corpo" class="apresent-ia-corpo">Gerando análise…</div>
-      </div>
-    </div>
-    <div class="apresent-grid-bottom">
-      <div class="apresent-panel"><h3>Ocorrências por Tipo</h3><div id="apresent-chart-tipo" style="height:200px"></div></div>
-      <div class="apresent-panel"><h3>Ocorrências por Horário</h3><div id="apresent-chart-hora" style="height:200px"></div></div>
-      <div class="apresent-panel"><h3>Ruas mais críticas</h3>${ruasHtml}</div>
-      <div class="apresent-panel"><h3>Ocorrências por Turno</h3><div id="apresent-chart-turno" style="height:200px"></div></div>
-      <div class="apresent-panel"><h3>Ocorrências por Dia da Semana</h3><div id="apresent-chart-dia" style="height:200px"></div></div>
-      <div class="apresent-panel">
         <h3>📷 Visão da Rua</h3>
         <div id="apresent-streetview"></div>
         <div class="apresent-sv-nav">
@@ -6421,6 +6410,17 @@ async function abrirApresentacaoBairro() {
           <button onclick="apresentStreetViewNav(1)" ${ruasComCoord.length<2?'disabled':''}>›</button>
         </div>
       </div>
+    </div>
+    <div class="apresent-grid-bottom">
+      <div class="apresent-panel"><h3>Ocorrências por Tipo</h3><div id="apresent-chart-tipo" style="height:200px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Horário</h3><div id="apresent-chart-hora" style="height:200px"></div></div>
+      <div class="apresent-panel"><h3>Ruas mais críticas</h3>${ruasHtml}</div>
+      <div class="apresent-panel"><h3>Ocorrências por Turno</h3><div id="apresent-chart-turno" style="height:200px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Dia da Semana</h3><div id="apresent-chart-dia" style="height:200px"></div></div>
+    </div>
+    <div class="apresent-panel" style="margin-top:12px">
+      <h3>🤖 Análise com IA <span class="badge-resumo" style="background:${nivelCor}">Índice ${a.indice}/100 — ${a.nivel}</span></h3>
+      <div id="apresent-ia-corpo" class="apresent-ia-corpo">Gerando análise…</div>
     </div>`;
 
   document.getElementById('apresent-overlay').classList.add('ativo');
