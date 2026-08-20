@@ -5835,8 +5835,6 @@ function renderPlanoPolicial(data) {
 // ── ANÁLISE DE BAIRRO (busca + ruas críticas + rota de patrulhamento) ────────
 let rotaBairroLayer = null, rotaBairroMarkers = null;
 let ultimaAnaliseBairro = null;
-let _planoOperacional = [];
-let _planoMarkers = null;
 
 function populateAnaliseBairroSelect(bairros) {
   const sel = document.getElementById('ab-bairro-select');
@@ -5921,9 +5919,7 @@ function analisarBairro() {
     topRuas: topRuas.map(([nome,v]) => ({ nome, count: v.count })),
   };
 
-  window._ruasBairroAtual = topRuasComDist.map(([nome,v,c]) => (c && c.dist <= RAIO_MAX_M) ? {nome, lat:c.lat, lon:c.lon, count:v.count} : null);
-  _planoOperacional = [];
-  if(_planoMarkers && mapaInst) { mapaInst.removeLayer(_planoMarkers); _planoMarkers = null; }
+  window._ruasBairroAtual = topRuasComDist.map(([nome,v,c]) => c ? {nome, lat:c.lat, lon:c.lon, count:v.count} : null);
 
   const ruasHtml = topRuasComDist.map(([nome,v,c],i) => {
     const pct = Math.round((v.count/maxRua)*100);
@@ -5931,28 +5927,18 @@ function analisarBairro() {
     const obs = !c ? ' · sem coordenadas (fora da rota)'
               : c.dist > RAIO_MAX_M ? ' · coordenada distante do bairro, possível erro de geocode (fora da rota)'
               : '';
-    // Só oferece foto/atribuição de viatura com coordenada confiável — numa
-    // rua com geocode suspeito, a foto e o marcador apontariam pro lugar
-    // errado, o que é um risco real quando a viatura é despachada de verdade.
-    const coordConfiavel = c && c.dist <= RAIO_MAX_M;
-    const acoesBtn = coordConfiavel ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-      <button style="font-size:10px;padding:3px 8px;border-radius:4px;
+    const avaliarBtn = c ? `<button style="margin-top:6px;font-size:10px;padding:3px 8px;border-radius:4px;
         border:1px solid #0078D4;background:white;color:#0078D4;cursor:pointer"
         onclick="toggleTriagemRua(${i})">📷 Avaliar rua</button>
       <span id="triagem-badge-${i}"></span>
-      <button style="font-size:10px;padding:3px 8px;border-radius:4px;
-        border:1px solid #003D66;background:white;color:#003D66;cursor:pointer"
-        onclick="toggleAtribuirViatura(${i})">🚓 Atribuir viatura</button>
-      </div>
-      <div id="triagem-painel-${i}" style="display:none;margin-top:8px"></div>
-      <div id="viatura-painel-${i}" style="display:none;margin-top:8px"></div>` : '';
+      <div id="triagem-painel-${i}" style="display:none;margin-top:8px"></div>` : '';
     return `<div class="posto-item">
       <div class="posto-num">${i+1}</div>
       <div class="posto-info">
         <div class="posto-local">${nome} <span style="font-size:9.5px;font-weight:700;color:white;background:${risco[1]};border-radius:3px;padding:1px 6px;margin-left:4px">Risco ${risco[0]}</span></div>
         <div class="posto-detalhe">${v.count} ocorrência${v.count>1?'s':''}${obs}</div>
         <div class="risco-bar"><div class="risco-fill" style="width:${pct}%;background:${risco[1]}"></div></div>
-        ${acoesBtn}
+        ${avaliarBtn}
       </div></div>`;
   }).join('');
 
@@ -5977,15 +5963,7 @@ function analisarBairro() {
       <button class="btn-pdf" onclick="limparRotaBairro()">✖ Limpar Rota</button>
       <button class="btn-resumoia" id="btn-ia-bairro" data-label="🤖 Analisar Bairro com IA" onclick="analisarBairroComIA()">🤖 Analisar Bairro com IA</button>
     </div>
-    <div id="ab-ia-resultado" style="display:none;margin-top:12px;padding:14px 16px;background:#F5F8FC;border:1px solid #D6E4F0;border-radius:8px;font-size:12.5px"></div>
-    <div class="plano-card" id="plano-operacional-card" style="display:none;margin-top:12px">
-      <div class="plano-head" style="background:linear-gradient(135deg,#003D66,#0078D4)">🚓 Plano de Pontos Fixos da Operação — ${bairro}</div>
-      <div class="plano-body" id="plano-operacional-lista"></div>
-      <div style="padding:0 14px 12px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-analise" onclick="compartilharPlanoOperacional()">📱 Compartilhar via WhatsApp</button>
-        <button class="btn-pdf" onclick="limparPlanoOperacional()">✖ Limpar Plano</button>
-      </div>
-    </div>`;
+    <div id="ab-ia-resultado" style="display:none;margin-top:12px;padding:14px 16px;background:#F5F8FC;border:1px solid #D6E4F0;border-radius:8px;font-size:12.5px"></div>`;
 
   carregarTriagemBairro(bairro);
 }
@@ -6075,97 +6053,6 @@ async function salvarTriagemRua(idx) {
   } catch(e) {
     status.textContent = 'Erro ao salvar: ' + e.message;
   }
-}
-
-// ── PLANO DE PONTOS FIXOS (viaturas atribuídas pelo supervisor p/ operação) ──
-// Fica só na sessão do navegador (não é persistido no servidor) — é um plano
-// operacional pontual, feito pra ser compartilhado com a equipe na hora.
-function toggleAtribuirViatura(idx) {
-  const painel = document.getElementById('viatura-painel-'+idx);
-  if(!painel) return;
-  if(painel.style.display !== 'none') { painel.style.display = 'none'; return; }
-  painel.style.display = 'block';
-  if(painel.dataset.built) return;
-  painel.dataset.built = '1';
-  painel.innerHTML = `
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <input id="viatura-id-${idx}" placeholder="Viatura (ex: VTR-05)"
-        style="font-size:11px;padding:5px 8px;border-radius:5px;border:1px solid #DDD;width:130px">
-      <input id="viatura-min-${idx}" type="number" min="1" placeholder="Minutos" value="15"
-        style="font-size:11px;padding:5px 8px;border-radius:5px;border:1px solid #DDD;width:80px">
-      <button class="btn-analise" style="font-size:10px;padding:5px 10px" onclick="adicionarViaturaRua(${idx})">➕ Adicionar</button>
-    </div>`;
-}
-
-function adicionarViaturaRua(idx) {
-  const r = window._ruasBairroAtual[idx];
-  const viatura = document.getElementById('viatura-id-'+idx).value.trim();
-  const minutos = parseInt(document.getElementById('viatura-min-'+idx).value, 10);
-  if(!viatura) { alert('Informe a identificação da viatura.'); return; }
-  if(!minutos || minutos <= 0) { alert('Informe um tempo em minutos válido.'); return; }
-
-  _planoOperacional.push({ nome:r.nome, lat:r.lat, lon:r.lon, viatura, minutos });
-  document.getElementById('viatura-id-'+idx).value = '';
-  renderPlanoOperacional();
-}
-
-function removerPontoOperacional(i) {
-  _planoOperacional.splice(i,1);
-  renderPlanoOperacional();
-}
-
-function renderPlanoOperacional() {
-  const card = document.getElementById('plano-operacional-card');
-  const lista = document.getElementById('plano-operacional-lista');
-  if(!card || !lista) return;
-
-  if(_planoOperacional.length === 0) {
-    card.style.display = 'none';
-    if(_planoMarkers && mapaInst) { mapaInst.removeLayer(_planoMarkers); _planoMarkers = null; }
-    return;
-  }
-  card.style.display = 'block';
-
-  lista.innerHTML = _planoOperacional.map((p,i) => `
-    <div class="posto-item">
-      <div class="posto-num" style="background:#003D66">🚓</div>
-      <div class="posto-info">
-        <div class="posto-local">${p.viatura} — ${p.nome}</div>
-        <div class="posto-detalhe">${p.minutos} minuto${p.minutos>1?'s':''} neste ponto</div>
-      </div>
-      <button style="border:none;background:none;color:#D13438;font-size:14px;cursor:pointer;padding:0 6px"
-        onclick="removerPontoOperacional(${i})" title="Remover">✖</button>
-    </div>`).join('');
-
-  initMapa();
-  if(_planoMarkers) mapaInst.removeLayer(_planoMarkers);
-  _planoMarkers = L.layerGroup(_planoOperacional.map(p => L.marker([p.lat,p.lon], {
-    icon: L.divIcon({
-      html:`<div style="background:#0078D4;color:white;border-radius:50%;width:30px;height:30px;
-        display:flex;align-items:center;justify-content:center;font-size:15px;
-        border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4)">🚓</div>`,
-      className:'', iconSize:[30,30], iconAnchor:[15,15],
-    })
-  }).bindPopup(`<strong>${p.viatura}</strong><br>${p.nome}<br>${p.minutos} min neste ponto`))).addTo(mapaInst);
-}
-
-function limparPlanoOperacional() {
-  _planoOperacional = [];
-  renderPlanoOperacional();
-}
-
-function compartilharPlanoOperacional() {
-  if(!ultimaAnaliseBairro || _planoOperacional.length === 0) return;
-  const agora = new Date();
-  const linhas = [
-    `🚓 *PLANO DE PONTOS FIXOS — ${ultimaAnaliseBairro.bairro}*`,
-    `📅 ${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`,
-    ``,
-    ..._planoOperacional.map((p,i) => `${i+1}. *${p.viatura}* — ${p.nome} — ${p.minutos} min`),
-    ``,
-    `_Guarda Municipal de Balneário Camboriú_`,
-  ];
-  window.open('https://wa.me/?text='+encodeURIComponent(linhas.join('\n')), '_blank');
 }
 
 function analisarBairroComIA() {
