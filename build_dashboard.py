@@ -486,7 +486,7 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
   border-radius:4px;padding:1px 9px;font-weight:700;margin-left:4px;font-size:13px;}}
 
 /* ── MODO APRESENTAÇÃO DE BAIRRO (tela cheia, tema escuro p/ reunião) ── */
-.apresent-box{{background:#0B1220;width:min(1500px,98vw);max-height:96vh;}}
+.apresent-box{{background:#0B1220;width:min(1800px,98vw);max-height:96vh;}}
 .apresent-header{{background:linear-gradient(135deg,#0B1220 0%,#123A6B 100%);
   border-bottom:1px solid #1E2D4A;}}
 .apresent-corpo{{background:#0B1220;color:#D6DEEA;padding:16px 20px;}}
