@@ -661,6 +661,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .apresent-sv-nav button{background:#1E2D4A;color:#D6DEEA;border:none;border-radius:5px;
   width:26px;height:26px;cursor:pointer;font-size:14px;}
 .apresent-sv-nav button:disabled{opacity:.35;cursor:default;}
+/* Fora do @media print de propósito: gráficos Plotly e o mapa Leaflet são
+   canvas/SVG com tamanho fixado no momento em que foram desenhados — só
+   encolher a altura via @media print não redesenha o conteúdo, ele
+   simplesmente transborda do card. imprimirApresentacaoBairro() aplica
+   essa classe, chama Plotly.Plots.resize()/invalidateSize() pra redesenhar
+   de verdade nesse tamanho menor, e só então chama window.print(). */
+body.apresent-print-ativo .apresent-mapa{height:220px;}
+body.apresent-print-ativo #apresent-streetview img{height:200px;}
+body.apresent-print-ativo [id^="apresent-chart-"]{height:170px;}
 @media print{
   @page{size:landscape;margin:8mm;}
   /* position:fixed em elemento com altura livre faz o Chrome repetir o
@@ -676,9 +685,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
   body.apresent-print-ativo .apresent-header .analise-close{display:none!important;}
   body.apresent-print-ativo .apresent-footer{display:none!important;}
   body.apresent-print-ativo .apresent-panel{break-inside:avoid;page-break-inside:avoid;}
-  body.apresent-print-ativo .apresent-mapa{height:220px!important;}
-  body.apresent-print-ativo #apresent-streetview img{height:200px!important;}
-  body.apresent-print-ativo [id^="apresent-chart-"]{height:170px!important;}
 }
 
 /* IMPRESSÃO / PDF */
@@ -6463,6 +6469,20 @@ function fecharApresentacaoBairro() {
   if(apresentMapaInst) { apresentMapaInst.remove(); apresentMapaInst = null; }
 }
 
+// Gráficos Plotly e o mapa Leaflet são SVG/canvas com tamanho fixado no
+// momento em que foram desenhados — encolher a altura só no CSS não os
+// redesenha, o conteúdo simplesmente transborda do card menor. Preciso
+// forçar o redesenho de verdade no tamanho de impressão (e depois
+// desfazer, pra voltar ao tamanho normal da tela).
+function _apresentAplicarTamanhoImpressao(ativo) {
+  document.body.classList.toggle('apresent-print-ativo', ativo);
+  ['tipo','hora','turno','dia'].forEach(k => {
+    const el = document.getElementById('apresent-chart-'+k);
+    if(el && typeof Plotly !== 'undefined') Plotly.Plots.resize(el);
+  });
+  if(apresentMapaInst) apresentMapaInst.invalidateSize();
+}
+
 // Espera a análise de IA terminar de carregar antes de abrir a impressão
 // (senão o PDF sai com "Consultando IA..." em vez do texto gerado) — com
 // um teto de 15s pra não travar a impressão se a IA demorar/falhar.
@@ -6477,8 +6497,10 @@ async function imprimirApresentacaoBairro() {
     if(btn) { btn.disabled = false; btn.textContent = '🖨️ Imprimir'; }
   }
 
-  document.body.classList.add('apresent-print-ativo');
-  const limpar = () => { document.body.classList.remove('apresent-print-ativo'); window.onafterprint = null; };
+  _apresentAplicarTamanhoImpressao(true);
+  await new Promise(resolve => setTimeout(resolve, 80));
+
+  const limpar = () => { _apresentAplicarTamanhoImpressao(false); window.onafterprint = null; };
   window.onafterprint = limpar;
   window.print();
   setTimeout(limpar, 5000);
