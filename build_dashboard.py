@@ -6082,20 +6082,29 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {{
   const hrs = Array(24).fill(0);
   dataBairro.forEach(r => {{ if(r.hora) {{ const h=parseInt(r.hora.split(':')[0]); if(!isNaN(h)) hrs[h]++; }} }});
   const labelsH = hrs.map((_,i)=>`${{String(i).padStart(2,'0')}}h`);
+  const maxHr = Math.max(...hrs);
+  const coresH = hrs.map((v,i) => {{
+    if(v===maxHr && v>0) return COLORS.vermelho;
+    if(i>=22||i<6) return COLORS.roxo;
+    if(i>=18) return COLORS.azul;
+    if(i>=12) return COLORS.laranja;
+    return COLORS.amarelo;
+  }});
   Plotly.react('apresent-chart-hora', [{{
-      type:'bar', x:labelsH, y:hrs, marker:{{color:COLORS.azul}},
+      type:'bar', x:labelsH, y:hrs, marker:{{color:coresH}},
       hovertemplate:'<b>%{{x}}</b><br>%{{y}} casos<extra></extra>',
     }}], {{...darkLayout,
-    margin:{{l:24,r:10,t:4,b:36}},
+    margin:{{l:24,r:10,t:16,b:36}},
     xaxis:{{tickfont:{{size:7.5,color:'#8FA1BF'}},tickangle:-45}},
-    yaxis:{{tickfont:{{size:9,color:'#8FA1BF'}},gridcolor:'#1E2D4A'}},
+    yaxis:{{tickfont:{{size:9,color:'#8FA1BF'}},gridcolor:'#1E2D4A',range:[0,Math.max(...hrs,1)*1.2]}},
   }}, CONFIG);
 
   const TURNO_ORDER = ['Manhã','Tarde','Noite','Madrugada'];
   const turnoCounts = count(dataBairro, 'turno');
   const labelsTu = TURNO_ORDER.filter(t=>turnoCounts[t]);
   const valsTu = labelsTu.map(t=>turnoCounts[t]);
-  const coresTu = labelsTu.map(t=>TURNO_COLORS[t]||COLORS.azul);
+  const maxTurno = Math.max(...valsTu);
+  const coresTu = labelsTu.map((t,i)=>valsTu[i]===maxTurno?COLORS.vermelho:TURNO_COLORS[t]||COLORS.azul);
   Plotly.react('apresent-chart-turno', barV(labelsTu, valsTu, coresTu), {{...darkLayout,
     margin:{{l:24,r:10,t:16,b:30}},
     xaxis:{{tickfont:{{size:9,color:'#8FA1BF'}}}},
@@ -6105,7 +6114,8 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {{
   const diaCounts = count(dataBairro, 'dia');
   const labelsD = DIA_ORDER.filter(d=>diaCounts[d]);
   const valsD = labelsD.map(d=>diaCounts[d]);
-  const coresD = labelsD.map(d=>DIA_COLORS(d));
+  const maxDia = Math.max(...valsD);
+  const coresD = valsD.map(v=>v===maxDia?COLORS.vermelho:COLORS.azulClr);
   Plotly.react('apresent-chart-dia', barV(labelsD, valsD, coresD), {{...darkLayout,
     margin:{{l:24,r:10,t:16,b:40}},
     xaxis:{{tickfont:{{size:8,color:'#8FA1BF'}},tickangle:-35}},
