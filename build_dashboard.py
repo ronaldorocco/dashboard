@@ -55,6 +55,8 @@ cluster_css2 = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5
                          'MarkerCluster.Default.min.css')
 cluster_js   = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.min.js',
                          'leaflet.markercluster.min.js')
+heat_js      = fetch_lib('https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js',
+                         'leaflet-heat.js')
 jspdf_js     = fetch_lib('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
                          'jspdf.umd.min.js')
 
@@ -308,6 +310,7 @@ __LEAFLET_JS__
 __CLUSTER_CSS1__
 __CLUSTER_CSS2__
 __CLUSTER_JS__
+__HEAT_JS__
 __JSPDF_JS__
 <style>
 :root {{
@@ -481,6 +484,51 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
   display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;}}
 .badge-resumo{{display:inline-block;background:#0078D4;color:white;
   border-radius:4px;padding:1px 9px;font-weight:700;margin-left:4px;font-size:13px;}}
+
+/* ── MODO APRESENTAÇÃO DE BAIRRO (tela cheia, tema escuro p/ reunião) ── */
+.apresent-box{{background:#0B1220;width:min(1500px,98vw);max-height:96vh;}}
+.apresent-header{{background:linear-gradient(135deg,#0B1220 0%,#123A6B 100%);
+  border-bottom:1px solid #1E2D4A;}}
+.apresent-corpo{{background:#0B1220;color:#D6DEEA;padding:16px 20px;}}
+.apresent-footer{{background:#0F1A2E;border-top:1px solid #1E2D4A;}}
+.apresent-kpis{{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;}}
+.apresent-kpi{{flex:1;min-width:150px;background:#121D33;border:1px solid #1E2D4A;
+  border-radius:10px;padding:12px 14px;}}
+.apresent-kpi-val{{font-size:24px;font-weight:800;color:#F2F5FA;line-height:1.1;}}
+.apresent-kpi-lbl{{font-size:10.5px;color:#8FA1BF;font-weight:700;text-transform:uppercase;
+  letter-spacing:.4px;margin-top:4px;}}
+.apresent-main{{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;}}
+.apresent-panel{{background:#121D33;border:1px solid #1E2D4A;border-radius:10px;
+  padding:12px 14px;}}
+.apresent-panel h3{{font-size:11.5px;font-weight:700;color:#C6D2E6;margin:0 0 10px;
+  text-transform:uppercase;letter-spacing:.5px;}}
+.apresent-mapa{{height:380px;border-radius:8px;overflow:hidden;}}
+.apresent-ia-corpo{{font-size:12px;line-height:1.6;color:#C6D2E6;}}
+.apresent-grid-bottom{{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  gap:12px;}}
+.apresent-fator-item{{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid #1E2D4A;font-size:11.5px;}}
+.apresent-fator-item:last-child{{border-bottom:none;}}
+.apresent-rua-row{{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid #1E2D4A;font-size:11.5px;}}
+.apresent-rua-row:last-child{{border-bottom:none;}}
+.apresent-sv-nav{{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}}
+.apresent-sv-nav button{{background:#1E2D4A;color:#D6DEEA;border:none;border-radius:5px;
+  width:26px;height:26px;cursor:pointer;font-size:14px;}}
+.apresent-sv-nav button:disabled{{opacity:.35;cursor:default;}}
+@media print{{
+  /* Especificidade (2 classes) pra vencer a regra genérica ".analise-overlay
+     {{display:none!important}}" logo abaixo, que esconderia essa tela também. */
+  body.apresent-print-ativo *{{visibility:hidden!important;}}
+  body.apresent-print-ativo .analise-overlay.apresent-overlay{{
+    display:flex!important;visibility:visible!important;
+    position:fixed!important;inset:0!important;background:white!important;}}
+  body.apresent-print-ativo .apresent-box, body.apresent-print-ativo .apresent-box *{{
+    visibility:visible!important;}}
+  body.apresent-print-ativo .apresent-box{{position:fixed;top:0;left:0;width:100%;
+    max-height:none;box-shadow:none;}}
+  body.apresent-print-ativo .apresent-footer{{display:none!important;}}
+}}
 
 /* IMPRESSÃO / PDF */
 @media print{{
@@ -5808,6 +5856,7 @@ function analisarBairro() {{
       <button class="btn-analise" id="btn-rota-bairro" onclick="tracarRotaBairro()" ${{waypoints.length<2?'disabled title="Coordenadas insuficientes para traçar rota"':''}}>🚓 Traçar Rota de Patrulhamento</button>
       <button class="btn-pdf" onclick="limparRotaBairro()">✖ Limpar Rota</button>
       <button class="btn-resumoia" id="btn-ia-bairro" data-label="🤖 Analisar Bairro com IA" onclick="analisarBairroComIA()">🤖 Analisar Bairro com IA</button>
+      <button class="btn-analise" onclick="abrirApresentacaoBairro()">🖥️ Modo Apresentação</button>
     </div>
     <div id="ab-ia-resultado" style="display:none;margin-top:12px;padding:14px 16px;background:#F5F8FC;border:1px solid #D6E4F0;border-radius:8px;font-size:12.5px"></div>`;
 
@@ -5987,13 +6036,11 @@ async function salvarTriagemRua(idx) {{
   }}
 }}
 
-function analisarBairroComIA() {{
-  if(!ultimaAnaliseBairro) return;
-  const a = ultimaAnaliseBairro;
+function _montarResumoTextoBairro(a) {{
   const tiposTxt = Object.entries(a.tipoCounts).sort((x,y)=>y[1]-x[1]).map(([t,c])=>`${{t}}: ${{c}}`).join(', ');
   const ruasTxt  = a.topRuas.slice(0,5).map(r=>`${{r.nome}} (${{r.count}})`).join(', ');
   const correlacaoTxt = (a.correlacao||[]).map(c => `${{c.nome}} (${{c.fatores.join(', ')}})`).join('; ');
-  const resumoTexto = [
+  return [
     `Bairro: ${{a.bairro}}`,
     `Índice de risco calculado: ${{a.indice}}/100 (nível ${{a.nivel}})`,
     `Total de ocorrências: ${{a.total}}`,
@@ -6004,8 +6051,231 @@ function analisarBairroComIA() {{
     `Ruas com mais ocorrências: ${{ruasTxt}}`,
     correlacaoTxt ? `Ruas de risco alto/médio com vulnerabilidade física confirmada em campo (triagem manual): ${{correlacaoTxt}}` : '',
   ].filter(Boolean).join('\\n');
+}}
 
-  explicarComIA(resumoTexto, 'ab-ia-resultado', 'btn-ia-bairro');
+function analisarBairroComIA() {{
+  if(!ultimaAnaliseBairro) return;
+  explicarComIA(_montarResumoTextoBairro(ultimaAnaliseBairro), 'ab-ia-resultado', 'btn-ia-bairro');
+}}
+
+// ── MODO APRESENTAÇÃO (tela cheia p/ reunião de bairro) ──────────────────────
+let apresentMapaInst = null, apresentRuasIdx = 0;
+
+function _apresentFatoresAmbientais(bairro) {{
+  const prefixo = bairro + '|';
+  const entradas = Object.keys(_triagemCache)
+    .filter(k => k.startsWith(prefixo))
+    .map(k => _triagemCache[k]);
+  if(entradas.length === 0) return null;
+  const linhas = TRIAGEM_CAMPOS.map(([campo,label]) => {{
+    const n = entradas.filter(e => e[campo]).length;
+    const pct = n / entradas.length;
+    if(pct <= 0) return null;
+    const nivel = pct >= 0.5 ? ['Alto',COLORS.vermelho] : pct >= 0.2 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.verde];
+    return {{label, nivel}};
+  }}).filter(Boolean);
+  return {{ ruasTriadas: entradas.length, linhas }};
+}}
+
+// Compara os últimos 90 dias de dados do bairro (a partir do registro mais
+// recente que existe pra ele, não da data de hoje) com os 90 dias
+// anteriores. Sem "período" real selecionável ainda — ver plano.
+function _apresentTendencia90d(dataBairro) {{
+  const comData = dataBairro.filter(r => r.data);
+  if(comData.length === 0) return null;
+  const maxMs = Math.max(...comData.map(r => new Date(r.data).getTime()));
+  const DIA_MS = 86400000;
+  let atual = 0, anterior = 0;
+  comData.forEach(r => {{
+    const diff = (maxMs - new Date(r.data).getTime()) / DIA_MS;
+    if(diff >= 0 && diff < 90) atual++;
+    else if(diff >= 90 && diff < 180) anterior++;
+  }});
+  if(anterior === 0) return {{ atual, anterior, pct:null }};
+  return {{ atual, anterior, pct: Math.round((atual-anterior)/anterior*100) }};
+}}
+
+function _apresentRenderCharts(dataBairro, tipoCounts) {{
+  if(typeof Plotly === 'undefined') return;
+  const darkLayout = {{...LAYOUT_BASE, paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+    font:{{...LAYOUT_BASE.font, color:'#C6D2E6'}}}};
+
+  const labelsT = Object.keys(tipoCounts), valsT = Object.values(tipoCounts);
+  const coresT = labelsT.map(t => TIPO_COLORS[t]||COLORS.azul);
+  Plotly.react('apresent-chart-tipo', barH(labelsT, valsT, coresT), {{...darkLayout,
+    margin:{{l:90,r:24,t:4,b:20}},
+    xaxis:{{tickfont:{{size:9,color:'#8FA1BF'}},gridcolor:'#1E2D4A'}},
+    yaxis:{{tickfont:{{size:9,color:'#C6D2E6'}}}},
+  }}, CONFIG);
+
+  const hrs = Array(24).fill(0);
+  dataBairro.forEach(r => {{ if(r.hora) {{ const h=parseInt(r.hora.split(':')[0]); if(!isNaN(h)) hrs[h]++; }} }});
+  const labelsH = hrs.map((_,i)=>`${{String(i).padStart(2,'0')}}h`);
+  Plotly.react('apresent-chart-hora', [{{
+      type:'bar', x:labelsH, y:hrs, marker:{{color:COLORS.azul}},
+      hovertemplate:'<b>%{{x}}</b><br>%{{y}} casos<extra></extra>',
+    }}], {{...darkLayout,
+    margin:{{l:24,r:10,t:4,b:36}},
+    xaxis:{{tickfont:{{size:7.5,color:'#8FA1BF'}},tickangle:-45}},
+    yaxis:{{tickfont:{{size:9,color:'#8FA1BF'}},gridcolor:'#1E2D4A'}},
+  }}, CONFIG);
+}}
+
+function _apresentInicializarMapa(dataBairro, a) {{
+  if(typeof L === 'undefined' || !document.getElementById('apresent-mapa')) return;
+  if(apresentMapaInst) {{ apresentMapaInst.remove(); apresentMapaInst = null; }}
+
+  const coords = dataBairro.filter(r => r.lat && r.lon);
+  const centro = coords.length
+    ? [_mediana(coords.map(r=>r.lat)), _mediana(coords.map(r=>r.lon))]
+    : [-26.993, -48.635];
+
+  apresentMapaInst = L.map('apresent-mapa', {{zoomControl:false}}).setView(centro, 15);
+  L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
+    attribution:'© OpenStreetMap, © CARTO', maxZoom:19,
+  }}).addTo(apresentMapaInst);
+
+  if(typeof L.heatLayer === 'function' && coords.length) {{
+    L.heatLayer(coords.map(r => [r.lat, r.lon, 1]), {{radius:28, blur:22, maxZoom:17}}).addTo(apresentMapaInst);
+  }}
+
+  (window._ruasBairroAtual||[]).forEach((r,i) => {{
+    if(!r) return;
+    L.marker([r.lat, r.lon], {{
+      icon: L.divIcon({{
+        html:`<div style="background:#1A1A2E;color:white;border-radius:50%;width:24px;height:24px;
+          display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;
+          border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4)">${{i+1}}</div>`,
+        className:'', iconSize:[24,24], iconAnchor:[12,12],
+      }})
+    }}).bindPopup(`<strong>${{i+1}}. ${{r.nome}}</strong><br>${{r.count}} ocorrência${{r.count>1?'s':''}}`).addTo(apresentMapaInst);
+  }});
+
+  if(coords.length) apresentMapaInst.fitBounds(coords.map(r=>[r.lat,r.lon]), {{padding:[30,30]}});
+  setTimeout(() => apresentMapaInst && apresentMapaInst.invalidateSize(), 80);
+
+  if(a.waypoints && a.waypoints.length >= 2) {{
+    const coordsStr = a.waypoints.map(p => `${{p.lon}},${{p.lat}}`).join(';');
+    fetch(`https://router.project-osrm.org/route/v1/driving/${{coordsStr}}?overview=full&geometries=geojson`)
+      .then(r => r.json())
+      .then(json => {{
+        if(apresentMapaInst && json.routes && json.routes[0]) {{
+          L.geoJSON(json.routes[0].geometry, {{style:{{color:'#50B2FF', weight:4, opacity:0.9}}}}).addTo(apresentMapaInst);
+        }}
+      }})
+      .catch(() => {{}});
+  }}
+}}
+
+function _apresentAtualizarStreetView(ruas) {{
+  const cont = document.getElementById('apresent-streetview');
+  const label = document.getElementById('apresent-sv-label');
+  if(!ruas || ruas.length === 0) {{
+    if(cont) cont.innerHTML = '<span style="color:#8FA1BF;font-style:italic;font-size:11.5px">Sem coordenadas disponíveis.</span>';
+    if(label) label.textContent = '';
+    return;
+  }}
+  const r = ruas[apresentRuasIdx];
+  if(label) label.textContent = `${{apresentRuasIdx+1}}/${{ruas.length}} — ${{r.nome}}`;
+  carregarStreetView('apresent-streetview', r.lat, r.lon);
+}}
+
+function apresentStreetViewNav(delta) {{
+  const ruas = (window._ruasBairroAtual||[]).filter(Boolean);
+  if(ruas.length === 0) return;
+  apresentRuasIdx = (apresentRuasIdx + delta + ruas.length) % ruas.length;
+  _apresentAtualizarStreetView(ruas);
+}}
+
+async function abrirApresentacaoBairro() {{
+  if(!ultimaAnaliseBairro) return;
+  const a = ultimaAnaliseBairro;
+  const bairro = a.bairro;
+  const dataBairro = dedupBO(RAW.filter(r => r.bairro === bairro));
+
+  await carregarTriagemBairro(bairro);
+
+  document.getElementById('apresent-titulo').textContent = `🛡️ ${{bairro}} — Dashboard de Análise Criminal`;
+
+  const tendencia = _apresentTendencia90d(dataBairro);
+  const tendenciaTxt = !tendencia || tendencia.pct === null ? '—' : `${{tendencia.pct>0?'+':''}}${{tendencia.pct}}%`;
+  const tendenciaCor = !tendencia || tendencia.pct === null ? COLORS.azul : tendencia.pct >= 0 ? COLORS.vermelho : COLORS.verde;
+
+  const nivelCor = (a.nivel==='CRÍTICO'||a.nivel==='ALTO') ? COLORS.vermelho : a.nivel==='MÉDIO' ? COLORS.laranja : COLORS.verde;
+
+  const [topTipo, topTipoCount] = Object.entries(a.tipoCounts).sort((x,y)=>y[1]-x[1])[0] || ['—',0];
+  const topTipoPct = a.total ? Math.round(topTipoCount/a.total*100) : 0;
+
+  const kpisHtml = `
+    <div class="apresent-kpi"><div class="apresent-kpi-val">${{a.total}}</div><div class="apresent-kpi-lbl">Ocorrências registradas</div></div>
+    <div class="apresent-kpi"><div class="apresent-kpi-val" style="color:${{tendenciaCor}}">${{tendenciaTxt}}</div><div class="apresent-kpi-lbl">Tendência (90 dias)</div></div>
+    <div class="apresent-kpi"><div class="apresent-kpi-val" style="color:${{nivelCor}}">${{a.indice}}<span style="font-size:13px">/100</span></div><div class="apresent-kpi-lbl">Risco ${{a.nivel}}</div></div>
+    <div class="apresent-kpi"><div class="apresent-kpi-val" style="font-size:16px">${{a.horasPico||'—'}}</div><div class="apresent-kpi-lbl">Horários de pico</div></div>
+    <div class="apresent-kpi"><div class="apresent-kpi-val" style="font-size:16px">${{topTipo}}</div><div class="apresent-kpi-lbl">${{topTipoPct}}% do total</div></div>`;
+
+  const ruasHtml = a.topRuas.slice(0,8).map((r,i) => {{
+    const correlacionada = (a.correlacao||[]).some(c => c.nome === r.nome);
+    return `<div class="apresent-rua-row"><span>${{i+1}}. ${{r.nome}}${{correlacionada?' 🎯':''}}</span><strong>${{r.count}}</strong></div>`;
+  }}).join('');
+
+  const fatores = _apresentFatoresAmbientais(bairro);
+  const fatoresHtml = !fatores
+    ? '<span style="color:#8FA1BF;font-style:italic;font-size:11.5px">Nenhuma triagem de campo registrada ainda neste bairro.</span>'
+    : fatores.linhas.length === 0
+    ? '<span style="color:#8FA1BF;font-style:italic;font-size:11.5px">Nenhum fator de risco confirmado nas ruas já triadas.</span>'
+    : fatores.linhas.map(f => `<div class="apresent-fator-item"><span>${{f.label}}</span><span style="font-weight:700;color:${{f.nivel[1]}}">${{f.nivel[0]}}</span></div>`).join('');
+
+  const ruasComCoord = (window._ruasBairroAtual||[]).filter(Boolean);
+  apresentRuasIdx = 0;
+
+  document.getElementById('apresent-corpo').innerHTML = `
+    <div class="apresent-kpis">${{kpisHtml}}</div>
+    <div class="apresent-main">
+      <div class="apresent-panel">
+        <h3>🗺️ Mapa de Calor e Rota de Patrulhamento</h3>
+        <div id="apresent-mapa" class="apresent-mapa"></div>
+      </div>
+      <div class="apresent-panel">
+        <h3>🤖 Análise com IA <span class="badge-resumo" style="background:${{nivelCor}}">Índice ${{a.indice}}/100 — ${{a.nivel}}</span></h3>
+        <div id="apresent-ia-corpo" class="apresent-ia-corpo">Gerando análise…</div>
+      </div>
+    </div>
+    <div class="apresent-grid-bottom">
+      <div class="apresent-panel"><h3>Ocorrências por Tipo</h3><div id="apresent-chart-tipo" style="height:200px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Horário</h3><div id="apresent-chart-hora" style="height:200px"></div></div>
+      <div class="apresent-panel"><h3>Ruas mais críticas</h3>${{ruasHtml}}</div>
+      <div class="apresent-panel"><h3>Fatores Ambientais</h3>${{fatoresHtml}}</div>
+      <div class="apresent-panel">
+        <h3>📷 Visão da Rua</h3>
+        <div id="apresent-streetview"></div>
+        <div class="apresent-sv-nav">
+          <button onclick="apresentStreetViewNav(-1)" ${{ruasComCoord.length<2?'disabled':''}}>‹</button>
+          <span id="apresent-sv-label" style="font-size:11px;color:#8FA1BF"></span>
+          <button onclick="apresentStreetViewNav(1)" ${{ruasComCoord.length<2?'disabled':''}}>›</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('apresent-overlay').classList.add('ativo');
+
+  _apresentRenderCharts(dataBairro, a.tipoCounts);
+  _apresentAtualizarStreetView(ruasComCoord);
+  requestAnimationFrame(() => _apresentInicializarMapa(dataBairro, a));
+
+  explicarComIA(_montarResumoTextoBairro(a), 'apresent-ia-corpo', null);
+}}
+
+function fecharApresentacaoBairro() {{
+  document.getElementById('apresent-overlay').classList.remove('ativo');
+  if(apresentMapaInst) {{ apresentMapaInst.remove(); apresentMapaInst = null; }}
+}}
+
+function imprimirApresentacaoBairro() {{
+  document.body.classList.add('apresent-print-ativo');
+  const limpar = () => {{ document.body.classList.remove('apresent-print-ativo'); window.onafterprint = null; }};
+  window.onafterprint = limpar;
+  window.print();
+  setTimeout(limpar, 5000);
 }}
 
 async function tracarRotaBairro() {{
@@ -6414,6 +6684,21 @@ else {{ window.addEventListener('load', init); }}
     </div>
   </div>
 </div>
+
+<!-- ── MODO APRESENTAÇÃO DE BAIRRO (tela cheia p/ reunião de moradores) ── -->
+<div class="analise-overlay apresent-overlay" id="apresent-overlay" onclick="if(event.target===this)fecharApresentacaoBairro()">
+  <div class="analise-box apresent-box">
+    <div class="analise-header apresent-header">
+      <h2 id="apresent-titulo">🛡️ Dashboard de Análise Criminal</h2>
+      <button class="analise-close" onclick="fecharApresentacaoBairro()" title="Fechar">✕</button>
+    </div>
+    <div class="analise-corpo apresent-corpo" id="apresent-corpo"></div>
+    <div class="analise-footer apresent-footer">
+      <button class="btn-reset" onclick="fecharApresentacaoBairro()">✕ Fechar</button>
+      <button class="btn-pdf" onclick="imprimirApresentacaoBairro()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>"""
 
@@ -6424,6 +6709,7 @@ html = html.replace('__LEAFLET_JS__',   _embed_js(leaflet_js))
 html = html.replace('__CLUSTER_CSS1__', _embed_css(cluster_css1))
 html = html.replace('__CLUSTER_CSS2__', _embed_css(cluster_css2))
 html = html.replace('__CLUSTER_JS__',   _embed_js(cluster_js))
+html = html.replace('__HEAT_JS__',      _embed_js(heat_js))
 html = html.replace('__JSPDF_JS__',     _embed_js(jspdf_js))
 
 with open('dashboard_interativo.html', 'w', encoding='utf-8') as f:
