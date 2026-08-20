@@ -536,6 +536,7 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
   body.apresent-print-ativo .apresent-panel{{break-inside:avoid;page-break-inside:avoid;}}
   body.apresent-print-ativo .apresent-mapa{{height:220px!important;}}
   body.apresent-print-ativo #apresent-streetview img{{height:200px!important;}}
+  body.apresent-print-ativo [id^="apresent-chart-"]{{height:170px!important;}}
 }}
 
 /* IMPRESSÃO / PDF */
@@ -6258,10 +6259,10 @@ async function abrirApresentacaoBairro() {{
       </div>
     </div>
     <div class="apresent-grid-bottom">
-      <div class="apresent-panel"><h3>Ocorrências por Tipo</h3><div id="apresent-chart-tipo" style="height:200px"></div></div>
-      <div class="apresent-panel"><h3>Ocorrências por Horário</h3><div id="apresent-chart-hora" style="height:200px"></div></div>
-      <div class="apresent-panel"><h3>Ocorrências por Turno</h3><div id="apresent-chart-turno" style="height:200px"></div></div>
-      <div class="apresent-panel"><h3>Ocorrências por Dia da Semana</h3><div id="apresent-chart-dia" style="height:200px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Tipo</h3><div id="apresent-chart-tipo" style="height:260px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Horário</h3><div id="apresent-chart-hora" style="height:260px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Turno</h3><div id="apresent-chart-turno" style="height:260px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Dia da Semana</h3><div id="apresent-chart-dia" style="height:260px"></div></div>
       <div class="apresent-panel apresent-panel-full"><h3>Ruas mais críticas</h3>${{ruasHtml}}</div>
     </div>
     <div class="apresent-panel" style="margin-top:12px">
