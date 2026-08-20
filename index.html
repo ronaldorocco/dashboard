@@ -1629,6 +1629,18 @@ function count(data, key) {
 function sortedEntries(obj, desc=true) {
   return Object.entries(obj).sort((a,b)=>desc?b[1]-a[1]:a[1]-b[1]);
 }
+function _mediana(arr) {
+  if(!arr.length) return 0;
+  const s = [...arr].sort((a,b)=>a-b);
+  const mid = Math.floor(s.length/2);
+  return s.length % 2 ? s[mid] : (s[mid-1]+s[mid])/2;
+}
+function _distanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000, toRad = d => d*Math.PI/180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 // Deduplica por número de B.O.: um B.O. com 4 itens vira 1 ocorrência.
 // Usado em TODOS os gráficos/KPIs exceto renderItem (que conta itens).
 function dedupBO(data) {
@@ -5881,27 +5893,43 @@ function analisarBairro() {
   const topRuas = Object.entries(porRua).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
   const maxRua = topRuas[0] ? topRuas[0][1].count : 1;
 
-  const waypoints = topRuas
-    .filter(([,v]) => v.lats.length > 0)
-    .map(([nome,v]) => ({
-      nome, count:v.count,
-      lat: v.lats.reduce((a,b)=>a+b,0)/v.lats.length,
-      lon: v.lons.reduce((a,b)=>a+b,0)/v.lons.length,
-    }));
+  // Centro geográfico do bairro (mediana, robusta a outliers) — usado pra
+  // descartar ruas com geocode errado (endereço ambíguo caiu longe do resto,
+  // ex: mesmo nome de rua em outro bairro da cidade), que puxariam a rota
+  // de patrulhamento pra fora do bairro selecionado.
+  const coordsBairro = dataBairro.filter(r => r.lat && r.lon);
+  const RAIO_MAX_M = 2000;
+  const centroLat = _mediana(coordsBairro.map(r=>r.lat));
+  const centroLon = _mediana(coordsBairro.map(r=>r.lon));
+
+  const topRuasComDist = topRuas.map(([nome,v]) => {
+    if(v.lats.length === 0) return [nome, v, null];
+    const lat = v.lats.reduce((a,b)=>a+b,0)/v.lats.length;
+    const lon = v.lons.reduce((a,b)=>a+b,0)/v.lons.length;
+    const dist = coordsBairro.length ? _distanciaMetros(centroLat, centroLon, lat, lon) : 0;
+    return [nome, v, {lat, lon, dist}];
+  });
+
+  const waypoints = topRuasComDist
+    .filter(([,,c]) => c && c.dist <= RAIO_MAX_M)
+    .map(([nome,v,c]) => ({ nome, count:v.count, lat:c.lat, lon:c.lon }));
   ultimaAnaliseBairro = {
     bairro, waypoints, indice, nivel: nivel[0], total: dataBairro.length,
     pctNoturno, horasPico, topDias, tipoCounts,
     topRuas: topRuas.map(([nome,v]) => ({ nome, count: v.count })),
   };
 
-  const ruasHtml = topRuas.map(([nome,v],i) => {
+  const ruasHtml = topRuasComDist.map(([nome,v,c],i) => {
     const pct = Math.round((v.count/maxRua)*100);
     const risco = pct>=50 ? ['Alto',COLORS.vermelho] : pct>=20 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.azul];
+    const obs = !c ? ' · sem coordenadas (fora da rota)'
+              : c.dist > RAIO_MAX_M ? ' · coordenada distante do bairro, possível erro de geocode (fora da rota)'
+              : '';
     return `<div class="posto-item">
       <div class="posto-num">${i+1}</div>
       <div class="posto-info">
         <div class="posto-local">${nome} <span style="font-size:9.5px;font-weight:700;color:white;background:${risco[1]};border-radius:3px;padding:1px 6px;margin-left:4px">Risco ${risco[0]}</span></div>
-        <div class="posto-detalhe">${v.count} ocorrência${v.count>1?'s':''}${v.lats.length===0?' · sem coordenadas (fora da rota)':''}</div>
+        <div class="posto-detalhe">${v.count} ocorrência${v.count>1?'s':''}${obs}</div>
         <div class="risco-bar"><div class="risco-fill" style="width:${pct}%;background:${risco[1]}"></div></div>
       </div></div>`;
   }).join('');
