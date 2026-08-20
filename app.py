@@ -8,6 +8,7 @@ DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 # Turbo é o modelo de menor latência da ElevenLabs (troca um pouco de
 # qualidade por velocidade) — bom pra conversa em tempo real como a da Ana.
@@ -87,9 +88,19 @@ def _limpar_historico(bruto):
     return historico
 
 
+def _servir_dashboard(caminho):
+    # A chave do Google Maps nunca fica no HTML commitado (repo é público) —
+    # o build gera um placeholder e a gente troca aqui, na hora de servir,
+    # pela variável de ambiente do servidor.
+    with open(caminho, encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("__GOOGLE_MAPS_API_KEY__", GOOGLE_MAPS_API_KEY)
+    return Response(html, mimetype="text/html")
+
+
 @app.route("/")
 def index():
-    return send_from_directory(BASE_DIR, "dashboard_interativo.html")
+    return _servir_dashboard(os.path.join(BASE_DIR, "dashboard_interativo.html"))
 
 
 @app.route("/api/explicar", methods=["POST"])
@@ -240,6 +251,8 @@ def static_files(filename):
     # Git/imagem Docker e são montados via volume só na VPS.
     if os.path.isfile(os.path.join(DATA_DIR, filename)):
         return send_from_directory(DATA_DIR, filename)
+    if filename in ("dashboard_interativo.html", "index.html"):
+        return _servir_dashboard(os.path.join(BASE_DIR, filename))
     return send_from_directory(BASE_DIR, filename)
 
 

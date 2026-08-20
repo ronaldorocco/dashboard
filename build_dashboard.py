@@ -1413,6 +1413,9 @@ function sair(){{
 <script type="application/json" id="raw-data">{data_json}</script>
 <script>
 const LOGO_GMBC = "{LOGO_GMBC_B64}";
+// Substituído pelo servidor (app.py) na hora de servir a página — a chave
+// real nunca é commitada, fica só como variável de ambiente no Easypanel.
+const GOOGLE_STREETVIEW_KEY = "__GOOGLE_MAPS_API_KEY__";
 // ── DADOS ────────────────────────────────────────────────────────────────────
 var RAW = [];
 try {{
@@ -5837,6 +5840,36 @@ const TIPO_COLORS_MAP = {{
 let mapaInst = null;
 let clusterLayer = null;
 
+// ── STREET VIEW (foto do local, carregada só quando o popup abre) ────────────
+const _svCache = {{}};
+async function carregarStreetView(elId, lat, lon) {{
+  const el = document.getElementById(elId);
+  if(!el || !GOOGLE_STREETVIEW_KEY) return;
+  const cacheKey = `${{lat}},${{lon}}`;
+  if(_svCache[cacheKey]) {{ el.innerHTML = _svCache[cacheKey]; return; }}
+
+  el.innerHTML = '<div style="font-size:10px;color:#888;padding:6px 0">Carregando Street View…</div>';
+  try {{
+    const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${{lat}},${{lon}}&key=${{GOOGLE_STREETVIEW_KEY}}`;
+    const meta = await (await fetch(metaUrl)).json();
+    let html;
+    if(meta.status !== 'OK') {{
+      if(meta.status !== 'ZERO_RESULTS') console.error('Street View metadata:', meta.status, meta.error_message);
+      html = '<div style="font-size:10px;color:#888;padding:6px 0;text-align:center">Sem imagem do Street View para este local</div>';
+    }} else {{
+      const imgUrl = `https://maps.googleapis.com/maps/api/streetview?size=260x140&location=${{lat}},${{lon}}&fov=80&key=${{GOOGLE_STREETVIEW_KEY}}`;
+      const mapsUrl = `https://www.google.com/maps?layer=c&cbll=${{lat}},${{lon}}`;
+      html = `<a href="${{mapsUrl}}" target="_blank" rel="noopener" title="Abrir Street View 360° no Google Maps">
+        <img src="${{imgUrl}}" style="width:100%;border-radius:6px;display:block;margin-top:6px" alt="Street View">
+      </a>`;
+    }}
+    _svCache[cacheKey] = html;
+    el.innerHTML = html;
+  }} catch(e) {{
+    el.innerHTML = '';
+  }}
+}}
+
 function initMapa() {{
   if(mapaInst || typeof L === 'undefined') return;
   try {{
@@ -5872,6 +5905,7 @@ function renderMapa(data) {{
   }});
 
   let comCoords = 0;
+  let svCounter = 0;
   data.forEach(r => {{
     if(!r.lat || !r.lon) return;
     comCoords++;
@@ -5882,6 +5916,7 @@ function renderMapa(data) {{
     }});
 
     const dataFmt = r.data ? r.data.slice(8)+'/'+r.data.slice(5,7)+'/'+r.data.slice(0,4) : '–';
+    const svId = `sv-${{svCounter++}}`;
     marker.bindPopup(`
       <div>
         <span class="popup-tipo" style="background:${{cor}}">${{r.tipo}}</span>
@@ -5891,7 +5926,11 @@ function renderMapa(data) {{
         <div class="popup-row"><span class="popup-label">Endereço:</span> ${{r.endereco}}</div>
         <div class="popup-row"><span class="popup-label">Ref.:</span> ${{r.ref}}</div>
         <div class="popup-row" style="margin-top:6px;font-size:10px;color:#888">B.O.: ${{r.bo}}</div>
+        <div id="${{svId}}" class="popup-streetview"></div>
       </div>`, {{maxWidth:280}});
+    if(GOOGLE_STREETVIEW_KEY) {{
+      marker.on('popupopen', () => carregarStreetView(svId, r.lat, r.lon));
+    }}
     clusterLayer.addLayer(marker);
   }});
 
