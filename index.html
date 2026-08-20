@@ -642,9 +642,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;f
 .apresent-ia-corpo{font-size:12px;line-height:1.6;color:#C6D2E6;}
 .apresent-grid-bottom{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
   gap:12px;}
-.apresent-fator-item{display:flex;justify-content:space-between;align-items:center;
-  padding:5px 0;border-bottom:1px solid #1E2D4A;font-size:11.5px;}
-.apresent-fator-item:last-child{border-bottom:none;}
 .apresent-rua-row{display:flex;justify-content:space-between;align-items:center;
   padding:5px 0;border-bottom:1px solid #1E2D4A;font-size:11.5px;}
 .apresent-rua-row:last-child{border-bottom:none;}
@@ -6232,22 +6229,6 @@ function analisarBairroComIA() {
 // ── MODO APRESENTAÇÃO (tela cheia p/ reunião de bairro) ──────────────────────
 let apresentMapaInst = null, apresentRuasIdx = 0;
 
-function _apresentFatoresAmbientais(bairro) {
-  const prefixo = bairro + '|';
-  const entradas = Object.keys(_triagemCache)
-    .filter(k => k.startsWith(prefixo))
-    .map(k => _triagemCache[k]);
-  if(entradas.length === 0) return null;
-  const linhas = TRIAGEM_CAMPOS.map(([campo,label]) => {
-    const n = entradas.filter(e => e[campo]).length;
-    const pct = n / entradas.length;
-    if(pct <= 0) return null;
-    const nivel = pct >= 0.5 ? ['Alto',COLORS.vermelho] : pct >= 0.2 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.verde];
-    return {label, nivel};
-  }).filter(Boolean);
-  return { ruasTriadas: entradas.length, linhas };
-}
-
 // Compara os últimos 90 dias de dados do bairro (a partir do registro mais
 // recente que existe pra ele, não da data de hoje) com os 90 dias
 // anteriores. Sem "período" real selecionável ainda — ver plano.
@@ -6288,6 +6269,27 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {
     }], {...darkLayout,
     margin:{l:24,r:10,t:4,b:36},
     xaxis:{tickfont:{size:7.5,color:'#8FA1BF'},tickangle:-45},
+    yaxis:{tickfont:{size:9,color:'#8FA1BF'},gridcolor:'#1E2D4A'},
+  }, CONFIG);
+
+  const TURNO_ORDER = ['Manhã','Tarde','Noite','Madrugada'];
+  const turnoCounts = count(dataBairro, 'turno');
+  const labelsTu = TURNO_ORDER.filter(t=>turnoCounts[t]);
+  const valsTu = labelsTu.map(t=>turnoCounts[t]);
+  const coresTu = labelsTu.map(t=>TURNO_COLORS[t]||COLORS.azul);
+  Plotly.react('apresent-chart-turno', barV(labelsTu, valsTu, coresTu), {...darkLayout,
+    margin:{l:24,r:10,t:4,b:30},
+    xaxis:{tickfont:{size:9,color:'#8FA1BF'}},
+    yaxis:{tickfont:{size:9,color:'#8FA1BF'},gridcolor:'#1E2D4A'},
+  }, CONFIG);
+
+  const diaCounts = count(dataBairro, 'dia');
+  const labelsD = DIA_ORDER.filter(d=>diaCounts[d]);
+  const valsD = labelsD.map(d=>diaCounts[d]);
+  const coresD = labelsD.map(d=>DIA_COLORS(d));
+  Plotly.react('apresent-chart-dia', barV(labelsD, valsD, coresD), {...darkLayout,
+    margin:{l:24,r:10,t:4,b:40},
+    xaxis:{tickfont:{size:8,color:'#8FA1BF'},tickangle:-35},
     yaxis:{tickfont:{size:9,color:'#8FA1BF'},gridcolor:'#1E2D4A'},
   }, CONFIG);
 }
@@ -6389,13 +6391,6 @@ async function abrirApresentacaoBairro() {
     return `<div class="apresent-rua-row"><span>${i+1}. ${r.nome}${correlacionada?' 🎯':''}</span><strong>${r.count}</strong></div>`;
   }).join('');
 
-  const fatores = _apresentFatoresAmbientais(bairro);
-  const fatoresHtml = !fatores
-    ? '<span style="color:#8FA1BF;font-style:italic;font-size:11.5px">Nenhuma triagem de campo registrada ainda neste bairro.</span>'
-    : fatores.linhas.length === 0
-    ? '<span style="color:#8FA1BF;font-style:italic;font-size:11.5px">Nenhum fator de risco confirmado nas ruas já triadas.</span>'
-    : fatores.linhas.map(f => `<div class="apresent-fator-item"><span>${f.label}</span><span style="font-weight:700;color:${f.nivel[1]}">${f.nivel[0]}</span></div>`).join('');
-
   const ruasComCoord = (window._ruasBairroAtual||[]).filter(Boolean);
   apresentRuasIdx = 0;
 
@@ -6415,7 +6410,8 @@ async function abrirApresentacaoBairro() {
       <div class="apresent-panel"><h3>Ocorrências por Tipo</h3><div id="apresent-chart-tipo" style="height:200px"></div></div>
       <div class="apresent-panel"><h3>Ocorrências por Horário</h3><div id="apresent-chart-hora" style="height:200px"></div></div>
       <div class="apresent-panel"><h3>Ruas mais críticas</h3>${ruasHtml}</div>
-      <div class="apresent-panel"><h3>Fatores Ambientais</h3>${fatoresHtml}</div>
+      <div class="apresent-panel"><h3>Ocorrências por Turno</h3><div id="apresent-chart-turno" style="height:200px"></div></div>
+      <div class="apresent-panel"><h3>Ocorrências por Dia da Semana</h3><div id="apresent-chart-dia" style="height:200px"></div></div>
       <div class="apresent-panel">
         <h3>📷 Visão da Rua</h3>
         <div id="apresent-streetview"></div>
