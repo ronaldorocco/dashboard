@@ -5823,6 +5823,9 @@ async function tracarRotaBairro() {{
   try {{
     initMapa();
     limparRotaBairro();
+    // Mostra só as ocorrências do bairro selecionado no mapa enquanto a
+    // rota estiver visível, pra não poluir com os outros bairros.
+    renderMapa(dedupBO(RAW.filter(r => r.bairro === ultimaAnaliseBairro.bairro)));
 
     const pts = ultimaAnaliseBairro.waypoints;
     const coordsStr = pts.map(p => `${{p.lon}},${{p.lat}}`).join(';');
@@ -5857,6 +5860,9 @@ async function tracarRotaBairro() {{
 function limparRotaBairro() {{
   if(rotaBairroLayer)   {{ mapaInst.removeLayer(rotaBairroLayer);   rotaBairroLayer = null; }}
   if(rotaBairroMarkers) {{ mapaInst.removeLayer(rotaBairroMarkers); rotaBairroMarkers = null; }}
+  // Volta o mapa a mostrar todas as ocorrências (respeitando os filtros da
+  // barra lateral), já que a rota não está mais restringindo a um bairro.
+  if(mapaInst) renderMapa(dedupBO(filtered()));
 }}
 
 // ── MAPA LEAFLET ─────────────────────────────────────────────────────────────
