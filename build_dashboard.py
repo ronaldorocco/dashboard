@@ -515,17 +515,22 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
   width:26px;height:26px;cursor:pointer;font-size:14px;}}
 .apresent-sv-nav button:disabled{{opacity:.35;cursor:default;}}
 @media print{{
-  /* Especificidade (2 classes) pra vencer a regra genérica ".analise-overlay
-     {{display:none!important}}" logo abaixo, que esconderia essa tela também. */
-  body.apresent-print-ativo *{{visibility:hidden!important;}}
+  @page{{size:landscape;margin:8mm;}}
+  /* position:fixed em elemento com altura livre faz o Chrome repetir o
+     conteúdo em cada página (era a causa das 16 páginas) — pra impressão,
+     a tela vira conteúdo normal do documento, só que sozinha na página:
+     esconde tudo que é filho direto do body, exceto essa overlay. */
+  body.apresent-print-ativo > *:not(.analise-overlay.apresent-overlay){{display:none!important;}}
   body.apresent-print-ativo .analise-overlay.apresent-overlay{{
-    display:flex!important;visibility:visible!important;
-    position:fixed!important;inset:0!important;background:white!important;}}
-  body.apresent-print-ativo .apresent-box, body.apresent-print-ativo .apresent-box *{{
-    visibility:visible!important;}}
-  body.apresent-print-ativo .apresent-box{{position:fixed;top:0;left:0;width:100%;
-    max-height:none;box-shadow:none;}}
+    display:block!important;position:static!important;background:white!important;}}
+  body.apresent-print-ativo .apresent-box{{position:static!important;width:100%!important;
+    max-height:none!important;box-shadow:none!important;margin:0!important;}}
+  body.apresent-print-ativo .apresent-corpo{{overflow:visible!important;}}
+  body.apresent-print-ativo .apresent-header .analise-close{{display:none!important;}}
   body.apresent-print-ativo .apresent-footer{{display:none!important;}}
+  body.apresent-print-ativo .apresent-panel{{break-inside:avoid;page-break-inside:avoid;}}
+  body.apresent-print-ativo .apresent-mapa{{height:220px!important;}}
+  body.apresent-print-ativo #apresent-streetview img{{height:200px!important;}}
 }}
 
 /* IMPRESSÃO / PDF */
