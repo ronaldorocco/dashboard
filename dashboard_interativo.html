@@ -6267,9 +6267,9 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {
   const valsTu = labelsTu.map(t=>turnoCounts[t]);
   const coresTu = labelsTu.map(t=>TURNO_COLORS[t]||COLORS.azul);
   Plotly.react('apresent-chart-turno', barV(labelsTu, valsTu, coresTu), {...darkLayout,
-    margin:{l:24,r:10,t:4,b:30},
+    margin:{l:24,r:10,t:16,b:30},
     xaxis:{tickfont:{size:9,color:'#8FA1BF'}},
-    yaxis:{tickfont:{size:9,color:'#8FA1BF'},gridcolor:'#1E2D4A'},
+    yaxis:{tickfont:{size:9,color:'#8FA1BF'},gridcolor:'#1E2D4A',range:[0,Math.max(...valsTu,1)*1.2]},
   }, CONFIG);
 
   const diaCounts = count(dataBairro, 'dia');
@@ -6277,9 +6277,9 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {
   const valsD = labelsD.map(d=>diaCounts[d]);
   const coresD = labelsD.map(d=>DIA_COLORS(d));
   Plotly.react('apresent-chart-dia', barV(labelsD, valsD, coresD), {...darkLayout,
-    margin:{l:24,r:10,t:4,b:40},
+    margin:{l:24,r:10,t:16,b:40},
     xaxis:{tickfont:{size:8,color:'#8FA1BF'},tickangle:-35},
-    yaxis:{tickfont:{size:9,color:'#8FA1BF'},gridcolor:'#1E2D4A'},
+    yaxis:{tickfont:{size:9,color:'#8FA1BF'},gridcolor:'#1E2D4A',range:[0,Math.max(...valsD,1)*1.2]},
   }, CONFIG);
 }
 
