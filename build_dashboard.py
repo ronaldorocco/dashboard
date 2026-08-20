@@ -6058,24 +6058,6 @@ function analisarBairroComIA() {{
 // ── MODO APRESENTAÇÃO (tela cheia p/ reunião de bairro) ──────────────────────
 let apresentMapaInst = null, apresentRuasIdx = 0;
 
-// Compara os últimos 90 dias de dados do bairro (a partir do registro mais
-// recente que existe pra ele, não da data de hoje) com os 90 dias
-// anteriores. Sem "período" real selecionável ainda — ver plano.
-function _apresentTendencia90d(dataBairro) {{
-  const comData = dataBairro.filter(r => r.data);
-  if(comData.length === 0) return null;
-  const maxMs = Math.max(...comData.map(r => new Date(r.data).getTime()));
-  const DIA_MS = 86400000;
-  let atual = 0, anterior = 0;
-  comData.forEach(r => {{
-    const diff = (maxMs - new Date(r.data).getTime()) / DIA_MS;
-    if(diff >= 0 && diff < 90) atual++;
-    else if(diff >= 90 && diff < 180) anterior++;
-  }});
-  if(anterior === 0) return {{ atual, anterior, pct:null }};
-  return {{ atual, anterior, pct: Math.round((atual-anterior)/anterior*100) }};
-}}
-
 function _apresentRenderCharts(dataBairro, tipoCounts) {{
   if(typeof Plotly === 'undefined') return;
   const darkLayout = {{...LAYOUT_BASE, paper_bgcolor:'transparent', plot_bgcolor:'transparent',
@@ -6213,18 +6195,18 @@ async function abrirApresentacaoBairro() {{
 
   document.getElementById('apresent-titulo').textContent = `🛡️ ${{bairro}} — Dashboard de Análise Criminal`;
 
-  const tendencia = _apresentTendencia90d(dataBairro);
-  const tendenciaTxt = !tendencia || tendencia.pct === null ? '—' : `${{tendencia.pct>0?'+':''}}${{tendencia.pct}}%`;
-  const tendenciaCor = !tendencia || tendencia.pct === null ? COLORS.azul : tendencia.pct >= 0 ? COLORS.vermelho : COLORS.verde;
-
   const nivelCor = (a.nivel==='CRÍTICO'||a.nivel==='ALTO') ? COLORS.vermelho : a.nivel==='MÉDIO' ? COLORS.laranja : COLORS.verde;
 
   const [topTipo, topTipoCount] = Object.entries(a.tipoCounts).sort((x,y)=>y[1]-x[1])[0] || ['—',0];
   const topTipoPct = a.total ? Math.round(topTipoCount/a.total*100) : 0;
 
+  const [topDia] = sortedEntries(count(dataBairro,'dia'))[0] || ['—',0];
+  const [topTurno] = sortedEntries(count(dataBairro,'turno'))[0] || ['—',0];
+
   const kpisHtml = `
     <div class="apresent-kpi"><div class="apresent-kpi-val">${{a.total}}</div><div class="apresent-kpi-lbl">Ocorrências registradas</div></div>
-    <div class="apresent-kpi"><div class="apresent-kpi-val" style="color:${{tendenciaCor}}">${{tendenciaTxt}}</div><div class="apresent-kpi-lbl">Tendência (90 dias)</div></div>
+    <div class="apresent-kpi"><div class="apresent-kpi-val" style="font-size:16px">${{topDia}}</div><div class="apresent-kpi-lbl">Dia mais crítico</div></div>
+    <div class="apresent-kpi"><div class="apresent-kpi-val" style="font-size:16px">${{topTurno}}</div><div class="apresent-kpi-lbl">Turno mais crítico</div></div>
     <div class="apresent-kpi"><div class="apresent-kpi-val" style="color:${{nivelCor}}">${{a.indice}}<span style="font-size:13px">/100</span></div><div class="apresent-kpi-lbl">Risco ${{a.nivel}}</div></div>
     <div class="apresent-kpi"><div class="apresent-kpi-val" style="font-size:16px">${{a.horasPico||'—'}}</div><div class="apresent-kpi-lbl">Horários de pico</div></div>
     <div class="apresent-kpi"><div class="apresent-kpi-val" style="font-size:16px">${{topTipo}}</div><div class="apresent-kpi-lbl">${{topTipoPct}}% do total</div></div>`;
