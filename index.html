@@ -6256,7 +6256,8 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {
   const tipoTrace = {
     type:'pie', labels:labelsT, values:valsT,
     marker:{colors:labelsT.map(t=>TIPO_COLORS[t]||COLORS.azul), line:{color:'#0B1220',width:2}},
-    textinfo:'percent', textfont:{size:10.5,color:'white'},
+    textinfo:'percent', textposition:'inside', insidetextorientation:'radial',
+    textfont:{size:10,color:'white'},
     hovertemplate:'<b>%{label}</b><br>%{value} casos (%{percent})<extra></extra>',
     hole:.55, sort:false,
   };
