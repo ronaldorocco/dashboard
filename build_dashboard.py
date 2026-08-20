@@ -538,7 +538,7 @@ body.apresent-print-ativo .apresent-mapa{{height:220px;}}
 body.apresent-print-ativo #apresent-streetview img{{height:200px;}}
 body.apresent-print-ativo [id^="apresent-chart-"]{{height:170px;}}
 body.apresent-print-ativo .apresent-corpo{{padding:8px 12px;}}
-body.apresent-print-ativo .apresent-panel{{padding:8px 10px;}}
+body.apresent-print-ativo .apresent-panel{{padding:8px 10px;overflow:hidden;}}
 body.apresent-print-ativo .apresent-panel h3{{margin:0 0 6px;font-size:10px;}}
 body.apresent-print-ativo .apresent-kpi{{padding:8px 10px;}}
 /* O Chrome pagina mal um CSS Grid: quando o conteúdo não cabe inteiro na
@@ -6316,16 +6316,29 @@ function fecharApresentacaoBairro() {{
   if(apresentMapaInst) {{ apresentMapaInst.remove(); apresentMapaInst = null; }}
 }}
 
-// Gráficos Plotly e o mapa Leaflet são SVG/canvas com tamanho fixado no
-// momento em que foram desenhados — encolher a altura só no CSS não os
-// redesenha, o conteúdo simplesmente transborda do card menor. Preciso
-// forçar o redesenho de verdade no tamanho de impressão (e depois
-// desfazer, pra voltar ao tamanho normal da tela).
+// Gráficos Plotly são SVG com tamanho fixado no momento em que foram
+// desenhados. Deixar o Plotly "medir" o container (resize()) depende de o
+// CSS já ter aplicado o layout de impressão nesse exato instante — frágil
+// e foi a causa dos cortes/desalinhamentos anteriores. Em vez disso,
+// manda um tamanho em pixel EXATO e conhecido (calculado a partir da
+// largura fixa de 1062px do card na impressão), sem depender de medição.
+const APRESENT_CHART_PRINT_W = 225, APRESENT_CHART_PRINT_H = 170;
 function _apresentAplicarTamanhoImpressao(ativo) {{
   document.body.classList.toggle('apresent-print-ativo', ativo);
   ['tipo','hora','turno','dia'].forEach(k => {{
     const el = document.getElementById('apresent-chart-'+k);
-    if(el && typeof Plotly !== 'undefined') Plotly.Plots.resize(el);
+    if(!el || typeof Plotly === 'undefined') return;
+    if(ativo) {{
+      // Fixa a largura do <div> igual à que mandamos pro Plotly — se
+      // container e SVG não baterem, o ResizeObserver do responsive:true
+      // "corrige" sozinho de volta pro tamanho do container, desfazendo
+      // o relayout explícito.
+      el.style.width = APRESENT_CHART_PRINT_W + 'px';
+      Plotly.relayout(el, {{width:APRESENT_CHART_PRINT_W, height:APRESENT_CHART_PRINT_H, autosize:false}});
+    }} else {{
+      el.style.width = '';
+      Plotly.relayout(el, {{autosize:true}});
+    }}
   }});
   if(apresentMapaInst) apresentMapaInst.invalidateSize();
 }}
