@@ -6145,12 +6145,11 @@ function _apresentInicializarMapa(dataBairro, a) {{
     if(!r) return;
     L.marker([r.lat, r.lon], {{
       icon: L.divIcon({{
-        html:`<div style="background:#1A1A2E;color:white;border-radius:50%;width:24px;height:24px;
-          display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;
-          border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4)">${{i+1}}</div>`,
-        className:'', iconSize:[24,24], iconAnchor:[12,12],
+        html:`<div style="background:#0B1220;width:14px;height:14px;border-radius:50%;
+          border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>`,
+        className:'', iconSize:[14,14], iconAnchor:[7,7],
       }})
-    }}).bindPopup(`<strong>${{i+1}}. ${{r.nome}}</strong><br>${{r.count}} ocorrência${{r.count>1?'s':''}}`).addTo(apresentMapaInst);
+    }}).bindPopup(`<strong>${{r.nome}}</strong><br>${{r.count}} ocorrência${{r.count>1?'s':''}}`).addTo(apresentMapaInst);
   }});
 
   if(coords.length) apresentMapaInst.fitBounds(coords.map(r=>[r.lat,r.lon]), {{padding:[30,30]}});
