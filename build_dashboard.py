@@ -510,6 +510,11 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .apresent-rua-row{{display:flex;justify-content:space-between;align-items:center;
   padding:5px 0;border-bottom:1px solid #1E2D4A;font-size:11.5px;}}
 .apresent-rua-row:last-child{{border-bottom:none;}}
+/* Quando sobra o único card na última linha da grade, ocupa a largura
+   toda em vez de ficar espremido numa coluna com espaço vazio do lado. */
+.apresent-panel-full{{grid-column:1/-1;column-count:2;column-gap:28px;}}
+.apresent-panel-full h3{{column-span:all;}}
+.apresent-panel-full .apresent-rua-row{{break-inside:avoid;}}
 .apresent-sv-nav{{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}}
 .apresent-sv-nav button{{background:#1E2D4A;color:#D6DEEA;border:none;border-radius:5px;
   width:26px;height:26px;cursor:pointer;font-size:14px;}}
@@ -6257,7 +6262,7 @@ async function abrirApresentacaoBairro() {{
       <div class="apresent-panel"><h3>Ocorrências por Horário</h3><div id="apresent-chart-hora" style="height:200px"></div></div>
       <div class="apresent-panel"><h3>Ocorrências por Turno</h3><div id="apresent-chart-turno" style="height:200px"></div></div>
       <div class="apresent-panel"><h3>Ocorrências por Dia da Semana</h3><div id="apresent-chart-dia" style="height:200px"></div></div>
-      <div class="apresent-panel"><h3>Ruas mais críticas</h3>${{ruasHtml}}</div>
+      <div class="apresent-panel apresent-panel-full"><h3>Ruas mais críticas</h3>${{ruasHtml}}</div>
     </div>
     <div class="apresent-panel" style="margin-top:12px">
       <h3>🤖 Análise com IA <span class="badge-resumo" style="background:${{nivelCor}}">Índice ${{a.indice}}/100 — ${{a.nivel}}</span></h3>
