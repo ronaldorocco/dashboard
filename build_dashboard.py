@@ -526,14 +526,32 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
   width:26px;height:26px;cursor:pointer;font-size:14px;}}
 .apresent-sv-nav button:disabled{{opacity:.35;cursor:default;}}
 /* Fora do @media print de propósito: gráficos Plotly e o mapa Leaflet são
-   canvas/SVG com tamanho fixado no momento em que foram desenhados — só
-   encolher a altura via @media print não redesenha o conteúdo, ele
-   simplesmente transborda do card. imprimirApresentacaoBairro() aplica
-   essa classe, chama Plotly.Plots.resize()/invalidateSize() pra redesenhar
-   de verdade nesse tamanho menor, e só então chama window.print(). */
+   canvas/SVG com tamanho (largura E altura) fixado no momento em que
+   foram desenhados — regra dentro de @media print só passa a valer
+   durante a impressão em si, tarde demais pro redesenho. Essas regras
+   (altura, e grid→flex de largura) ficam como classe normal; JS
+   (imprimirApresentacaoBairro) aplica a classe, chama
+   Plotly.Plots.resize()/invalidateSize() já com esse layout final valendo,
+   e só then chama window.print(). */
+body.apresent-print-ativo .apresent-box{{width:1062px;max-width:none;}}
 body.apresent-print-ativo .apresent-mapa{{height:220px;}}
 body.apresent-print-ativo #apresent-streetview img{{height:200px;}}
 body.apresent-print-ativo [id^="apresent-chart-"]{{height:170px;}}
+body.apresent-print-ativo .apresent-corpo{{padding:8px 12px;}}
+body.apresent-print-ativo .apresent-panel{{padding:8px 10px;}}
+body.apresent-print-ativo .apresent-panel h3{{margin:0 0 6px;font-size:10px;}}
+body.apresent-print-ativo .apresent-kpi{{padding:8px 10px;}}
+/* O Chrome pagina mal um CSS Grid: quando o conteúdo não cabe inteiro na
+   página, empurra a grade INTEIRA pra próxima em vez de quebrar entre os
+   cards — sobra um vão enorme na página anterior. Flexbox com wrap se
+   comporta bem melhor na paginação, então na impressão vira flex (só a
+   tela continua em grid). */
+body.apresent-print-ativo .apresent-kpis{{margin-bottom:8px;}}
+body.apresent-print-ativo .apresent-main{{display:flex;flex-wrap:wrap;margin-bottom:8px;}}
+body.apresent-print-ativo .apresent-main > .apresent-panel{{flex:1 1 46%;}}
+body.apresent-print-ativo .apresent-grid-bottom{{display:flex;flex-wrap:wrap;}}
+body.apresent-print-ativo .apresent-grid-bottom > .apresent-panel{{flex:1 1 22%;min-width:0;}}
+body.apresent-print-ativo .apresent-grid-bottom > .apresent-panel-full{{flex:1 1 100%;}}
 @media print{{
   @page{{size:landscape;margin:8mm;}}
   /* position:fixed em elemento com altura livre faz o Chrome repetir o
@@ -545,25 +563,10 @@ body.apresent-print-ativo [id^="apresent-chart-"]{{height:170px;}}
     display:block!important;position:static!important;background:white!important;}}
   body.apresent-print-ativo .apresent-box{{position:static!important;width:100%!important;
     max-height:none!important;box-shadow:none!important;margin:0!important;}}
-  body.apresent-print-ativo .apresent-corpo{{overflow:visible!important;padding:8px 12px!important;}}
+  body.apresent-print-ativo .apresent-corpo{{overflow:visible!important;}}
   body.apresent-print-ativo .apresent-header .analise-close{{display:none!important;}}
   body.apresent-print-ativo .apresent-footer{{display:none!important;}}
-  body.apresent-print-ativo .apresent-panel{{break-inside:avoid;page-break-inside:avoid;
-    padding:8px 10px!important;}}
-  body.apresent-print-ativo .apresent-panel h3{{margin:0 0 6px!important;font-size:10px!important;}}
-  body.apresent-print-ativo .apresent-kpi{{padding:8px 10px!important;}}
-  /* O Chrome pagina mal um CSS Grid: quando o conteúdo não cabe inteiro
-     na página, empurra a grade INTEIRA pra próxima em vez de quebrar
-     entre os cards — sobra um vão enorme na página anterior. Flexbox com
-     wrap se comporta bem melhor na paginação, então na impressão vira
-     flex (só a tela continua em grid). */
-  body.apresent-print-ativo .apresent-kpis{{margin-bottom:8px!important;}}
-  body.apresent-print-ativo .apresent-main{{display:flex!important;flex-wrap:wrap!important;
-    margin-bottom:8px!important;}}
-  body.apresent-print-ativo .apresent-main > .apresent-panel{{flex:1 1 46%!important;}}
-  body.apresent-print-ativo .apresent-grid-bottom{{display:flex!important;flex-wrap:wrap!important;}}
-  body.apresent-print-ativo .apresent-grid-bottom > .apresent-panel{{flex:1 1 22%!important;}}
-  body.apresent-print-ativo .apresent-grid-bottom > .apresent-panel-full{{flex:1 1 100%!important;}}
+  body.apresent-print-ativo .apresent-panel{{break-inside:avoid;page-break-inside:avoid;}}
 }}
 
 /* IMPRESSÃO / PDF */
