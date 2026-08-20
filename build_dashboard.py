@@ -505,8 +505,15 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .apresent-mapa{{height:380px;border-radius:8px;overflow:hidden;}}
 #apresent-streetview img{{width:100%;height:320px;object-fit:cover;}}
 .apresent-ia-corpo{{font-size:12px;line-height:1.6;color:#C6D2E6;}}
-.apresent-grid-bottom{{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+/* São sempre 4 gráficos nessa linha (Tipo/Horário/Turno/Dia da Semana) —
+   colunas fixas evitam que o 4º "quebre linha" sozinho em telas mais
+   estreitas, o que deixava espaço vazio do lado dele (o grid reservava
+   as mesmas colunas da linha de cima). */
+.apresent-grid-bottom{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
   gap:12px;}}
+@media (max-width:820px){{
+  .apresent-grid-bottom{{grid-template-columns:repeat(2,minmax(0,1fr));}}
+}}
 .apresent-rua-row{{display:flex;justify-content:space-between;align-items:center;
   padding:5px 0;border-bottom:1px solid #1E2D4A;font-size:11.5px;}}
 .apresent-rua-row:last-child{{border-bottom:none;}}
