@@ -503,6 +503,7 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);display:flex;
 .apresent-panel h3{{font-size:11.5px;font-weight:700;color:#C6D2E6;margin:0 0 10px;
   text-transform:uppercase;letter-spacing:.5px;}}
 .apresent-mapa{{height:380px;border-radius:8px;overflow:hidden;}}
+#apresent-streetview img{{width:100%;height:320px;object-fit:cover;}}
 .apresent-ia-corpo{{font-size:12px;line-height:1.6;color:#C6D2E6;}}
 .apresent-grid-bottom{{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
   gap:12px;}}
@@ -6175,7 +6176,7 @@ function _apresentAtualizarStreetView(ruas) {{
   }}
   const r = ruas[apresentRuasIdx];
   if(label) label.textContent = `${{apresentRuasIdx+1}}/${{ruas.length}} — ${{r.nome}}`;
-  carregarStreetView('apresent-streetview', r.lat, r.lon);
+  carregarStreetView('apresent-streetview', r.lat, r.lon, '640x400');
 }}
 
 function apresentStreetViewNav(delta) {{
@@ -6332,10 +6333,11 @@ let clusterLayer = null;
 
 // ── STREET VIEW (foto do local, carregada só quando o popup abre) ────────────
 const _svCache = {{}};
-async function carregarStreetView(elId, lat, lon) {{
+async function carregarStreetView(elId, lat, lon, size) {{
+  size = size || '260x140';
   const el = document.getElementById(elId);
   if(!el || !GOOGLE_STREETVIEW_KEY) return;
-  const cacheKey = `${{lat}},${{lon}}`;
+  const cacheKey = `${{lat}},${{lon}},${{size}}`;
   if(_svCache[cacheKey]) {{ el.innerHTML = _svCache[cacheKey]; return; }}
 
   el.innerHTML = '<div style="font-size:10px;color:#888;padding:6px 0">Carregando Street View…</div>';
@@ -6347,7 +6349,7 @@ async function carregarStreetView(elId, lat, lon) {{
       if(meta.status !== 'ZERO_RESULTS') console.error('Street View metadata:', meta.status, meta.error_message);
       html = '<div style="font-size:10px;color:#888;padding:6px 0;text-align:center">Sem imagem do Street View para este local</div>';
     }} else {{
-      const imgUrl = `https://maps.googleapis.com/maps/api/streetview?size=260x140&location=${{lat}},${{lon}}&fov=80&key=${{GOOGLE_STREETVIEW_KEY}}`;
+      const imgUrl = `https://maps.googleapis.com/maps/api/streetview?size=${{size}}&location=${{lat}},${{lon}}&fov=80&key=${{GOOGLE_STREETVIEW_KEY}}`;
       const mapsUrl = `https://www.google.com/maps?layer=c&cbll=${{lat}},${{lon}}`;
       html = `<a href="${{mapsUrl}}" target="_blank" rel="noopener" title="Abrir Street View 360° no Google Maps">
         <img src="${{imgUrl}}" style="width:100%;border-radius:6px;display:block;margin-top:6px" alt="Street View">
