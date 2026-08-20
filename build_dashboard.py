@@ -5858,6 +5858,7 @@ function toggleTriagemRua(idx) {{
     </label>`).join('');
 
   painel.innerHTML = `
+    <div style="font-size:9.5px;color:#888;font-weight:600;margin-bottom:3px">REFERÊNCIA (Street View)</div>
     <div id="triagem-foto-${{idx}}" style="max-width:280px"></div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${{checks}}</div>
     <textarea id="triagem-obs-${{idx}}" placeholder="Observações..."
@@ -5865,9 +5866,76 @@ function toggleTriagemRua(idx) {{
     <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
       <button class="btn-analise" style="font-size:10px;padding:5px 10px" onclick="salvarTriagemRua(${{idx}})">💾 Salvar Avaliação</button>
       <span id="triagem-status-${{idx}}" style="font-size:10px;color:#888">${{existente.atualizado_em ? 'Última avaliação: '+new Date(existente.atualizado_em).toLocaleString('pt-BR') : ''}}</span>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #DDD">
+      <div style="font-size:9.5px;color:#888;font-weight:600;margin-bottom:4px">📎 FOTOS TIRADAS EM CAMPO</div>
+      <div id="triagem-fotos-campo-${{idx}}" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>
+      <input type="file" accept="image/*" capture="environment" id="triagem-foto-input-${{idx}}" style="font-size:10px;max-width:230px">
+      <button class="btn-analise" style="font-size:10px;padding:4px 8px" onclick="enviarFotoTriagem(${{idx}})">📤 Enviar</button>
+      <div id="triagem-foto-status-${{idx}}" style="font-size:10px;color:#888;margin-top:3px"></div>
     </div>`;
 
   carregarStreetView('triagem-foto-'+idx, r.lat, r.lon);
+  renderFotosTriagem(idx, existente.fotos);
+}}
+
+function renderFotosTriagem(idx, fotos) {{
+  const cont = document.getElementById('triagem-fotos-campo-'+idx);
+  if(!cont) return;
+  cont.innerHTML = (fotos||[]).map(f => `
+    <div style="position:relative">
+      <a href="/fotos_campo/${{f}}" target="_blank" rel="noopener">
+        <img src="/fotos_campo/${{f}}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #DDD">
+      </a>
+      <button onclick="removerFotoTriagem(${{idx}},'${{f}}')" title="Remover foto"
+        style="position:absolute;top:-6px;right:-6px;background:#D13438;color:white;border:none;
+        border-radius:50%;width:18px;height:18px;font-size:10px;line-height:1;cursor:pointer">✖</button>
+    </div>`).join('') || '<span style="font-size:10px;color:#aaa;font-style:italic">Nenhuma foto enviada ainda</span>';
+}}
+
+async function enviarFotoTriagem(idx) {{
+  const input = document.getElementById('triagem-foto-input-'+idx);
+  const status = document.getElementById('triagem-foto-status-'+idx);
+  const r = window._ruasBairroAtual[idx];
+  const bairro = ultimaAnaliseBairro.bairro;
+  if(!input.files || !input.files[0]) {{ status.textContent = 'Selecione uma foto primeiro.'; return; }}
+
+  const formData = new FormData();
+  formData.append('bairro', bairro);
+  formData.append('endereco', r.nome);
+  formData.append('foto', input.files[0]);
+
+  status.textContent = 'Enviando…';
+  try {{
+    const resp = await fetch('/api/triagem/foto', {{ method:'POST', body: formData }});
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.erro || 'Erro ao enviar');
+    status.textContent = 'Foto enviada!';
+    input.value = '';
+    const chave = `${{bairro}}|${{r.nome}}`;
+    if(!_triagemCache[chave]) _triagemCache[chave] = {{bairro, endereco:r.nome}};
+    _triagemCache[chave].fotos = _triagemCache[chave].fotos || [];
+    _triagemCache[chave].fotos.push(data.arquivo);
+    renderFotosTriagem(idx, _triagemCache[chave].fotos);
+    const badge = document.getElementById('triagem-badge-'+idx);
+    if(badge) badge.innerHTML = _triagemBadgeHtml();
+  }} catch(e) {{
+    status.textContent = 'Erro: ' + e.message;
+  }}
+}}
+
+async function removerFotoTriagem(idx, arquivo) {{
+  const r = window._ruasBairroAtual[idx];
+  const bairro = ultimaAnaliseBairro.bairro;
+  try {{
+    await fetch('/api/triagem/foto', {{
+      method:'DELETE', headers:{{'Content-Type':'application/json'}},
+      body: JSON.stringify({{bairro, endereco:r.nome, arquivo}})
+    }});
+    const chave = `${{bairro}}|${{r.nome}}`;
+    if(_triagemCache[chave]) _triagemCache[chave].fotos = (_triagemCache[chave].fotos||[]).filter(f=>f!==arquivo);
+    renderFotosTriagem(idx, _triagemCache[chave] ? _triagemCache[chave].fotos : []);
+  }} catch(e) {{ console.error('Erro ao remover foto:', e); }}
 }}
 
 async function salvarTriagemRua(idx) {{

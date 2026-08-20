@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime, timezone
 
 import requests
@@ -8,6 +9,8 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
 TRIAGEM_PATH = os.path.join(DATA_DIR, "triagem_urbana.json")
+FOTOS_CAMPO_DIR = os.path.join(DATA_DIR, "fotos_campo")
+EXTENSOES_FOTO_PERMITIDAS = {"jpg", "jpeg", "png", "webp"}
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
@@ -17,6 +20,7 @@ ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWA
 # qualidade por velocidade) — bom pra conversa em tempo real como a da Ana.
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5")
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8MB por upload de foto
 
 SYSTEM_PROMPT = (
     "Você é um analista de segurança pública auxiliando a Guarda Municipal "
@@ -225,7 +229,11 @@ def salvar_triagem():
 
     chave = f"{bairro}|{endereco}"
     dados = _carregar_triagem()
-    entrada = {"bairro": bairro, "endereco": endereco}
+    # Parte da entrada existente (se houver) pra não apagar fotos já
+    # enviadas quando o analista só está atualizando os checkboxes.
+    entrada = dados.get(chave, {})
+    entrada["bairro"] = bairro
+    entrada["endereco"] = endereco
     for campo in TRIAGEM_CAMPOS:
         entrada[campo] = bool(corpo.get(campo))
     entrada["observacoes"] = str(corpo.get("observacoes", ""))[:1000]
@@ -237,6 +245,70 @@ def salvar_triagem():
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
     return jsonify({"ok": True, "chave": chave})
+
+
+def _slug(texto):
+    return re.sub(r"[^a-zA-Z0-9]+", "_", texto).strip("_").lower()
+
+
+@app.route("/api/triagem/foto", methods=["POST"])
+def enviar_foto_triagem():
+    # Foto tirada em campo pelo próprio guarda — não é imagem do Google, então
+    # não há restrição de termos de uso pra guardar/usar como quiser depois.
+    bairro = request.form.get("bairro", "").strip()
+    endereco = request.form.get("endereco", "").strip()
+    arquivo = request.files.get("foto")
+    if not bairro or not endereco or not arquivo or not arquivo.filename:
+        return jsonify({"erro": "Campos 'bairro', 'endereco' e 'foto' são obrigatórios"}), 400
+
+    ext = arquivo.filename.rsplit(".", 1)[-1].lower() if "." in arquivo.filename else ""
+    if ext not in EXTENSOES_FOTO_PERMITIDAS:
+        return jsonify({"erro": "Formato de imagem não suportado (use jpg, png ou webp)"}), 400
+
+    chave = f"{bairro}|{endereco}"
+    nome_arquivo = f"{_slug(chave)}_{int(datetime.now(timezone.utc).timestamp()*1000)}.{ext}"
+    os.makedirs(FOTOS_CAMPO_DIR, exist_ok=True)
+    arquivo.save(os.path.join(FOTOS_CAMPO_DIR, nome_arquivo))
+
+    dados = _carregar_triagem()
+    entrada = dados.get(chave, {"bairro": bairro, "endereco": endereco})
+    entrada.setdefault("fotos", []).append(nome_arquivo)
+    entrada["atualizado_em"] = datetime.now(timezone.utc).isoformat()
+    dados[chave] = entrada
+    with open(TRIAGEM_PATH, "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+    return jsonify({"ok": True, "arquivo": nome_arquivo})
+
+
+@app.route("/api/triagem/foto", methods=["DELETE"])
+def remover_foto_triagem():
+    corpo = request.get_json(silent=True) or {}
+    bairro = corpo.get("bairro", "").strip()
+    endereco = corpo.get("endereco", "").strip()
+    arquivo = corpo.get("arquivo", "").strip()
+    chave = f"{bairro}|{endereco}"
+
+    dados = _carregar_triagem()
+    entrada = dados.get(chave)
+    if not entrada or arquivo not in entrada.get("fotos", []):
+        return jsonify({"erro": "Foto não encontrada"}), 404
+
+    entrada["fotos"].remove(arquivo)
+    dados[chave] = entrada
+    with open(TRIAGEM_PATH, "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+    caminho = os.path.join(FOTOS_CAMPO_DIR, arquivo)
+    if os.path.isfile(caminho):
+        os.remove(caminho)
+
+    return jsonify({"ok": True})
+
+
+@app.route("/fotos_campo/<path:filename>")
+def servir_foto_campo(filename):
+    return send_from_directory(FOTOS_CAMPO_DIR, filename)
 
 
 @app.route("/api/transcrever", methods=["POST"])
