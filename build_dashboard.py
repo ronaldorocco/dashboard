@@ -6127,10 +6127,16 @@ function _apresentInicializarMapa(dataBairro, a) {{
   if(typeof L === 'undefined' || !document.getElementById('apresent-mapa')) return;
   if(apresentMapaInst) {{ apresentMapaInst.remove(); apresentMapaInst = null; }}
 
-  const coords = dataBairro.filter(r => r.lat && r.lon);
-  const centro = coords.length
-    ? [_mediana(coords.map(r=>r.lat)), _mediana(coords.map(r=>r.lon))]
-    : [-26.993, -48.635];
+  // Mesmo raio de 2km usado em analisarBairro() pra descartar geocode
+  // errado (endereço ambíguo que caiu longe do resto do bairro) — aqui
+  // aplicado tanto no mapa de calor quanto nos marcadores/enquadramento,
+  // pra não mostrar ponto de fora do bairro no modo apresentação.
+  const coordsBrutos = dataBairro.filter(r => r.lat && r.lon);
+  const centroLat = _mediana(coordsBrutos.map(r=>r.lat));
+  const centroLon = _mediana(coordsBrutos.map(r=>r.lon));
+  const RAIO_MAX_M = 2000;
+  const coords = coordsBrutos.filter(r => _distanciaMetros(centroLat, centroLon, r.lat, r.lon) <= RAIO_MAX_M);
+  const centro = coords.length ? [centroLat, centroLon] : [-26.993, -48.635];
 
   apresentMapaInst = L.map('apresent-mapa', {{zoomControl:false}}).setView(centro, 15);
   L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
@@ -6141,8 +6147,10 @@ function _apresentInicializarMapa(dataBairro, a) {{
     L.heatLayer(coords.map(r => [r.lat, r.lon, 1]), {{radius:28, blur:22, maxZoom:17}}).addTo(apresentMapaInst);
   }}
 
-  (window._ruasBairroAtual||[]).forEach((r,i) => {{
-    if(!r) return;
+  // Só os waypoints (já filtrados por distância do centro do bairro em
+  // ultimaAnaliseBairro) — evita marcar rua com geocode errado que caiu
+  // fora do bairro (ver window._ruasBairroAtual, que inclui essas também).
+  (a.waypoints||[]).forEach(r => {{
     L.marker([r.lat, r.lon], {{
       icon: L.divIcon({{
         html:`<div style="background:#0B1220;width:14px;height:14px;border-radius:50%;
