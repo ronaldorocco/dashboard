@@ -1,10 +1,13 @@
+import json
 import os
+from datetime import datetime, timezone
 
 import requests
 from flask import Flask, Response, jsonify, request, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
+TRIAGEM_PATH = os.path.join(DATA_DIR, "triagem_urbana.json")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
@@ -180,6 +183,60 @@ def insights():
         return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
 
     return jsonify({"texto": texto})
+
+
+TRIAGEM_CAMPOS = (
+    "terreno_baldio",
+    "imovel_abandonado",
+    "iluminacao_ruim",
+    "muro_baixo",
+    "sem_cerca",
+    "vegetacao_alta",
+)
+
+
+def _carregar_triagem():
+    try:
+        with open(TRIAGEM_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+@app.route("/api/triagem", methods=["GET"])
+def obter_triagem():
+    # Banco próprio de diagnóstico urbano, alimentado por avaliação humana
+    # olhando a foto do Street View — não é dado derivado/gerado por IA em
+    # cima da imagem do Google, então não esbarra nos termos de uso.
+    bairro = request.args.get("bairro", "").strip()
+    dados = _carregar_triagem()
+    if bairro:
+        dados = {k: v for k, v in dados.items() if v.get("bairro") == bairro}
+    return jsonify(dados)
+
+
+@app.route("/api/triagem", methods=["POST"])
+def salvar_triagem():
+    corpo = request.get_json(silent=True) or {}
+    bairro = corpo.get("bairro", "").strip()
+    endereco = corpo.get("endereco", "").strip()
+    if not bairro or not endereco:
+        return jsonify({"erro": "Campos 'bairro' e 'endereco' são obrigatórios"}), 400
+
+    chave = f"{bairro}|{endereco}"
+    dados = _carregar_triagem()
+    entrada = {"bairro": bairro, "endereco": endereco}
+    for campo in TRIAGEM_CAMPOS:
+        entrada[campo] = bool(corpo.get(campo))
+    entrada["observacoes"] = str(corpo.get("observacoes", ""))[:1000]
+    entrada["atualizado_em"] = datetime.now(timezone.utc).isoformat()
+    dados[chave] = entrada
+
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(TRIAGEM_PATH, "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+    return jsonify({"ok": True, "chave": chave})
 
 
 @app.route("/api/transcrever", methods=["POST"])

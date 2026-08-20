@@ -5919,18 +5919,26 @@ function analisarBairro() {
     topRuas: topRuas.map(([nome,v]) => ({ nome, count: v.count })),
   };
 
+  window._ruasBairroAtual = topRuasComDist.map(([nome,v,c]) => c ? {nome, lat:c.lat, lon:c.lon, count:v.count} : null);
+
   const ruasHtml = topRuasComDist.map(([nome,v,c],i) => {
     const pct = Math.round((v.count/maxRua)*100);
     const risco = pct>=50 ? ['Alto',COLORS.vermelho] : pct>=20 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.azul];
     const obs = !c ? ' · sem coordenadas (fora da rota)'
               : c.dist > RAIO_MAX_M ? ' · coordenada distante do bairro, possível erro de geocode (fora da rota)'
               : '';
+    const avaliarBtn = c ? `<button style="margin-top:6px;font-size:10px;padding:3px 8px;border-radius:4px;
+        border:1px solid #0078D4;background:white;color:#0078D4;cursor:pointer"
+        onclick="toggleTriagemRua(${i})">📷 Avaliar rua</button>
+      <span id="triagem-badge-${i}"></span>
+      <div id="triagem-painel-${i}" style="display:none;margin-top:8px"></div>` : '';
     return `<div class="posto-item">
       <div class="posto-num">${i+1}</div>
       <div class="posto-info">
         <div class="posto-local">${nome} <span style="font-size:9.5px;font-weight:700;color:white;background:${risco[1]};border-radius:3px;padding:1px 6px;margin-left:4px">Risco ${risco[0]}</span></div>
         <div class="posto-detalhe">${v.count} ocorrência${v.count>1?'s':''}${obs}</div>
         <div class="risco-bar"><div class="risco-fill" style="width:${pct}%;background:${risco[1]}"></div></div>
+        ${avaliarBtn}
       </div></div>`;
   }).join('');
 
@@ -5956,6 +5964,95 @@ function analisarBairro() {
       <button class="btn-resumoia" id="btn-ia-bairro" data-label="🤖 Analisar Bairro com IA" onclick="analisarBairroComIA()">🤖 Analisar Bairro com IA</button>
     </div>
     <div id="ab-ia-resultado" style="display:none;margin-top:12px;padding:14px 16px;background:#F5F8FC;border:1px solid #D6E4F0;border-radius:8px;font-size:12.5px"></div>`;
+
+  carregarTriagemBairro(bairro);
+}
+
+// ── TRIAGEM URBANA (avaliação manual assistida pela foto do Street View) ─────
+// Banco próprio da guarda: o analista olha a foto e marca o que vê. Não é
+// classificação automática por IA em cima da imagem do Google (isso não é
+// permitido pelos termos de uso) — é decisão humana, registrada num banco
+// nosso, servida pelo backend (app.py → /api/triagem).
+let _triagemCache = {};
+const TRIAGEM_CAMPOS = [
+  ['terreno_baldio',      '🌿 Terreno baldio'],
+  ['imovel_abandonado',   '🏚️ Imóvel abandonado'],
+  ['iluminacao_ruim',     '💡 Iluminação insuficiente'],
+  ['muro_baixo',          '🧱 Muro baixo/sem proteção'],
+  ['sem_cerca',           '🚪 Sem cerca/acesso vulnerável'],
+  ['vegetacao_alta',      '🌳 Vegetação prejudica visibilidade'],
+];
+
+function _triagemBadgeHtml() {
+  return '<span style="font-size:9px;font-weight:700;color:white;background:#107C10;border-radius:3px;padding:1px 5px;margin-left:4px">✔ avaliada</span>';
+}
+
+async function carregarTriagemBairro(bairro) {
+  try {
+    const resp = await fetch(`/api/triagem?bairro=${encodeURIComponent(bairro)}`);
+    _triagemCache = await resp.json();
+    (window._ruasBairroAtual||[]).forEach((r,i) => {
+      if(!r) return;
+      const chave = `${bairro}|${r.nome}`;
+      if(_triagemCache[chave]) {
+        const badge = document.getElementById('triagem-badge-'+i);
+        if(badge) badge.innerHTML = _triagemBadgeHtml();
+      }
+    });
+  } catch(e) { console.error('Erro ao carregar triagem:', e); }
+}
+
+function toggleTriagemRua(idx) {
+  const painel = document.getElementById('triagem-painel-'+idx);
+  if(!painel) return;
+  if(painel.style.display !== 'none') { painel.style.display = 'none'; return; }
+  painel.style.display = 'block';
+  if(painel.dataset.loaded) return;
+  painel.dataset.loaded = '1';
+
+  const r = window._ruasBairroAtual[idx];
+  const bairro = ultimaAnaliseBairro.bairro;
+  const chave = `${bairro}|${r.nome}`;
+  const existente = _triagemCache[chave] || {};
+
+  const checks = TRIAGEM_CAMPOS.map(([campo,label]) => `
+    <label style="display:flex;align-items:center;gap:4px;background:#F5F5F5;padding:3px 8px;border-radius:12px;cursor:pointer;font-size:10.5px">
+      <input type="checkbox" id="triagem-${campo}-${idx}" ${existente[campo]?'checked':''}> ${label}
+    </label>`).join('');
+
+  painel.innerHTML = `
+    <div id="triagem-foto-${idx}" style="max-width:280px"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${checks}</div>
+    <textarea id="triagem-obs-${idx}" placeholder="Observações..."
+      style="width:100%;max-width:280px;min-height:44px;font-size:11px;padding:6px;border-radius:6px;border:1px solid #DDD;box-sizing:border-box">${existente.observacoes||''}</textarea>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <button class="btn-analise" style="font-size:10px;padding:5px 10px" onclick="salvarTriagemRua(${idx})">💾 Salvar Avaliação</button>
+      <span id="triagem-status-${idx}" style="font-size:10px;color:#888">${existente.atualizado_em ? 'Última avaliação: '+new Date(existente.atualizado_em).toLocaleString('pt-BR') : ''}</span>
+    </div>`;
+
+  carregarStreetView('triagem-foto-'+idx, r.lat, r.lon);
+}
+
+async function salvarTriagemRua(idx) {
+  const r = window._ruasBairroAtual[idx];
+  const bairro = ultimaAnaliseBairro.bairro;
+  const corpo = { bairro, endereco: r.nome, observacoes: document.getElementById('triagem-obs-'+idx).value };
+  TRIAGEM_CAMPOS.forEach(([campo]) => { corpo[campo] = document.getElementById(`triagem-${campo}-${idx}`).checked; });
+
+  const status = document.getElementById('triagem-status-'+idx);
+  status.textContent = 'Salvando…';
+  try {
+    const resp = await fetch('/api/triagem', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(corpo)
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.erro || 'Erro ao salvar');
+    status.textContent = 'Salvo em ' + new Date().toLocaleString('pt-BR');
+    const badge = document.getElementById('triagem-badge-'+idx);
+    if(badge) badge.innerHTML = _triagemBadgeHtml();
+  } catch(e) {
+    status.textContent = 'Erro ao salvar: ' + e.message;
+  }
 }
 
 function analisarBairroComIA() {
