@@ -6084,10 +6084,12 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {{
     hovertemplate:'<b>%{{label}}</b><br>%{{value}} casos (%{{percent}})<extra></extra>',
     hole:.55, sort:false,
   }};
+  // Legenda embaixo (em vez de ao lado) pra rosca não ficar espremida na
+  // largura do card e sobrar espaço vazio em cima/embaixo do anel.
   Plotly.react('apresent-chart-tipo', [tipoTrace], {{...darkLayout,
     showlegend:true,
-    legend:{{orientation:'v',x:1,y:.5,font:{{size:10,color:'#C6D2E6'}}}},
-    margin:{{l:4,r:100,t:4,b:4}},
+    legend:{{orientation:'h',x:.5,xanchor:'center',y:-.12,font:{{size:9,color:'#C6D2E6'}}}},
+    margin:{{l:4,r:4,t:4,b:46}},
   }}, CONFIG);
 
   const hrs = Array(24).fill(0);
