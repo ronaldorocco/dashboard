@@ -6062,7 +6062,7 @@ function analisarBairroComIA() {{
 }}
 
 // ── MODO APRESENTAÇÃO (tela cheia p/ reunião de bairro) ──────────────────────
-let apresentMapaInst = null, apresentRuasIdx = 0;
+let apresentMapaInst = null, apresentRuasIdx = 0, apresentIAPromise = null;
 
 function _apresentRenderCharts(dataBairro, tipoCounts) {{
   if(typeof Plotly === 'undefined') return;
@@ -6270,7 +6270,7 @@ async function abrirApresentacaoBairro() {{
   _apresentAtualizarStreetView(ruasComCoord);
   requestAnimationFrame(() => _apresentInicializarMapa(dataBairro, a));
 
-  explicarComIA(_montarResumoTextoBairro(a), 'apresent-ia-corpo', null);
+  apresentIAPromise = explicarComIA(_montarResumoTextoBairro(a), 'apresent-ia-corpo', null);
 }}
 
 function fecharApresentacaoBairro() {{
@@ -6278,7 +6278,20 @@ function fecharApresentacaoBairro() {{
   if(apresentMapaInst) {{ apresentMapaInst.remove(); apresentMapaInst = null; }}
 }}
 
-function imprimirApresentacaoBairro() {{
+// Espera a análise de IA terminar de carregar antes de abrir a impressão
+// (senão o PDF sai com "Consultando IA..." em vez do texto gerado) — com
+// um teto de 15s pra não travar a impressão se a IA demorar/falhar.
+async function imprimirApresentacaoBairro() {{
+  const btn = document.getElementById('btn-imprimir-apresent');
+  if(apresentIAPromise) {{
+    if(btn) {{ btn.disabled = true; btn.textContent = '⏳ Aguardando análise de IA…'; }}
+    await Promise.race([
+      apresentIAPromise,
+      new Promise(resolve => setTimeout(resolve, 15000)),
+    ]);
+    if(btn) {{ btn.disabled = false; btn.textContent = '🖨️ Imprimir'; }}
+  }}
+
   document.body.classList.add('apresent-print-ativo');
   const limpar = () => {{ document.body.classList.remove('apresent-print-ativo'); window.onafterprint = null; }};
   window.onafterprint = limpar;
@@ -6704,7 +6717,7 @@ else {{ window.addEventListener('load', init); }}
     <div class="analise-corpo apresent-corpo" id="apresent-corpo"></div>
     <div class="analise-footer apresent-footer">
       <button class="btn-reset" onclick="fecharApresentacaoBairro()">✕ Fechar</button>
-      <button class="btn-pdf" onclick="imprimirApresentacaoBairro()">🖨️ Imprimir</button>
+      <button class="btn-pdf" id="btn-imprimir-apresent" onclick="imprimirApresentacaoBairro()">🖨️ Imprimir</button>
     </div>
   </div>
 </div>
