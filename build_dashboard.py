@@ -1691,7 +1691,7 @@ function renderTurno(data) {{
   const labels = ORDER.filter(t=>c[t]);
   const vals   = labels.map(t=>c[t]||0);
   const maxTurno = Math.max(...vals);
-  const colors = labels.map((t,i)=>vals[i]===maxTurno?COLORS.vermelho:TURNO_COLORS[t]||COLORS.azul);
+  const colors = labels.map((t,i)=>vals[i]===maxTurno?COLORS.vermelho:COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:10}},automargin:true}},
     yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}},range:[0,Math.max(...vals)*1.18]}},
@@ -1783,8 +1783,7 @@ function renderMes(data) {{
   const labels = ORDER.filter(m=>c[m]);
   const vals   = labels.map(m=>c[m]||0);
   const maxMes = Math.max(...vals);
-  const colBase = [COLORS.azul, COLORS.laranja, COLORS.verde, COLORS.roxo, COLORS.amarelo, COLORS.azulClr, COLORS.vermelho, COLORS.azul, COLORS.laranja, COLORS.verde, COLORS.roxo, COLORS.amarelo];
-  const colors = vals.map((v,i)=>v===maxMes?COLORS.vermelho:colBase[i]||COLORS.azul);
+  const colors = vals.map(v=>v===maxMes?COLORS.vermelho:COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{tickfont:{{size:11}}}},
     yaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}},range:[0,Math.max(...vals)*1.18]}},
@@ -4983,7 +4982,7 @@ function renderRuas(data) {{
   const entries = sortedEntries(c).filter(e=>e[0]&&e[0]!=='').slice(0,10); // top 10
   const labels = entries.map(e=>e[0]).map(l=>l.length>30?l.slice(0,28)+'…':l).reverse();
   const vals   = entries.map(e=>e[1]).reverse();
-  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:i>labels.length-4?COLORS.laranja:COLORS.azulClr);
+  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
     yaxis:{{tickfont:{{size:9}},automargin:false}},
@@ -5000,7 +4999,7 @@ function renderRefs(data) {{
   const entries = sortedEntries(c).filter(e=>e[0]&&e[0]!=='').slice(0,10); // top 10
   const labels = entries.map(e=>e[0]).map(l=>l.length>32?l.slice(0,30)+'…':l).reverse();
   const vals   = entries.map(e=>e[1]).reverse();
-  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:i>labels.length-4?COLORS.laranja:COLORS.azulClr);
+  const colors = labels.map((_,i)=>i===labels.length-1?COLORS.vermelho:COLORS.azul);
   const layout = {{...LAYOUT_BASE,
     xaxis:{{showgrid:true,gridcolor:'#F0F0F0',zeroline:false,tickfont:{{size:10}}}},
     yaxis:{{tickfont:{{size:9}},automargin:false}},
@@ -5051,13 +5050,7 @@ function renderHora(data) {{
   }});
   const labels = hrs.map((_,i)=>`${{String(i).padStart(2,'0')}}h`);
   const maxHr = Math.max(...hrs);
-  const colors = hrs.map((v,i) => {{
-    if(v===maxHr && v>0) return COLORS.vermelho;
-    if(i>=22||i<6)       return COLORS.roxo;
-    if(i>=18)            return COLORS.azul;
-    if(i>=12)            return COLORS.laranja;
-    return COLORS.amarelo;
-  }});
+  const colors = hrs.map(v => v===maxHr && v>0 ? COLORS.vermelho : COLORS.azul);
   const trace = [{{
     type:'bar', x:labels, y:hrs,
     marker:{{color:colors,line:{{color:'white',width:0.5}}}},
@@ -6126,13 +6119,7 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {{
   dataBairro.forEach(r => {{ if(r.hora) {{ const h=parseInt(r.hora.split(':')[0]); if(!isNaN(h)) hrs[h]++; }} }});
   const labelsH = hrs.map((_,i)=>`${{String(i).padStart(2,'0')}}h`);
   const maxHr = Math.max(...hrs);
-  const coresH = hrs.map((v,i) => {{
-    if(v===maxHr && v>0) return COLORS.vermelho;
-    if(i>=22||i<6) return COLORS.roxo;
-    if(i>=18) return COLORS.azul;
-    if(i>=12) return COLORS.laranja;
-    return COLORS.amarelo;
-  }});
+  const coresH = hrs.map(v => v===maxHr && v>0 ? COLORS.vermelho : COLORS.azul);
   Plotly.react('apresent-chart-hora', [{{
       type:'bar', x:labelsH, y:hrs, marker:{{color:coresH}},
       hovertemplate:'<b>%{{x}}</b><br>%{{y}} casos<extra></extra>',
@@ -6147,7 +6134,7 @@ function _apresentRenderCharts(dataBairro, tipoCounts) {{
   const labelsTu = TURNO_ORDER.filter(t=>turnoCounts[t]);
   const valsTu = labelsTu.map(t=>turnoCounts[t]);
   const maxTurno = Math.max(...valsTu);
-  const coresTu = labelsTu.map((t,i)=>valsTu[i]===maxTurno?COLORS.vermelho:TURNO_COLORS[t]||COLORS.azul);
+  const coresTu = labelsTu.map((t,i)=>valsTu[i]===maxTurno?COLORS.vermelho:COLORS.azul);
   Plotly.react('apresent-chart-turno', barV(labelsTu, valsTu, coresTu), {{...darkLayout,
     margin:{{l:24,r:10,t:16,b:30}},
     xaxis:{{tickfont:{{size:9,color:'#8FA1BF'}}}},
