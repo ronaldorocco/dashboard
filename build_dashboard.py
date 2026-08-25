@@ -1426,6 +1426,7 @@ function sair(){{
             <option value="">Selecione um bairro…</option>
           </select>
           <button class="btn-analise" onclick="analisarBairro()" style="white-space:nowrap">🔎 Analisar Bairro</button>
+          <button class="btn-reset" onclick="limparAnaliseBairro()" style="white-space:nowrap">⟳ Limpar</button>
         </div>
         <div id="analise-bairro-result"></div>
       </div>
@@ -5765,6 +5766,15 @@ function populateAnaliseBairroSelect(bairros) {{
 
 function riscoNivel(pct) {{
   return pct>=50 ? ['Alto',COLORS.vermelho] : pct>=20 ? ['Médio',COLORS.laranja] : ['Baixo',COLORS.azul];
+}}
+
+function limparAnaliseBairro() {{
+  const sel = document.getElementById('ab-bairro-select');
+  if(sel) sel.value = '';
+  const cont = document.getElementById('analise-bairro-result');
+  if(cont) cont.innerHTML = '';
+  ultimaAnaliseBairro = null;
+  limparRotaBairro();
 }}
 
 function analisarBairro() {{
