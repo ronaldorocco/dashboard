@@ -1528,8 +1528,8 @@ const COLORS = {{
   roxo2:'#CA5010',
 }};
 const TIPO_COLORS = {{
-  'Furto':COLORS.azul,'Tentativa de Furto':COLORS.azulClr,
-  'Arrombamento':COLORS.laranja,'Roubo':COLORS.vermelho,
+  'Furto':COLORS.vermelho,'Tentativa de Furto':COLORS.azulClr,
+  'Arrombamento':COLORS.laranja,'Roubo':COLORS.azul,
   'Tentativa de Roubo':COLORS.roxo,
 }};
 const TURNO_COLORS = {{
