@@ -992,6 +992,10 @@ tbody td{{padding:6px 8px;border-bottom:1px solid #F0F0F0;color:#333;white-space
 .mapa-leg-item{{display:flex;align-items:center;gap:5px;font-size:10px;color:white;}}
 .mapa-leg-dot{{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.5);}}
 .mapa-stat{{font-size:11px;color:rgba(255,255,255,.8);}}
+.btn-heatmap{{background:transparent;color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.4);
+  border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap;}}
+.btn-heatmap:hover{{background:rgba(255,255,255,.15);color:white;border-color:rgba(255,255,255,.7);}}
+.btn-heatmap.ativo{{background:#E07B00;color:white;border-color:#E07B00;}}
 /* ── COMPARAÇÃO ANUAL ── */
 .comp-ano-btn{{
   border:none;border-radius:20px;padding:5px 16px;font-size:11px;font-weight:700;
@@ -1443,12 +1447,15 @@ function sair(){{
             <div class="mapa-stat" id="mapa-stat">Clique em um marcador para ver detalhes</div>
           </div>
         </div>
-        <div class="mapa-legenda">
-          <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#0078D4"></div>Furto</div>
-          <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#50B2FF"></div>Tent. Furto</div>
-          <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#E07B00"></div>Arrombamento</div>
-          <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#D13438"></div>Roubo</div>
-          <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#8764B8"></div>Tent. Roubo</div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div class="mapa-legenda">
+            <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#0078D4"></div>Furto</div>
+            <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#50B2FF"></div>Tent. Furto</div>
+            <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#E07B00"></div>Arrombamento</div>
+            <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#D13438"></div>Roubo</div>
+            <div class="mapa-leg-item"><div class="mapa-leg-dot" style="background:#8764B8"></div>Tent. Roubo</div>
+          </div>
+          <button id="btn-heatmap" class="btn-heatmap" onclick="toggleHeatmap()" title="Mostrar/ocultar mapa de calor">🔥 Mapa de Calor</button>
         </div>
       </div>
       <div id="mapa-crime"></div>
@@ -6423,6 +6430,8 @@ const TIPO_COLORS_MAP = {{
 
 let mapaInst = null;
 let clusterLayer = null;
+let heatLayer = null;
+let heatAtivo = false;
 
 // ── STREET VIEW (foto do local, carregada só quando o popup abre) ────────────
 const _svCache = {{}};
@@ -6473,6 +6482,7 @@ function renderMapa(data) {{
   initMapa();
   if(!mapaInst) return;
   if(clusterLayer) {{ mapaInst.removeLayer(clusterLayer); }}
+  if(heatLayer) {{ mapaInst.removeLayer(heatLayer); heatLayer = null; }}
 
   clusterLayer = L.markerClusterGroup({{
     maxClusterRadius:40,
@@ -6491,9 +6501,11 @@ function renderMapa(data) {{
 
   let comCoords = 0;
   let svCounter = 0;
+  const heatCoords = [];
   data.forEach(r => {{
     if(!r.lat || !r.lon) return;
     comCoords++;
+    heatCoords.push([r.lat, r.lon, 1]);
     const cor = TIPO_COLORS_MAP[r.tipo] || '#666';
     const marker = L.circleMarker([r.lat, r.lon], {{
       radius:8, fillColor:cor, color:'white',
@@ -6522,6 +6534,20 @@ function renderMapa(data) {{
   mapaInst.addLayer(clusterLayer);
   document.getElementById('mapa-stat').textContent =
     `${{comCoords}} de ${{data.length}} ocorrências com localização mapeada`;
+
+  if(typeof L.heatLayer === 'function' && heatCoords.length) {{
+    heatLayer = L.heatLayer(heatCoords, {{radius:28, blur:22, maxZoom:17}});
+    if(heatAtivo) heatLayer.addTo(mapaInst);
+  }}
+}}
+
+function toggleHeatmap() {{
+  heatAtivo = !heatAtivo;
+  const btn = document.getElementById('btn-heatmap');
+  if(btn) btn.classList.toggle('ativo', heatAtivo);
+  if(!mapaInst || !heatLayer) return;
+  if(heatAtivo) {{ heatLayer.addTo(mapaInst); }}
+  else {{ mapaInst.removeLayer(heatLayer); }}
 }}
 
 // ── SIDEBAR TOGGLE (MOBILE) ───────────────────────────────────────────────────
