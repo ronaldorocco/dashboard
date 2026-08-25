@@ -1655,6 +1655,17 @@ const state = {
   bairro: new Set(), item: new Set(), dia: new Set(), logradouro: new Set(),
   recuperado: new Set()
 };
+// Ao abrir, filtra só pelo ano atual (o usuário desmarca/marca manualmente
+// se quiser ver outros anos). Se o ano atual não tem dados ainda, usa o
+// ano mais recente disponível.
+{
+  const anosDisponiveis = [...new Set(RAW.map(r=>r.ano))];
+  if(anosDisponiveis.length) {
+    const anoAtual = new Date().getFullYear();
+    const anoPadrao = anosDisponiveis.includes(anoAtual) ? anoAtual : Math.max(...anosDisponiveis);
+    state.ano.add(String(anoPadrao));
+  }
+}
 let imeiQ = '', marcaQ = '', placaQ = '', numeroSerieQ = '', corQ = '', detalhesQ = '', pesquisaQ = '';
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
