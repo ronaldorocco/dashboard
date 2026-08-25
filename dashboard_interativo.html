@@ -5456,32 +5456,11 @@ function renderComparacao(data) {
 // mês, ano com ano...), diferente da "Comparação Anual" que sempre usa anos inteiros.
 const PERIODO_PALETTE = ['#0078D4','#D13438','#107C10','#8764B8','#E07B00','#0097A7'];
 let periodos = [{inicio:'',fim:''},{inicio:'',fim:''}];
-let periodosInit = false;
 
-function _addDays(dataStr, dias) {
-  const d = new Date(dataStr+'T00:00:00');
-  d.setDate(d.getDate()+dias);
-  return d.toISOString().slice(0,10);
-}
-function _addAnos(dataStr, anos) {
-  const [y,m,d] = dataStr.split('-');
-  return `${String(Number(y)+anos).padStart(4,'0')}-${m}-${d}`;
-}
 function _periodoLabel(p) {
   if (!p.inicio || !p.fim) return '';
   const fmt = d => { const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; };
   return p.inicio===p.fim ? fmt(p.inicio) : `${fmt(p.inicio)}–${fmt(p.fim)}`;
-}
-
-function initPeriodosDefault() {
-  if (periodosInit || RAW.length===0) return;
-  periodosInit = true;
-  const datas = RAW.map(r=>r.data).filter(Boolean).sort();
-  if (datas.length===0) return;
-  const maxData = datas[datas.length-1];
-  const p1fim = maxData, p1ini = _addDays(maxData,-6);
-  const p2fim = _addAnos(maxData,-1), p2ini = _addDays(p2fim,-6);
-  periodos = [{inicio:p1ini,fim:p1fim}, {inicio:p2ini,fim:p2fim}];
 }
 
 function addPeriodo() {
@@ -5641,7 +5620,6 @@ let _periodoCache = null;
 
 function renderComparaPeriodos() {
   if (typeof Plotly === 'undefined') return;
-  initPeriodosDefault();
   if (document.getElementById('periodo-selector').innerHTML === '') renderPeriodoSelector();
 
   const base       = filteredNonDate();
