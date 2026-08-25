@@ -5282,8 +5282,17 @@ function _anoColor(ano, anosAll) {
   return ANO_PALETTE[i >= 0 ? i % ANO_PALETTE.length : 0];
 }
 
+let compAnosInit = false;
+
 function initCompAnos(anosAll) {
-  // Nenhum ano ativo por padrão: só os botões aparecem até o usuário escolher.
+  // Primeira chamada: ativa só o ano atual (o usuário clica nos outros
+  // botões pra ir comparando lado a lado).
+  if (!compAnosInit && compAnosAtivos.size === 0 && anosAll.length) {
+    compAnosInit = true;
+    const anoAtual  = new Date().getFullYear();
+    const anoPadrao = anosAll.includes(anoAtual) ? anoAtual : Math.max(...anosAll);
+    compAnosAtivos.add(anoPadrao);
+  }
   const sel = document.getElementById('comp-anos-selector');
   if (!sel) return;
   const spanTitle = '<span style="font-size:11px;color:#555;font-weight:700;align-self:center">Selecione os anos:</span>';
