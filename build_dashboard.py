@@ -1600,6 +1600,15 @@ function filtered() {{
 function filteredNonDate() {{
   return RAW.filter(passesNonDateFilters);
 }}
+// Igual a filtered(), mas ignora o filtro de ano: usado na Comparação Anual,
+// que por natureza precisa enxergar vários anos ao mesmo tempo (senão o ano
+// marcado na barra lateral escondia os outros anos escolhidos ali).
+function filteredSemAno() {{
+  return RAW.filter(r => passesNonDateFilters(r) &&
+    (state.mes.size === 0 || state.mes.has(r.mes)) &&
+    (state.dia.size === 0 || state.dia.has(r.dia))
+  );
+}}
 
 // ── CONTAR ────────────────────────────────────────────────────────────────────
 function count(data, key) {{
@@ -2367,7 +2376,7 @@ function renderAll() {{
   renderRefs(ocs);
   renderHeatmap(ocs);
   renderHora(ocs);
-  renderComparacao(ocs);
+  renderComparacao(dedupBO(filteredSemAno()));
   renderComparaPeriodos();
   renderPlanoPolicial(ocs);
   renderDiagnostico(ocs);
@@ -5146,7 +5155,7 @@ function toggleCompAno(ano) {{
   }} else {{
     compAnosAtivos.add(ano);
   }}
-  renderComparacao(dedupBO(filtered()));
+  renderComparacao(dedupBO(filteredSemAno()));
 }}
 
 function renderComparacao(data) {{
