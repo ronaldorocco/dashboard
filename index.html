@@ -5614,14 +5614,14 @@ function renderPeriodoSelector() {
   if (!el) return;
   el.innerHTML = periodos.map((p,i) => {
     const cor = PERIODO_PALETTE[i % PERIODO_PALETTE.length];
-    return `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:white;
+    return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 10px;background:white;
       border-radius:6px;border:2px solid ${cor}">
       <span style="width:10px;height:10px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>
       <input type="date" value="${p.inicio}" onchange="setPeriodoData(${i},'inicio',this.value)"
-        style="border:1px solid #ccc;border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit">
+        style="border:1px solid #ccc;border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit;width:130px;max-width:40vw">
       <span style="font-size:11px;color:#888">até</span>
       <input type="date" value="${p.fim}" onchange="setPeriodoData(${i},'fim',this.value)"
-        style="border:1px solid #ccc;border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit">
+        style="border:1px solid #ccc;border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit;width:130px;max-width:40vw">
       ${periodos.length>2 ? `<button onclick="removePeriodo(${i})" title="Remover período"
         style="border:none;background:none;color:#D13438;cursor:pointer;font-size:15px;font-weight:700;padding:0 2px">×</button>` : ''}
     </div>`;
