@@ -1347,7 +1347,9 @@ function sair(){{
       padding:10px 14px;background:#f5f7fa;border-radius:8px;border:1px solid #e0e6f0">
       <span style="font-size:11px;color:#555;font-weight:700;align-self:center">Selecione os anos:</span>
     </div>
+    <div id="comp-msg" style="display:none;font-size:12px;color:#888;margin-bottom:12px">Selecione ao menos um ano acima para comparar.</div>
     <div class="kpi-row" id="comp-kpi-row" style="display:none;margin-bottom:12px"></div>
+    <div id="comp-charts-wrap" style="display:none">
     <div class="row row2">
       <div class="chart-card">
         <div class="chart-title"><span class="icon">📅</span> Total por Mês — Comparativo Anual</div>
@@ -1377,6 +1379,7 @@ function sair(){{
         <div class="chart-title"><span class="icon">🛣️</span> Top 10 Ruas — Comparativo Anual</div>
         <div id="comp-chart-ruas" style="height:360px"></div>
       </div>
+    </div>
     </div>
 
     <!-- COMPARAÇÃO DE PERÍODOS PERSONALIZADOS -->
@@ -5101,8 +5104,7 @@ function _anoColor(ano, anosAll) {{
 }}
 
 function initCompAnos(anosAll) {{
-  // Primeira chamada: ativa todos os anos disponíveis
-  if (compAnosAtivos.size === 0) anosAll.forEach(a => compAnosAtivos.add(a));
+  // Nenhum ano ativo por padrão: só os botões aparecem até o usuário escolher.
   const sel = document.getElementById('comp-anos-selector');
   if (!sel) return;
   const spanTitle = '<span style="font-size:11px;color:#555;font-weight:700;align-self:center">Selecione os anos:</span>';
@@ -5135,8 +5137,18 @@ function renderComparacao(data) {{
   const anosAll = [...new Set(RAW.map(r => r.ano))].sort();
   if (anosAll.length === 0) return;
   initCompAnos(anosAll);
-  const vis = anosAll.filter(a => compAnosAtivos.has(a));
-  if (vis.length === 0) return;
+  const vis        = anosAll.filter(a => compAnosAtivos.has(a));
+  const msgEl      = document.getElementById('comp-msg');
+  const kpiRowEl   = document.getElementById('comp-kpi-row');
+  const chartsWrap = document.getElementById('comp-charts-wrap');
+  if (vis.length === 0) {{
+    if (msgEl)      msgEl.style.display      = 'block';
+    if (kpiRowEl)   kpiRowEl.style.display   = 'none';
+    if (chartsWrap) chartsWrap.style.display = 'none';
+    return;
+  }}
+  if (msgEl)      msgEl.style.display      = 'none';
+  if (chartsWrap) chartsWrap.style.display = '';
 
   const LCOMP = {{
     ...LAYOUT_BASE,
@@ -5146,7 +5158,7 @@ function renderComparacao(data) {{
   }};
 
   // ── KPI Deltas (2 anos mais recentes visíveis) ────────────────────────────
-  const kpiRow = document.getElementById('comp-kpi-row');
+  const kpiRow = kpiRowEl;
   if (kpiRow && vis.length >= 2) {{
     const aA = vis[vis.length-2], aB = vis[vis.length-1];
     const dA = data.filter(r => r.ano === aA), dB = data.filter(r => r.ano === aB);
