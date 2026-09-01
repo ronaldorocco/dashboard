@@ -43,6 +43,9 @@ MES_PARA_NUM = {
     'JUNHO':'06','JULHO':'07','AGOSTO':'08','SETEMBRO':'09','OUTUBRO':'10',
     'NOVEMBRO':'11','DEZEMBRO':'12',
 }
+MES_NOME = {'01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio',
+            '06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro',
+            '11':'Novembro','12':'Dezembro'}
 TIPO_MAP = {'FURTO':'Furto','ROUBO':'Roubo'}
 ITEM_MAP = {
     'VEICULO':'Ve\u00edculo','VEILCULO':'Ve\u00edculo','VEICULO ':'Ve\u00edculo',
@@ -219,6 +222,7 @@ def carregar_dados():
         records.append({
             'data':    r['DATA_STR'],
             'ano':     r['DATA_STR'][:4],
+            'mes':     MES_NOME.get(r['DATA_STR'][5:7], ''),
             'dia':     r['DIA_SEMANA'],
             'turno':   r['TURNO'],
             'tipo':    r['TIPIFICACAO'],
@@ -464,7 +468,11 @@ def busca_universal(records, query):
     'furto celular sabado' (tipo + item + dia na mesma frase) ou 'celular 2026'
     (item + ano), cada palavra podendo bater num campo diferente do registro.
     Sem ano na pergunta, busca em todos os anos disponíveis (padrão)."""
-    campos = ['bairro','tipo','item','marca','imei','turno','endereco','dia','bo','ano']
+    campos = ['bairro','tipo','item','marca','imei','turno','endereco','dia','bo','ano','mes']
+    # bo/imei são números longos e uma coincidência de poucos dígitos dentro deles
+    # (ex.: "902" aparecendo dentro do B.O. "Bo-00600.2026.0022902") não significa
+    # que a busca é sobre aquele campo — exige um trecho mais longo pra valer.
+    CAMPOS_ID_MIN_LEN = {'bo': 6, 'imei': 6}
     tokens = [t for t in sem_acento(query.strip()).split() if t] or [sem_acento(query.strip())]
 
     def variacoes_de(tok):
@@ -478,10 +486,26 @@ def busca_universal(records, query):
 
     variacoes_por_token = [variacoes_de(tok) for tok in tokens]
 
+    # Bairros conhecidos (normalizados) — quando um token da busca é exatamente
+    # o nome de um bairro, a busca desse token fica restrita ao campo bairro.
+    # Sem isso, "estados" também batia (via a variação sem 's', "estado") em
+    # ruas de OUTROS bairros como "Avenida Do Estado", inflando o total.
+    bairros_norm = {sem_acento(r['bairro']) for r in records if r.get('bairro')}
+
+    def campo_bate(campo, var, r):
+        valor = sem_acento(r.get(campo, ''))
+        min_len = CAMPOS_ID_MIN_LEN.get(campo)
+        if min_len and len(var) < min_len:
+            return False
+        return var in valor
+
     def token_bate_registro(variacoes, r):
+        if variacoes & bairros_norm:
+            return sem_acento(r.get('bairro', '')) in variacoes
         return any(
-            any(var in sem_acento(r.get(c,'')) for var in variacoes)
-            for c in campos
+            campo_bate(campo, var, r)
+            for campo in campos
+            for var in variacoes
         )
 
     matches = [
@@ -511,10 +535,6 @@ def busca_universal(records, query):
     matches_item_exato = [r for r in matches if item_match_exato(r.get('item',''))]
     matches_item = matches_item_exato or [r for r in matches if item_match_qualquer(r.get('item',''))]
     total_item = len(matches_item)
-
-    MES_NOME = {'01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio',
-                '06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro',
-                '11':'Novembro','12':'Dezembro'}
 
     # Usa registros do item principal para estatísticas (igual ao dashboard),
     # deduplicado por B.O. — 1 boletim com vários itens conta 1 ocorrência.
