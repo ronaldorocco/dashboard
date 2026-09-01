@@ -2763,12 +2763,27 @@ function _normalizarTexto(s) {{
 // tratamos esse caractere como um coringa de 1 posição na comparação.
 function _correspondeValor(valorArmazenado, textoNormalizado) {{
   const base = _normalizarTexto(valorArmazenado).replace(/[.*+?^${{}}()|[\]\\\\]/g, '\\\\$&');
-  const padrao = base.replace(/\\uFFFD/g, '.');
+  // Tolera plural (s final em cada palavra) — sem isso "tentativas de furto"
+  // (pergunta) não batia com o valor armazenado "Tentativa de Furto", e a
+  // Ana acabava respondendo com os furtos consumados em vez das tentativas.
+  const comPlural = base.replace(/([a-z0-9])(?=\\s|$)/g, '$1s?');
+  const padrao = comPlural.replace(/\\uFFFD/g, '.');
   try {{
     return new RegExp(padrao).test(textoNormalizado);
   }} catch (e) {{
     return textoNormalizado.includes(_normalizarTexto(valorArmazenado));
   }}
+}}
+
+// Descarta, de uma lista de valores encontrados na pergunta, qualquer valor
+// que seja só uma versão mais genérica de outro valor também encontrado
+// (ex.: "Barra" dentro de "Barra Sul", "Furto" dentro de "Tentativa de
+// Furto", "Rua 100" dentro de "Rua 1000") — a pessoa quis dizer o mais
+// específico, não os dois combinados.
+function _semSubsuncao(achados) {{
+  return achados.filter(v => !achados.some(outro =>
+    outro !== v && _normalizarTexto(outro).includes(_normalizarTexto(v))
+  ));
 }}
 
 // Perfil agregado de autores (naturalidade, profissão, estado civil, sexo).
@@ -2987,26 +3002,33 @@ function montarContextoChat(pergunta) {{
   const dadosU = dedupBO(dataFiltrada);
   const pNorm = _normalizarTexto(pergunta);
 
-  const bairros = [...new Set(dadosU.map(r=>r.bairro).filter(Boolean))];
-  const tipos   = [...new Set(dadosU.map(r=>r.tipo).filter(Boolean))];
-  const turnos  = [...new Set(dadosU.map(r=>r.turno).filter(Boolean))];
-  const itens   = [...new Set(dataFiltrada.map(r=>r.item).filter(Boolean))];
+  const bairros   = [...new Set(dadosU.map(r=>r.bairro).filter(Boolean))];
+  const tipos     = [...new Set(dadosU.map(r=>r.tipo).filter(Boolean))];
+  const turnos    = [...new Set(dadosU.map(r=>r.turno).filter(Boolean))];
+  const itens     = [...new Set(dataFiltrada.map(r=>r.item).filter(Boolean))];
+  const enderecos = [...new Set(dadosU.map(r=>r.endereco).filter(Boolean))];
+  const meses     = [...new Set(dadosU.map(r=>r.mes).filter(Boolean))];
+  const anos      = [...new Set(dadosU.map(r=>String(r.ano)).filter(Boolean))];
 
-  const acharNaLista = lista => lista.filter(v => pNorm.includes(_normalizarTexto(v)));
+  const acharNaLista = lista => _semSubsuncao(lista.filter(v => _correspondeValor(v, pNorm)));
 
-  let critBairro = acharNaLista(bairros);
-  let critTipo   = acharNaLista(tipos);
-  let critTurno  = acharNaLista(turnos);
-  let critDia    = acharNaLista(DIA_ORDER);
-  let critItem   = acharNaLista(itens);
+  let critBairro   = acharNaLista(bairros);
+  let critTipo     = acharNaLista(tipos);
+  let critTurno    = acharNaLista(turnos);
+  let critDia      = acharNaLista(DIA_ORDER);
+  let critItem     = acharNaLista(itens);
+  let critEndereco = acharNaLista(enderecos);
+  let critMes      = acharNaLista(meses);
+  let critAno      = acharNaLista(anos);
 
-  let semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length && !critItem.length;
+  let semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length &&
+    !critItem.length && !critEndereco.length && !critMes.length && !critAno.length;
 
   // Pergunta de acompanhamento sem nenhum critério novo, no meio de uma
   // conversa já em andamento — reaproveita os critérios da pergunta anterior
   // pra continuar falando da mesma ocorrência/consulta.
   if (semCriterio && _ultimoCriteriosChat && _chatHistorico.length) {{
-    ({{critBairro, critTipo, critTurno, critDia, critItem}} = _ultimoCriteriosChat);
+    ({{critBairro, critTipo, critTurno, critDia, critItem, critEndereco, critMes, critAno}} = _ultimoCriteriosChat);
     semCriterio = false;
   }}
 
@@ -3015,20 +3037,23 @@ function montarContextoChat(pergunta) {{
   let contextoOcorrencias = '';
   if (!(semCriterio && semFiltroAtivo)) {{
     let subset = dadosU;
-    if (critBairro.length) subset = subset.filter(r => critBairro.includes(r.bairro));
-    if (critTipo.length)   subset = subset.filter(r => critTipo.includes(r.tipo));
-    if (critTurno.length)  subset = subset.filter(r => critTurno.includes(r.turno));
-    if (critDia.length)    subset = subset.filter(r => critDia.includes(r.dia));
+    if (critBairro.length)   subset = subset.filter(r => critBairro.includes(r.bairro));
+    if (critTipo.length)     subset = subset.filter(r => critTipo.includes(r.tipo));
+    if (critTurno.length)    subset = subset.filter(r => critTurno.includes(r.turno));
+    if (critDia.length)      subset = subset.filter(r => critDia.includes(r.dia));
+    if (critEndereco.length) subset = subset.filter(r => critEndereco.includes(r.endereco));
+    if (critMes.length)      subset = subset.filter(r => critMes.includes(r.mes));
+    if (critAno.length)      subset = subset.filter(r => critAno.includes(String(r.ano)));
     if (critItem.length) {{
       const bosComItem = new Set(dataFiltrada.filter(r => critItem.includes(r.item)).map(r=>r.bo));
       subset = subset.filter(r => bosComItem.has(r.bo));
     }}
 
-    const criteriosTxt = [...critBairro,...critTipo,...critTurno,...critDia,...critItem].join(', ') || 'filtros já ativos na tela';
+    const criteriosTxt = [...critBairro,...critTipo,...critTurno,...critDia,...critItem,...critEndereco,...critMes,...critAno].join(', ') || 'filtros já ativos na tela';
     if (subset.length === 0) {{
       contextoOcorrencias = `Nenhum registro de ocorrência encontrado para os critérios identificados (${{criteriosTxt}}).`;
     }} else {{
-      _ultimoCriteriosChat = {{critBairro, critTipo, critTurno, critDia, critItem}};
+      _ultimoCriteriosChat = {{critBairro, critTipo, critTurno, critDia, critItem, critEndereco, critMes, critAno}};
       const porTipo   = count(subset,'tipo');
       const porBairro = count(subset,'bairro');
       const porTurno  = count(subset,'turno');
@@ -3055,6 +3080,11 @@ function montarContextoChat(pergunta) {{
       // Recomendações do dashboard) — evita a IA ter que calcular % sozinha.
       const totalSub = subset.length;
       const pct = n => totalSub ? ((n/totalSub)*100).toFixed(1) : '0.0';
+      // Item usa sua própria base (itensDoSubset), não o total de ocorrências:
+      // um B.O. pode ter mais de um item, então a soma dos itens pode passar
+      // do total de ocorrências — usar totalSub aqui gerava % acima de 100.
+      const totalItens = itensDoSubset.length;
+      const pctItem = n => totalItens ? ((n/totalItens)*100).toFixed(1) : '0.0';
       const top1Rua   = topRuas[0] || ['—', 0];
       const top1Item  = Object.entries(porItem).sort((a,b)=>b[1]-a[1])[0]  || ['—', 0];
       const top1Turno = Object.entries(porTurno).sort((a,b)=>b[1]-a[1])[0] || ['—', 0];
@@ -3064,7 +3094,7 @@ function montarContextoChat(pergunta) {{
       const topCombo = Object.entries(combos).sort((a,b)=>b[1]-a[1])[0] || ['—', 0];
       const resumoTaticoTxt =
         `Rua mais crítica: ${{top1Rua[0]}} (${{top1Rua[1]}} casos = ${{pct(top1Rua[1])}}%). ` +
-        `Item mais visado: ${{top1Item[0]}} (${{top1Item[1]}} casos = ${{pct(top1Item[1])}}%). ` +
+        `Item mais visado: ${{top1Item[0]}} (${{top1Item[1]}} casos = ${{pctItem(top1Item[1])}}%). ` +
         `Turno mais crítico: ${{top1Turno[0]}} (${{top1Turno[1]}} casos = ${{pct(top1Turno[1])}}%). ` +
         `Dia mais crítico: ${{top1Dia[0]}} (${{top1Dia[1]}} casos = ${{pct(top1Dia[1])}}%). ` +
         `Combinação bairro/turno mais concentrada: ${{topCombo[0]}} (${{topCombo[1]}} casos = ${{pct(topCombo[1])}}%).`;
