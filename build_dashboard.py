@@ -5873,8 +5873,9 @@ function analisarBairro() {{
   const porRua = {{}};
   dataBairro.forEach(r => {{
     if(!r.endereco) return;
-    if(!porRua[r.endereco]) porRua[r.endereco] = {{count:0, lats:[], lons:[]}};
+    if(!porRua[r.endereco]) porRua[r.endereco] = {{count:0, lats:[], lons:[], regs:[]}};
     porRua[r.endereco].count++;
+    porRua[r.endereco].regs.push(r);
     if(r.lat && r.lon) {{ porRua[r.endereco].lats.push(r.lat); porRua[r.endereco].lons.push(r.lon); }}
   }});
   const topRuas = Object.entries(porRua).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
@@ -5909,7 +5910,7 @@ function analisarBairro() {{
   window._ruasBairroAtual = topRuasComDist.map(([nome,v,c]) => {{
     if(!c) return null;
     const pct = Math.round((v.count/maxRua)*100);
-    return {{nome, lat:c.lat, lon:c.lon, count:v.count, pct, risco:riscoNivel(pct)[0]}};
+    return {{nome, lat:c.lat, lon:c.lon, count:v.count, pct, risco:riscoNivel(pct)[0], regs:v.regs}};
   }});
 
   const ruasHtml = topRuasComDist.map(([nome,v,c],i) => {{
@@ -5923,7 +5924,8 @@ function analisarBairro() {{
         onclick="toggleTriagemRua(${{i}})">📷 Avaliar rua</button>
       <span id="triagem-badge-${{i}}"></span>
       <div id="triagem-painel-${{i}}" style="display:none;margin-top:8px"></div>` : '';
-    return `<div class="posto-item">
+    const rowAttrs = c ? `style="cursor:pointer" title="Clique para ver informações e fotos da rua" onclick="if(!event.target.closest('button,input,textarea,label,a,[id^=triagem-painel-]')) toggleTriagemRua(${{i}})"` : '';
+    return `<div class="posto-item" ${{rowAttrs}}>
       <div class="posto-num">${{i+1}}</div>
       <div class="posto-info">
         <div class="posto-local">${{nome}} <span style="font-size:9.5px;font-weight:700;color:white;background:${{risco[1]}};border-radius:3px;padding:1px 6px;margin-left:4px">Risco ${{risco[0]}}</span></div>
@@ -6032,8 +6034,9 @@ function toggleTriagemRua(idx) {{
     </label>`).join('');
 
   painel.innerHTML = `
-    <div style="font-size:9.5px;color:#888;font-weight:600;margin-bottom:3px">REFERÊNCIA (Street View)</div>
-    <div id="triagem-foto-${{idx}}" style="max-width:280px"></div>
+    ${{_infoRuaHtml(r)}}
+    <div style="font-size:9.5px;color:#888;font-weight:600;margin:8px 0 3px">REFERÊNCIA (Street View)</div>
+    <div id="triagem-foto-${{idx}}" style="max-width:560px"></div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${{checks}}</div>
     <textarea id="triagem-obs-${{idx}}" placeholder="Observações..."
       style="width:100%;max-width:280px;min-height:44px;font-size:11px;padding:6px;border-radius:6px;border:1px solid #DDD;box-sizing:border-box">${{existente.observacoes||''}}</textarea>
@@ -6049,8 +6052,44 @@ function toggleTriagemRua(idx) {{
       <div id="triagem-foto-status-${{idx}}" style="font-size:10px;color:#888;margin-top:3px"></div>
     </div>`;
 
-  carregarStreetView('triagem-foto-'+idx, r.lat, r.lon);
+  carregarStreetViewMulti('triagem-foto-'+idx, r.lat, r.lon);
   renderFotosTriagem(idx, existente.fotos);
+}}
+
+function _infoRuaHtml(r) {{
+  const regs = r.regs || [];
+  if(!regs.length) return '';
+  const tipos = Object.entries(count(regs,'tipo')).sort((a,b)=>b[1]-a[1])
+    .map(([t,c]) => `<span style="background:${{TIPO_COLORS[t]||'#888'}};color:white;border-radius:10px;padding:1px 8px;font-size:10px">${{t}}: ${{c}}</span>`).join(' ');
+  const noturno = regs.filter(x => x.turno==='Noite'||x.turno==='Madrugada').length;
+  const horas = {{}};
+  regs.forEach(x => {{ const h=parseInt(x.hora); if(!isNaN(h)) horas[h]=(horas[h]||0)+1; }});
+  const pico = sortedEntries(horas).slice(0,3).map(e=>String(e[0]).padStart(2,'0')+'h').join(', ') || '—';
+  const dias = sortedEntries(count(regs,'dia')).slice(0,2).map(e=>e[0]).join(', ') || '—';
+  return `<div style="background:#F5F8FC;border:1px solid #D6E4F0;border-radius:6px;padding:8px 10px;font-size:11px;color:#333;max-width:560px">
+    <div style="font-weight:700;margin-bottom:4px">📋 ${{r.nome}} — ${{r.count}} ocorrência${{r.count>1?'s':''}}</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">${{tipos}}</div>
+    <div>🌙 ${{Math.round(noturno/regs.length*100)}}% no período noturno · ⏰ Horários de pico: ${{pico}} · 📅 Dias: ${{dias}}</div>
+  </div>`;
+}}
+
+// Street View em 4 ângulos (frente, direita, trás, esquerda) para ver a rua toda
+async function carregarStreetViewMulti(elId, lat, lon) {{
+  const el = document.getElementById(elId);
+  if(!el || !GOOGLE_STREETVIEW_KEY) return;
+  el.innerHTML = '<div style="font-size:10px;color:#888;padding:6px 0">Carregando Street View…</div>';
+  try {{
+    const meta = await (await fetch(`https://maps.googleapis.com/maps/api/streetview/metadata?location=${{lat}},${{lon}}&key=${{GOOGLE_STREETVIEW_KEY}}`)).json();
+    if(meta.status !== 'OK') {{
+      el.innerHTML = '<div style="font-size:10px;color:#888;padding:6px 0">Sem imagem do Street View para este local</div>';
+      return;
+    }}
+    const mapsUrl = `https://www.google.com/maps?layer=c&cbll=${{lat}},${{lon}}`;
+    const imgs = [0,90,180,270].map(h => `<a href="${{mapsUrl}}" target="_blank" rel="noopener" title="Abrir Street View 360° no Google Maps">
+      <img src="https://maps.googleapis.com/maps/api/streetview?size=270x170&location=${{lat}},${{lon}}&heading=${{h}}&fov=90&key=${{GOOGLE_STREETVIEW_KEY}}"
+        style="width:100%;border-radius:6px;display:block" alt="Street View ${{h}}°"></a>`).join('');
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">${{imgs}}</div>`;
+  }} catch(e) {{ el.innerHTML = ''; }}
 }}
 
 function renderFotosTriagem(idx, fotos) {{
