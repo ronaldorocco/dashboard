@@ -6473,13 +6473,27 @@ async function tracarRotaBairro() {{
 
     const pts = ultimaAnaliseBairro.waypoints;
     const coordsStr = pts.map(p => `${{p.lon}},${{p.lat}}`).join(';');
-    const url = `https://router.project-osrm.org/route/v1/driving/${{coordsStr}}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${{coordsStr}}?overview=full&geometries=geojson&steps=true`;
     const resp = await fetch(url);
     const json = await resp.json();
     if(!json.routes || !json.routes[0]) throw new Error('Rota não encontrada');
 
-    rotaBairroLayer = L.geoJSON(json.routes[0].geometry, {{
-      style: {{ color:'#D13438', weight:5, opacity:0.85 }}
+    // Um trecho clicável por passo da rota (cada passo tem o nome da via)
+    const trechos = [];
+    json.routes[0].legs.forEach(leg => leg.steps.forEach(st => {{
+      if(st.geometry && st.geometry.coordinates.length > 1)
+        trechos.push({{type:'Feature', properties:{{via:st.name||''}}, geometry:st.geometry}});
+    }}));
+    rotaBairroLayer = L.geoJSON({{type:'FeatureCollection', features:trechos}}, {{
+      style: {{ color:'#D13438', weight:6, opacity:0.85 }},
+      onEachFeature: (f, layer) => {{
+        layer.on('click', e => {{
+          L.DomEvent.stopPropagation(e);
+          _abrirPopupRota(f.properties.via, e.latlng);
+        }});
+        layer.on('mouseover', () => layer.setStyle({{weight:9, opacity:1}}));
+        layer.on('mouseout',  () => rotaBairroLayer.resetStyle(layer));
+      }}
     }}).addTo(mapaInst);
 
     rotaBairroMarkers = L.layerGroup(pts.map((p,i) => L.marker([p.lat,p.lon], {{
@@ -6499,6 +6513,29 @@ async function tracarRotaBairro() {{
   }} finally {{
     btn.disabled = false; btn.textContent = original;
   }}
+}}
+
+const _semAcento = t => _normalizarTexto(t)
+  .replace(/\\b(avenida|av|rua|alameda|rodovia|travessa)\\b/g,'').replace(/[^a-z0-9 ]/g,'').replace(/\\s+/g,' ').trim();
+
+function _abrirPopupRota(via, latlng) {{
+  const ruas = (window._ruasBairroAtual||[]).filter(Boolean);
+  const alvo = _semAcento(via);
+  // 1) casa pelo nome da via; 2) senão, a rua crítica mais próxima do clique (até 400m)
+  let rua = alvo ? ruas.find(r => _semAcento(r.nome) === alvo || (alvo.length > 3 && (_semAcento(r.nome).includes(alvo) || alvo.includes(_semAcento(r.nome))))) : null;
+  if(!rua) {{
+    let melhor = null, dmin = 400;
+    ruas.forEach(r => {{ const d = _distanciaMetros(latlng.lat, latlng.lng, r.lat, r.lon); if(d < dmin) {{ dmin = d; melhor = r; }} }});
+    rua = melhor;
+  }}
+  const svId = 'sv-rota-' + Date.now();
+  const titulo = via || (rua ? rua.nome : 'Via sem nome');
+  const html = `<div style="min-width:260px;max-width:300px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px">🛣️ ${{titulo}}</div>
+    ${{rua ? _infoRuaHtml(rua) : '<div style="font-size:11px;color:#888">Sem ocorrências registradas nesta via.</div>'}}
+    <div id="${{svId}}"></div></div>`;
+  L.popup({{maxWidth:320}}).setLatLng(latlng).setContent(html).openOn(mapaInst);
+  carregarStreetView(svId, latlng.lat, latlng.lng);
 }}
 
 function limparRotaBairro() {{
