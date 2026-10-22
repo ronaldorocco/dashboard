@@ -21,6 +21,7 @@ import os as _os
 warnings.filterwarnings('ignore')
 
 BRT = timezone(timedelta(hours=-3))
+BOT_VERSAO = '2026-10-22-menu-numerado'   # /versao responde isto: confirma qual código está no ar
 
 BOT_TOKEN       = _os.environ.get('BOT_TOKEN',       'SEU_TOKEN_AQUI').strip()
 CHAT_ID         = _os.environ.get('CHAT_ID',         '1931364088').strip()
@@ -1037,6 +1038,9 @@ def processar(text, chat_id, records):
         est = ESTADO_BUSCA[chat_id]
         return send_message(chat_id, _cabecalho_busca(est) + '\n\n' + _menu_busca(est))
 
+    if tl in ('/versao', 'versao'):
+        return send_message(chat_id, f"Versão do bot: {BOT_VERSAO}")
+
     if tl == '/resumo':
         return send_message(chat_id, consultar_resumo(records))
 
@@ -1120,7 +1124,7 @@ RELOAD_INTERVAL = 1800  # recarrega a cada 30 minutos
 
 def run_continuo():
     import time
-    print("Bot GMBC iniciado (modo Railway - resposta instantanea)")
+    print(f"Bot GMBC iniciado (modo Railway - resposta instantanea) versao={BOT_VERSAO}")
     records = carregar_dados()
     print(f"  {len(records)} registros carregados.")
     offset = None
