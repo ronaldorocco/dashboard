@@ -283,8 +283,10 @@ def send_message(chat_id, text):
                     else:
                         print(f"  ERRO Telegram (parse_mode={parse_mode}): {result.get('description')}")
             except Exception as e:
+                # HTTP 400 (Markdown inválido, ex.: "_" ou "*" no texto) levanta exceção:
+                # continua pro próximo parse_mode (texto puro) em vez de perder a resposta.
                 print(f"  ERRO ao enviar (parse_mode={parse_mode}): {e}")
-                break
+                continue
 
 
 # ── Consultas ─────────────────────────────────────────────────────────────────
@@ -310,10 +312,39 @@ def dedup_bo(registros):
         out.append(r)
     return out
 
+def top_ruas(registros, n=5):
+    """Ranking de logradouros agrupando variações de maiúscula/espaço/acento
+    ('Avenida das Flores' / 'Avenida Das Flores') como a mesma rua."""
+    grupos = {}
+    for r in registros:
+        e = (r.get('endereco') or '').strip()
+        if not e or e.lower() == 'nan':
+            continue
+        chave = ' '.join(sem_acento(e).split())
+        g = grupos.setdefault(chave, Counter())
+        g[' '.join(e.split())] += 1
+    ranking = [(g.most_common(1)[0][0], sum(g.values())) for g in grupos.values()]
+    ranking.sort(key=lambda x: (-x[1], x[0]))
+    return ranking[:n]
+
+def achar_nome(nomes, query):
+    """Acha o nome mais parecido com a consulta: exato > começa com > contém.
+    Evita 'barra sul' cair em 'Barra' ou 'estaleirinho' em 'Estaleiro'."""
+    q = ' '.join(sem_acento(query).split())
+    if not q:
+        return None
+    norm_ = [(n, sem_acento(n)) for n in nomes]
+    return (
+        next((n for n, sn in norm_ if sn == q), None) or
+        next((n for n, sn in norm_ if q in sn.split() or sn.startswith(q)), None) or
+        next((n for n, sn in norm_ if q in sn), None) or
+        next((n for n, sn in norm_ if len(sn) >= 4 and sn in q), None)
+    )
+
 def consultar_bairro(records, query):
     bairros = sorted(set(r['bairro'] for r in records if r['bairro']))
     q = sem_acento(query.strip())
-    match = next((b for b in bairros if q in sem_acento(b) or sem_acento(b) in q), None)
+    match = achar_nome(bairros, query)
 
     if not match:
         lista = '\n'.join(f"• {b}" for b in bairros[:15])
@@ -323,7 +354,7 @@ def consultar_bairro(records, query):
     total  = len(dados)
     tipos  = Counter(r['tipo']     for r in dados if r['tipo']).most_common(5)
     turnos = Counter(r['turno']    for r in dados if r['turno']).most_common()
-    ruas   = Counter(r['endereco'] for r in dados if r['endereco']).most_common(5)
+    ruas   = top_ruas(dados, 5)
     horas  = Counter(r['hora'][:2] for r in dados if r['hora'] and len(r['hora'])>=2).most_common(3)
     datas  = sorted(set(r['data']  for r in dados))
 
@@ -349,7 +380,7 @@ def consultar_bairro(records, query):
 def consultar_tipo(records, query):
     tipos = sorted(set(r['tipo'] for r in records if r['tipo']))
     q = sem_acento(query.strip())
-    match = next((t for t in tipos if q in sem_acento(t) or sem_acento(t) in q), None)
+    match = achar_nome(tipos, query)
 
     if not match:
         lista = '\n'.join(f"• {t}" for t in tipos)
@@ -359,7 +390,7 @@ def consultar_tipo(records, query):
     total   = len(dados)
     bairros = Counter(r['bairro'] for r in dados if r['bairro']).most_common(5)
     turnos  = Counter(r['turno']  for r in dados if r['turno']).most_common()
-    ruas    = Counter(r['endereco'] for r in dados if r['endereco']).most_common(3)
+    ruas    = top_ruas(dados, 3)
     datas   = sorted(set(r['data'] for r in dados))
 
     linhas = [
@@ -462,21 +493,120 @@ def consultar_resumo(records):
     ]
     return '\n'.join(linhas)
 
-def busca_universal(records, query):
-    """Busca em todos os campos: bairro, tipo, item, marca, IMEI, turno, logradouro, dia.
-    Quebra a pergunta em palavras e cruza cada uma com E — permite perguntas tipo
-    'furto celular sabado' (tipo + item + dia na mesma frase) ou 'celular 2026'
-    (item + ano), cada palavra podendo bater num campo diferente do registro.
-    Sem ano na pergunta, busca em todos os anos disponíveis (padrão)."""
-    campos = ['bairro','tipo','item','marca','imei','turno','endereco','dia','bo','ano','mes']
-    # bo/imei são números longos e uma coincidência de poucos dígitos dentro deles
-    # (ex.: "902" aparecendo dentro do B.O. "Bo-00600.2026.0022902") não significa
-    # que a busca é sobre aquele campo — exige um trecho mais longo pra valer.
-    CAMPOS_ID_MIN_LEN = {'bo': 6, 'imei': 6}
-    tokens = [t for t in sem_acento(query.strip()).split() if t] or [sem_acento(query.strip())]
+# ── Menu numerado pós-busca ──────────────────────────────────────────────────
+ESTADO_BUSCA = {}          # chat_id -> {'query', 'base', 'ts', 'opcoes'}
+ESTADO_TTL = timedelta(hours=3)
+
+DIMENSOES = [   # (chave, rótulo)
+    ('tipo',   '🔴 Tipificação'),
+    ('bairro', '📍 Bairro'),
+    ('rua',    '🛣️ Rua'),
+    ('turno',  '⏰ Turno'),
+    ('dia',    '📆 Dia da semana'),
+    ('mes',    '🗓 Mês'),
+    ('ano',    '📅 Ano'),
+    ('item',   '📦 Item'),
+    ('marca',  '🏷️ Marca/Modelo'),
+]
+
+def _ranking_dim(base, dim, limite=15):
+    """Lista [(rótulo, qtd)] da dimensão pedida, sobre os B.O.s da busca."""
+    if dim == 'rua':
+        return top_ruas(base, limite)
+    if dim == 'mes':
+        c = Counter(r['data'][:7] for r in base if r.get('data') and len(r['data']) >= 7)
+        return [(f"{MES_NOME.get(k[5:7], k[5:7])}/{k[:4]}", v) for k, v in sorted(c.items())]
+    campo = {'tipo': 'tipo', 'bairro': 'bairro', 'turno': 'turno', 'dia': 'dia',
+             'ano': 'ano', 'item': 'item', 'marca': 'marca'}[dim]
+    # agrupa variações de maiúscula/acento ("Iphone" / "iPhone")
+    grupos = {}
+    for r in base:
+        v = r.get(campo)
+        if v and str(v).strip().lower() != 'nan':
+            grupos.setdefault(sem_acento(str(v).strip()), Counter())[str(v).strip()] += 1
+    ranking = [(g.most_common(1)[0][0], sum(g.values())) for g in grupos.values()]
+    ranking.sort(key=lambda x: (-x[1], x[0]))
+    return ranking[:limite]
+
+def _opcoes_disponiveis(base):
+    """Só oferece dimensões com mais de um valor (ex.: busca por bairro não pergunta o bairro)."""
+    return [(k, rot) for k, rot in DIMENSOES if len(_ranking_dim(base, k, 1000)) > 1]
+
+def _cabecalho_busca(est):
+    base = est['base']
+    datas = sorted(set(r['data'] for r in base if r.get('data')))
+    linhas = [f"🔍 *BUSCA: \"{est['query'].upper()}\"*", f"📊 Total: *{len(base)}* ocorrência(s)"]
+    if datas:
+        linhas.append(f"📅 Período: {datas[0][8:10]}/{datas[0][5:7]}/{datas[0][:4]} — {datas[-1][8:10]}/{datas[-1][5:7]}/{datas[-1][:4]}")
+    return '\n'.join(linhas)
+
+def _menu_busca(est):
+    opcoes = [('dim:' + k, rot) for k, rot in _opcoes_disponiveis(est['base'])]
+    opcoes += [('ultimas', '🕘 Últimas ocorrências'), ('resumo', '📋 Resumo completo')]
+    est['opcoes'] = [k for k, _ in opcoes]
+    linhas = ["*Escolha uma opção (responda só com o número):*"]
+    linhas += [f"  *{i+1}* - {rot}" for i, (_, rot) in enumerate(opcoes)]
+    linhas.append("_Ou digite uma nova busca._")
+    return '\n'.join(linhas)
+
+def responder_opcao(chat_id, numero):
+    """Resposta a um número digitado depois de uma busca. None se não houver busca ativa."""
+    est = ESTADO_BUSCA.get(chat_id)
+    if not est or datetime.now(BRT) - est['ts'] > ESTADO_TTL:
+        ESTADO_BUSCA.pop(chat_id, None)
+        return None
+    est['ts'] = datetime.now(BRT)
+    base = est['base']
+    if 'opcoes' not in est:
+        _menu_busca(est)
+    if not (1 <= numero <= len(est['opcoes'])):
+        return f"Opção inválida. Responda com um número de 1 a {len(est['opcoes'])}.\n\n" + _menu_busca(est)
+
+    chave = est['opcoes'][numero - 1]
+    linhas = [_cabecalho_busca(est), ""]
+    if chave.startswith('dim:'):
+        dim = chave[4:]
+        rot = dict(DIMENSOES)[dim]
+        total = len(base)
+        linhas.append(f"*{rot}:*")
+        linhas += [f"  {i+1}. {v}: *{q}* ({pct(q, total)})" for i, (v, q) in enumerate(_ranking_dim(base, dim))]
+    elif chave == 'ultimas':
+        recentes = sorted(base, key=lambda r: (r.get('data', ''), r.get('hora', '')), reverse=True)[:10]
+        linhas.append("*🕘 Últimas ocorrências:*")
+        for r in recentes:
+            d = r.get('data', '')
+            linhas.append(f"  • {d[8:10]}/{d[5:7]}/{d[:4]} {r.get('hora','')} — {r.get('tipo','')} — "
+                          f"{r.get('endereco','')} ({r.get('bairro','')})")
+    else:
+        return busca_universal_resumo(est['query'], base) + '\n\n' + _menu_busca(est)
+    return '\n'.join(linhas) + '\n\n' + _menu_busca(est)
+
+def busca_universal(records, query, chat_id=None):
+    """Busca guiada por campo: cada parte da pergunta é procurada na COLUNA certa.
+      • nome de rua ("quinta avenida", "avenida brasil") → só em ENDEREÇO
+      • nome de bairro ("centro", "nova esperanca")      → só em BAIRRO
+      • dia / mês / ano / turno / tipo de crime          → só na coluna respectiva
+      • item (celular, bicicleta...)                     → só em ITEM; marca → MARCA
+    As partes são combinadas com E ('furto celular sabado centro'). Só palavras
+    que não são nada disso caem num fallback entre ENDEREÇO/BAIRRO e depois
+    ITEM/MARCA/IMEI/B.O. Sem ano na pergunta, vale todos os anos."""
+    DIAS_SET   = {'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo'}
+    MESES_SET  = {sem_acento(m) for m in MES_NOME.values()}
+    TURNOS_SET = {'madrugada', 'manha', 'tarde', 'noite'}
+    TIPO_WORDS = {'furto', 'roubo', 'arrombamento', 'tentativa'}
+    STOPWORDS  = {'de', 'da', 'do', 'das', 'dos', 'em', 'na', 'no', 'nas', 'nos', 'a', 'o', 'e'}
+    ABREV      = {'av': 'avenida', 'av.': 'avenida'}
+
+    # "sexta-feira"/"segunda feira" → "sexta"/"segunda"
+    q_norm = sem_acento(query.strip()).replace('-feira', '').replace(' feira', '')
+    if len(q_norm) < 3 and not q_norm.isdigit():
+        return "Digite pelo menos 3 letras para buscar. Ex.: *centro*, *furto celular*, *quinta avenida*."
+    tokens_all = [ABREV.get(t, t) for t in q_norm.split() if t]
+
+    def n(r, campo):
+        return sem_acento(r.get(campo, '') or '')
 
     def variacoes_de(tok):
-        # Variações da busca: original, sem 's' final, sem 'es' final
         vs = {tok}
         if tok.endswith('s') and len(tok) > 3:
             vs.add(tok[:-1])      # bicicletas → bicicleta
@@ -484,34 +614,77 @@ def busca_universal(records, query):
             vs.add(tok[:-2])      # veiculos → veiculo
         return vs
 
-    variacoes_por_token = [variacoes_de(tok) for tok in tokens]
+    bairros_norm = {n(r, 'bairro') for r in records if r.get('bairro')}
+    ends_norm    = {' '.join(n(r, 'endereco').split()) for r in records if r.get('endereco')}
+    ends_norm.discard('nan')
+    itens_norm   = {n(r, 'item') for r in records if r.get('item')}
+    itens_norm  |= {i.rstrip('s') for i in itens_norm}
 
-    # Bairros conhecidos (normalizados) — quando um token da busca é exatamente
-    # o nome de um bairro, a busca desse token fica restrita ao campo bairro.
-    # Sem isso, "estados" também batia (via a variação sem 's', "estado") em
-    # ruas de OUTROS bairros como "Avenida Do Estado", inflando o total.
-    bairros_norm = {sem_acento(r['bairro']) for r in records if r.get('bairro')}
+    restricoes = []          # (descricao, funcao(registro) -> bool)
+    usados = [False] * len(tokens_all)
 
-    def campo_bate(campo, var, r):
-        valor = sem_acento(r.get(campo, ''))
-        min_len = CAMPOS_ID_MIN_LEN.get(campo)
-        if min_len and len(var) < min_len:
-            return False
-        return var in valor
+    def consome(i, j):
+        for k in range(i, j):
+            usados[k] = True
 
-    def token_bate_registro(variacoes, r):
-        if variacoes & bairros_norm:
-            return sem_acento(r.get('bairro', '')) in variacoes
-        return any(
-            campo_bate(campo, var, r)
-            for campo in campos
-            for var in variacoes
-        )
+    def livre(i, j):
+        return not any(usados[i:j])
 
-    matches = [
-        r for r in records
-        if all(token_bate_registro(variacoes, r) for variacoes in variacoes_por_token)
-    ]
+    # 1) Bairro com mais de uma palavra ("nova esperanca", "praia dos amores")
+    for bn in sorted((b for b in bairros_norm if ' ' in b), key=len, reverse=True):
+        w = bn.split()
+        for i in range(len(tokens_all) - len(w) + 1):
+            if tokens_all[i:i+len(w)] == w and livre(i, i+len(w)):
+                restricoes.append(('bairro', lambda r, bn=bn: n(r, 'bairro') == bn))
+                consome(i, i+len(w))
+
+    # 2) Nome de rua com 2+ palavras ("quinta avenida", "avenida do estado")
+    for tam in range(len(tokens_all), 1, -1):
+        for i in range(len(tokens_all) - tam + 1):
+            if not livre(i, i+tam):
+                continue
+            frase = ' '.join(tokens_all[i:i+tam])
+            if any((' ' + frase + ' ') in (' ' + e + ' ') for e in ends_norm):
+                restricoes.append(('endereco', lambda r, f=frase: f in ' '.join(n(r, 'endereco').split())))
+                consome(i, i+tam)
+
+    # 3) Palavras soltas, cada uma na sua coluna
+    for i, tok in enumerate(tokens_all):
+        if usados[i] or tok in STOPWORDS:
+            continue
+        vs = variacoes_de(tok)
+        if tok.isdigit() and len(tok) == 4:
+            restricoes.append(('ano', lambda r, t=tok: r.get('ano') == t))
+        elif tok in DIAS_SET:
+            restricoes.append(('dia', lambda r, t=tok: n(r, 'dia') == t))
+        elif tok in MESES_SET:
+            restricoes.append(('mes', lambda r, t=tok: n(r, 'mes') == t))
+        elif tok in TURNOS_SET:
+            restricoes.append(('turno', lambda r, t=tok: n(r, 'turno') == t))
+        elif vs & TIPO_WORDS:
+            restricoes.append(('tipo', lambda r, v=vs: any(x in n(r, 'tipo') for x in v)))
+        elif vs & bairros_norm:
+            restricoes.append(('bairro', lambda r, v=vs: n(r, 'bairro') in v))
+        elif vs & itens_norm:
+            restricoes.append(('item', lambda r, v=vs: n(r, 'item') in v or n(r, 'item').rstrip('s') in v))
+        else:
+            # Palavra solta: logradouro e/ou bairro; senão item/marca/IMEI/B.O.
+            f_end  = lambda r, v=vs: any(x in n(r, 'endereco') for x in v)
+            f_bai  = lambda r, v=vs: any(x in w for x in v for w in n(r, 'bairro').split()) if len(tok) >= 5 else False
+            f_item = lambda r, v=vs: any(x in n(r, 'item') for x in v)
+            f_marca = lambda r, v=vs: any(x in n(r, 'marca') for x in v)
+            f_id   = lambda r, v=vs: len(tok) >= 6 and any(x in n(r, 'imei') or x in n(r, 'bo') for x in v)
+            for f in (lambda r, a=f_end, b=f_bai: a(r) or b(r), f_item, f_marca, f_id):
+                if any(f(r) for r in records):
+                    restricoes.append(('livre', f))
+                    break
+            else:
+                restricoes.append(('livre', lambda r: False))
+
+    if not restricoes:
+        restricoes.append(('livre', lambda r: False))
+
+    matches = [r for r in records if all(f(r) for _, f in restricoes)]
 
     if not matches:
         return (
@@ -520,31 +693,26 @@ def busca_universal(records, query):
             "Digite /ajuda para ver todos os comandos."
         )
 
-    # Registros onde algum token da busca bateu exatamente no campo ITEM
-    # (igual ao filtro do dashboard) — prioriza esse subconjunto pras
-    # estatísticas quando a busca menciona um item específico.
-    todas_variacoes = set().union(*variacoes_por_token)
-
-    def item_match_exato(valor):
-        return sem_acento(valor) in todas_variacoes
-
-    def item_match_qualquer(valor):
-        v = sem_acento(valor)
-        return any(var in v for var in todas_variacoes)
-
-    matches_item_exato = [r for r in matches if item_match_exato(r.get('item',''))]
-    matches_item = matches_item_exato or [r for r in matches if item_match_qualquer(r.get('item',''))]
-    total_item = len(matches_item)
-
-    # Usa registros do item principal para estatísticas (igual ao dashboard),
-    # deduplicado por B.O. — 1 boletim com vários itens conta 1 ocorrência.
-    base = dedup_bo(matches_item if total_item > 0 else matches)
+    # Deduplicado por B.O. — 1 boletim com vários itens conta 1 ocorrência.
+    base = dedup_bo(matches)
     total_base = len(base)
 
+    # Com chat_id (uso no Telegram): guarda a busca e mostra só o total + menu
+    # numerado; cada número abre um detalhamento (ano, mês, bairro, rua...).
+    if chat_id is not None:
+        ESTADO_BUSCA[chat_id] = {'query': query, 'base': base, 'ts': datetime.now(BRT)}
+        return _cabecalho_busca(ESTADO_BUSCA[chat_id]) + '\n\n' + _menu_busca(ESTADO_BUSCA[chat_id])
+
+    return busca_universal_resumo(query, base)
+
+
+def busca_universal_resumo(query, base):
+    """Relatório completo da busca (tipificação, bairros, turno, dia, mês, ruas)."""
+    total_base = len(base)
     tipos   = Counter(r['tipo']    for r in base if r['tipo']).most_common(5)
     bairros = Counter(r['bairro']  for r in base if r['bairro']).most_common(5)
     turnos  = Counter(r['turno']   for r in base if r['turno']).most_common()
-    ruas    = Counter(r['endereco'] for r in base if r['endereco'] and r['endereco'] != 'nan').most_common(5)
+    ruas    = top_ruas(base, 5)
     dias    = Counter(r['dia']     for r in base if r['dia']).most_common()
     meses   = Counter(r['data'][5:7] for r in base if r.get('data') and len(r['data'])>=7).most_common()
     datas   = sorted(set(r['data'] for r in base))
@@ -838,7 +1006,8 @@ AJUDA = (
     "  `Relatorio` → boletim do dia (hoje ou último com dados)\n"
     "  `Recarregar` → força atualização dos dados da planilha\n\n"
     "*Busca livre — digite qualquer palavra:*\n"
-    "  `bicicleta`, `celular`, `centro`, `furto`, `noite`...\n\n"
+    "  `bicicleta`, `celular`, `rua 906`, `furto`, `noite`...\n"
+    "  O bot mostra o total e um *menu numerado* (ano, mês, bairro, rua, turno...). Responda com o número.\n\n"
     "*Comandos específicos:*\n"
     "  `/bairro centro` · `/tipo furto` · `/turno noite`\n"
     "  `/resumo` · `/bairros` · `/tipos` · `/ajuda`\n\n"
@@ -850,11 +1019,23 @@ AJUDA = (
 # ── Processar mensagem ────────────────────────────────────────────────────────
 def processar(text, chat_id, records):
     t  = text.strip()
+    # Em grupos o Telegram manda "/resumo@alertas_gmbc_bot" — tira o "@bot".
+    if t.startswith('/'):
+        cmd, _, resto = t.partition(' ')
+        t = cmd.split('@')[0] + (' ' + resto if resto else '')
     tl = t.lower()
     tl_norm = sem_acento(t)
 
     if tl in ['/start','/ajuda','/help','ajuda','help']:
         return send_message(chat_id, AJUDA)
+
+    # Resposta numérica ao menu da última busca ("1", "2"...) ou "menu".
+    if tl_norm.isdigit() and len(tl_norm) <= 2:
+        resp = responder_opcao(chat_id, int(tl_norm))
+        return send_message(chat_id, resp or "Nenhuma busca ativa. Digite o que procura, ex.: *celular*, *rua 906*, *centro*.")
+    if tl in ('menu', '/menu') and chat_id in ESTADO_BUSCA:
+        est = ESTADO_BUSCA[chat_id]
+        return send_message(chat_id, _cabecalho_busca(est) + '\n\n' + _menu_busca(est))
 
     if tl == '/resumo':
         return send_message(chat_id, consultar_resumo(records))
@@ -869,6 +1050,10 @@ def processar(text, chat_id, records):
 
     if tl in ['/chatid', '/id']:
         return send_message(chat_id, f"ID deste chat: `{chat_id}`")
+
+    if tl in ('/bairro', '/tipo', '/turno'):
+        return send_message(chat_id, f"Use assim: *{tl} <nome>*. Ex.: {tl} " +
+                            {'/bairro': 'centro', '/tipo': 'furto', '/turno': 'noite'}[tl])
 
     if tl.startswith('/bairro '):
         return send_message(chat_id, consultar_bairro(records, t[8:]))
@@ -886,7 +1071,8 @@ def processar(text, chat_id, records):
     bairros_lista = sorted(set(r['bairro'] for r in records if r['bairro']))
     bairro_match = (
         next((b for b in bairros_lista if tl_norm == sem_acento(b)), None) or
-        next((b for b in bairros_lista if tl_norm in sem_acento(b).split()), None)
+        next((b for b in bairros_lista if len(tl_norm) >= 4 and tl_norm in sem_acento(b).split()
+              and tl_norm not in ('praia', 'jardim', 'dos', 'sul')), None)
     )
     if bairro_match:
         return send_message(chat_id, consultar_bairro(records, bairro_match))
@@ -894,7 +1080,8 @@ def processar(text, chat_id, records):
     tipos_lista = sorted(set(r['tipo'] for r in records if r['tipo']))
     tipo_match = (
         next((tp for tp in tipos_lista if tl_norm == sem_acento(tp)), None) or
-        next((tp for tp in tipos_lista if tl_norm in sem_acento(tp)), None)
+        next((tp for tp in tipos_lista if len(tl_norm) >= 4 and tl_norm in sem_acento(tp).split()
+              and tl_norm != 'tentativa'), None)
     )
     if tipo_match:
         return send_message(chat_id, consultar_tipo(records, tipo_match))
@@ -925,7 +1112,7 @@ def processar(text, chat_id, records):
             return send_message(chat_id, f"⚠️ Erro ao gerar relatório: {e}")
 
     # Busca universal em todos os campos
-    return send_message(chat_id, busca_universal(records, t))
+    return send_message(chat_id, busca_universal(records, t, chat_id))
 
 
 # ── Modo Railway: long-polling contínuo ───────────────────────────────────────
@@ -980,7 +1167,11 @@ def run_continuo():
                 force_reload = True
                 send_message(cid, "♻️ Recarregando dados da planilha...")
             else:
-                processar(text, cid, records)
+                try:
+                    processar(text, cid, records)
+                except Exception as e:
+                    print(f"  ERRO ao processar '{text}': {e}")
+                    send_message(cid, "⚠️ Erro ao processar sua consulta. Tente reformular.")
 
 
 # ── Modo GitHub Actions: one-shot ─────────────────────────────────────────────
@@ -1013,7 +1204,11 @@ def run_once():
         cid  = str(msg['chat']['id'])
         nome = msg['chat'].get('first_name') or msg['chat'].get('title') or cid
         print(f"[{datetime.now(BRT).strftime('%H:%M:%S')}] [{nome}] '{text}'")
-        processar(text, cid, records)
+        try:
+            processar(text, cid, records)
+        except Exception as e:
+            print(f"  ERRO ao processar '{text}': {e}")
+            send_message(cid, "⚠️ Erro ao processar sua consulta. Tente reformular.")
         processed += 1
 
     if last_offset:
