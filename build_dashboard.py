@@ -2988,6 +2988,241 @@ function montarContextoResumoGeral(pNorm) {{
   return `Resumo executivo geral (dados atualmente filtrados no dashboard):\n${{_resumoExecutivoDados || '(ainda não calculado — aguarde o carregamento dos dados)'}}`;
 }}
 
+// ── INTERPRETAÇÃO DE PERGUNTAS DE SEGURANÇA/RISCO/COMPARAÇÃO ─────────────────
+// Sinônimos do dia a dia → valor real da planilha ("carro" → item "Veículo",
+// "roubam" → tipificação "Roubo"). Sem isso a Ana ignorava essas palavras.
+const SINONIMOS_ITEM = [
+  [/\\b(carro|carros|automovel|automoveis|veiculo|veiculos|caminhonete|camionete|picape)\\b/, ['veiculo']],
+  [/\\b(moto|motos|motocicleta|motocicletas|motoneta)\\b/, ['motocicleta']],
+  [/\\b(scooter|scooters|patinete|patinetes)\\b/, ['scooter']],
+  [/\\b(bike|bikes|bicicleta|bicicletas|magrela)\\b/, ['bicicleta']],
+  [/\\b(celular|celulares|telefone|telefones|smartphone|smartphones|iphone)\\b/, ['celular']],
+  [/\\b(fio|fios|cabo|cabos|fiacao)\\b/, ['fiacao eletrica']],
+  [/\\b(notebook|notebooks|laptop|laptops)\\b/, ['notebook']],
+];
+const SINONIMOS_TIPO = [
+  [/\\broub(a|am|ou|aram|ado|ada|ados|adas)\\b|\\bassalt/, ['roubo']],
+  [/\\bfurt(a|am|ou|aram|ado|ada|ados|adas)\\b/, ['furto']],
+  [/\\barromb(a|am|ou|aram|ado|ada|ados|adas)\\b/, ['arrombamento']],
+];
+function _normSing(s) {{
+  return _normalizarTexto(s).replace(/s$/, '');
+}}
+function _resolverSinonimos(pNorm, lista, tabela) {{
+  const achados = new Set();
+  tabela.forEach(([re, alvos]) => {{
+    if (re.test(pNorm)) {{
+      alvos.forEach(a => lista.forEach(v => {{ if (_normSing(v) === _normSing(a)) achados.add(v); }}));
+    }}
+  }});
+  return [...achados];
+}}
+
+// Rua citada só pelo nome ("na atlantica", "avenida do estado" → também
+// "estado"), sem o "Avenida"/"Rua" na frente.
+const PREFIXOS_VIA = /^(rua|avenida|travessa|alameda|estrada|rodovia|beco|praca|calcadao|servidao|via|largo)\\s+/;
+function _nucleoRua(endereco) {{
+  const n = _normalizarTexto(endereco);
+  const m = n.match(PREFIXOS_VIA);
+  if (!m) return '';
+  const nucleo = n.slice(m[0].length).trim().replace(/^(do|da|de|dos|das)\\s+/, '');
+  if (nucleo.length < 5 || /^[0-9\\s]+$/.test(nucleo) || ['centro', 'camboriu', 'balneario'].includes(nucleo)) return '';
+  return nucleo;
+}}
+function _ruasPorNomeCurto(pNorm, enderecos) {{
+  return enderecos.filter(e => {{
+    const nucleo = _nucleoRua(e);
+    if (!nucleo) return false;
+    const esc = nucleo.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
+    return new RegExp('\\\\b' + esc + '\\\\b').test(pNorm);
+  }});
+}}
+
+// Remove do texto da pergunta o nome da rua já identificada — senão palavras
+// que fazem parte do nome ("Quinta" Avenida, Avenida Do "Estado") eram lidas
+// também como dia da semana ou bairro e filtravam os dados errado.
+function _tirarRuaDoTexto(endereco, texto) {{
+  const aplicar = (valor, t) => {{
+    const base = _normalizarTexto(valor).replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
+    const padrao = base.replace(/([a-z0-9])(?=\\s|$)/g, '$1s?').replace(/�/g, '.');
+    try {{ return t.replace(new RegExp(padrao, 'g'), ' '); }} catch (e) {{ return t; }}
+  }};
+  let t = aplicar(endereco, texto);
+  const nucleo = _nucleoRua(endereco);
+  if (nucleo) t = aplicar(nucleo, t);
+  return t;
+}}
+
+function _extrairHoraPergunta(pNorm) {{
+  if (/meia[- ]noite/.test(pNorm)) return 0;
+  if (/meio[- ]dia/.test(pNorm)) return 12;
+  // "3 da manhã", "10 da noite" → converte pro relógio de 24h
+  const p = pNorm.match(/\\b(\\d{{1,2}})\\s*(?:h|hs|horas?)?\\s+(?:da|de)\\s+(manha|tarde|noite|madrugada)\\b/);
+  if (p) {{
+    let h = parseInt(p[1], 10);
+    if (h < 12 && (p[2] === 'tarde' || p[2] === 'noite')) h += 12;
+    if (h <= 23) return h;
+  }}
+  const m = pNorm.match(/\\b([01]?\\d|2[0-3])\\s*(?:h\\b|hs\\b|horas?\\b|:\\s?[0-5]\\d)/);
+  return m ? parseInt(m[1], 10) : null;
+}}
+function _turnoDaHora(h) {{
+  return h >= 6 && h <= 11 ? 'Manhã' : h >= 12 && h <= 17 ? 'Tarde' : h >= 18 ? 'Noite' : 'Madrugada';
+}}
+
+// Bloco de avaliação: compara a rua/bairro/cidade perguntada com o restante
+// do município e já entrega o nível (ALTO/MÉDIO/BAIXO) calculado, pra Ana não
+// precisar adivinhar se algo "é muito" — ela só traduz os números em frase.
+function montarContextoAvaliacao(pNorm, c) {{
+  const gatilho = /segur|perig|risco|arrisc|cuidado|medo|tranquil|assalt|vale a pena|\\bposso\\b|\\bpode\\b|andar|caminh|passe|estacion|deixar|muito|muita|\\balto\\b|\\balta\\b|indice|frequen|costum|comum|roubam|furtam|compar|piorou|aument|diminu|reduz|\\bmais (roub|furt)|\\bou\\b/.test(pNorm);
+  if (!gatilho && c.critItem.length < 2) return '';
+
+  const dadosU = c.dadosU;
+  if (!dadosU.length) return '';
+  const fmtD = d => d ? d.slice(8,10) + '/' + d.slice(5,7) + '/' + d.slice(0,4) : '?';
+  const pct = (n, t) => t ? Math.round(n / t * 100) + '%' : '0%';
+  const ORDEM_TURNO = ['Madrugada', 'Manhã', 'Tarde', 'Noite'];
+
+  const datas = dadosU.map(r => r.data).filter(Boolean).sort();
+  const dMin = datas[0], dMax = datas[datas.length - 1];
+  const nMeses = new Set(datas.map(d => d.slice(0, 7))).size || 1;
+
+  let tema = dadosU;
+  if (c.critTipo.length) tema = tema.filter(r => c.critTipo.includes(r.tipo));
+  if (c.critMes.length)  tema = tema.filter(r => c.critMes.includes(r.mes));
+  if (c.critAno.length)  tema = tema.filter(r => c.critAno.includes(String(r.ano)));
+  if (c.critItem.length) {{
+    const bos = new Set(c.dataFiltrada.filter(r => c.critItem.includes(r.item)).map(r => r.bo));
+    tema = tema.filter(r => bos.has(r.bo));
+  }}
+  const temaTxt = [...c.critTipo, ...c.critItem, ...c.critMes, ...c.critAno].join(', ') || 'todas as ocorrências';
+  const turnoPerg = c.critTurno.length ? c.critTurno : [];
+
+  const addDias = (d, n) => {{ const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); }};
+  const corte1 = addDias(dMax, -90), corte2 = addDias(dMax, -180);
+  const tendencia = arr => {{
+    const rec = arr.filter(r => r.data > corte1).length;
+    const ant = arr.filter(r => r.data > corte2 && r.data <= corte1).length;
+    if (ant < 3) return 'poucos dados para avaliar tendência (últimos 90 dias: ' + rec + ', 90 dias anteriores: ' + ant + ')';
+    const d = Math.round((rec - ant) / ant * 100);
+    const rot = d > 25 ? 'em alta' : d < -25 ? 'em queda' : 'estável';
+    return rot + ' (últimos 90 dias: ' + rec + ' ocorrências; 90 dias anteriores: ' + ant + ')';
+  }};
+  const distTxt = (arr, key, ordem) => {{
+    const m = count(arr, key);
+    const chaves = ordem || Object.keys(m).sort((a, b) => m[b] - m[a]);
+    return chaves.map(k => k + ': ' + (m[k] || 0) + ' (' + pct(m[k] || 0, arr.length) + ')').join(', ') || '(sem dados)';
+  }};
+  const topTxt = (arr, key, n) => Object.entries(count(arr, key)).sort((a, b) => b[1] - a[1]).slice(0, n)
+    .map(([k, v]) => k + ': ' + v).join(', ') || '(sem dados)';
+  // posição por empate (todo mundo com a mesma contagem divide a mesma posição)
+  const posicao = (mapa, valor) => {{
+    const meu = mapa[valor] || 0;
+    if (!meu) return null;
+    return 1 + Object.values(mapa).filter(v => v > meu).length;
+  }};
+  const nivel = (pos, n) => {{
+    if (!pos || !n) return 'SEM REGISTROS';
+    const p = pos / n;
+    if (pos <= Math.max(1, Math.ceil(n * 0.05)) || p <= 0.10) return 'ALTO';
+    if (p <= 0.30) return 'MÉDIO-ALTO';
+    if (p <= 0.60) return 'MÉDIO';
+    return 'BAIXO';
+  }};
+  const violentos = arr => arr.filter(r => /roubo/i.test(r.tipo || '')).length;
+
+  const linhas = [
+    'AVALIAÇÃO DE RISCO (comparação calculada pelo sistema sobre os registros de B.O. — use estes números e níveis exatamente como vierem, sem recalcular). ' +
+    'Período dos dados: ' + fmtD(dMin) + ' a ' + fmtD(dMax) + ' (' + nMeses + ' meses). Assunto: ' + temaTxt + '. ' +
+    'Total no município nesse assunto: ' + tema.length + ' ocorrência(s), média de ' + (tema.length / nMeses).toFixed(1) + ' por mês.'
+  ];
+
+  // ── Locais perguntados (rua tem prioridade sobre bairro) ──
+  const locais = c.critEndereco.length
+    ? c.critEndereco.map(v => ['endereco', 'Rua/avenida', v])
+    : c.critBairro.map(v => ['bairro', 'Bairro', v]);
+  locais.slice(0, 3).forEach(([key, rotulo, valor]) => {{
+    const sub = tema.filter(r => r[key] === valor);
+    const porLocal = count(tema, key);
+    const nLocais = Object.keys(porLocal).length;
+    const pos = posicao(porLocal, valor);
+    const tipoPeers = key === 'endereco' ? 'ruas' : 'bairros';
+    linhas.push('');
+    linhas.push(rotulo + ' "' + valor + '": ' + sub.length + ' ocorrência(s) (' + pct(sub.length, tema.length) + ' do total do município neste assunto), média de ' + (sub.length / nMeses).toFixed(1) + ' por mês.');
+    if (!sub.length) {{
+      linhas.push('Nível de ocorrências: SEM REGISTROS nesse assunto no período. (Ausência de registro não garante que o local é seguro — só que não há B.O. registrado.)');
+      return;
+    }}
+    linhas.push('Nível de ocorrências: ' + nivel(pos, nLocais) + ' — ocupa a ' + pos + 'ª posição entre ' + nLocais + ' ' + tipoPeers + ' com registros nesse assunto (a média é ' + (tema.length / nLocais).toFixed(1) + ' ocorrências por ' + (key === 'endereco' ? 'rua' : 'bairro') + ').');
+    linhas.push('Por turno (distribuição completa): ' + distTxt(sub, 'turno', ORDEM_TURNO) + '.');
+    if (turnoPerg.length) {{
+      const subT = sub.filter(r => turnoPerg.includes(r.turno));
+      const temaT = tema.filter(r => turnoPerg.includes(r.turno));
+      const porLocalT = count(temaT, key);
+      const posT = posicao(porLocalT, valor);
+      linhas.push('No turno perguntado (' + turnoPerg.join(', ') + '): ' + subT.length + ' ocorrência(s), ' + pct(subT.length, sub.length) + ' do total desse local; nível nesse turno: ' + nivel(posT, Object.keys(porLocalT).length) + (posT ? ' (' + posT + 'ª posição entre ' + Object.keys(porLocalT).length + ' ' + tipoPeers + ' nesse turno)' : '') + '.');
+    }}
+    const turnoMenos = ORDEM_TURNO.map(t => [t, sub.filter(r => r.turno === t).length]).sort((a, b) => a[1] - b[1])[0];
+    linhas.push('Turno com menos ocorrências nesse local: ' + turnoMenos[0] + ' (' + turnoMenos[1] + ').');
+    linhas.push('Por dia da semana: ' + distTxt(sub, 'dia', DIA_ORDER) + '.');
+    const porHora = {{}};
+    sub.forEach(r => {{ if (r.hora) {{ const h = String(r.hora).slice(0, 2); porHora[h] = (porHora[h] || 0) + 1; }} }});
+    const horasTop = Object.entries(porHora).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h, n]) => h + 'h: ' + n).join(', ');
+    if (horasTop) linhas.push('Horários com mais ocorrências: ' + horasTop + '.');
+    linhas.push('Tipos de ocorrência: ' + distTxt(sub, 'tipo') + '. Com violência/ameaça (roubo e tentativa de roubo): ' + violentos(sub) + ' (' + pct(violentos(sub), sub.length) + ').');
+    const bosSub = new Set(sub.map(r => r.bo));
+    const itensSub = c.dataFiltrada.filter(r => bosSub.has(r.bo));
+    linhas.push('Itens mais visados: ' + topTxt(itensSub, 'item', 4) + '.');
+    if (key === 'endereco') {{
+      linhas.push('Bairro dessa via: ' + topTxt(sub, 'bairro', 1) + '.');
+    }} else {{
+      linhas.push('Ruas com mais ocorrências nesse bairro: ' + topTxt(sub, 'endereco', 5) + '.');
+    }}
+    linhas.push('Tendência recente: ' + tendencia(sub) + '.');
+  }});
+
+  // ── Rua/avenida citada que não existe nos registros ──
+  const ruaCitada = pNorm.match(/\\b(rua|avenida|travessa|alameda|estrada|rodovia)\\s+([a-z0-9]+(?:\\s+[a-z0-9]+)?)/);
+  if (ruaCitada && !c.critEndereco.length && !c.critBairro.length) {{
+    linhas.push('');
+    linhas.push('ATENÇÃO: nenhuma rua/avenida chamada "' + ruaCitada[0] + '" foi encontrada nos registros de B.O. (pode não ter ocorrências registradas ou o nome estar escrito de outra forma). Informe isso e peça pra confirmar o nome da rua ou o bairro; não invente dados dessa rua.');
+  }}
+
+  // ── Panorama do município (sem local específico) ──
+  if (!locais.length && tema.length && !ruaCitada) {{
+    linhas.push('');
+    linhas.push('Panorama do município nesse assunto — por turno: ' + distTxt(tema, 'turno', ORDEM_TURNO) + '.');
+    linhas.push('Bairros com mais ocorrências: ' + topTxt(tema, 'bairro', 5) + '. Ruas com mais ocorrências: ' + topTxt(tema, 'endereco', 5) + '.');
+    linhas.push('Tipos: ' + distTxt(tema, 'tipo') + '. Com violência/ameaça (roubo e tentativa de roubo): ' + violentos(tema) + ' (' + pct(violentos(tema), tema.length) + ').');
+    linhas.push('Tendência recente: ' + tendencia(tema) + '.');
+  }}
+
+  // ── Comparativo entre itens (ex.: "carros ou motocicletas", "muitos celulares?") ──
+  if (c.critItem.length) {{
+    let linhasItem = c.dataFiltrada;
+    if (c.critTipo.length) linhasItem = linhasItem.filter(r => c.critTipo.includes(r.tipo));
+    if (c.critMes.length)  linhasItem = linhasItem.filter(r => c.critMes.includes(r.mes));
+    if (c.critAno.length)  linhasItem = linhasItem.filter(r => c.critAno.includes(String(r.ano)));
+    const bosPorItem = {{}};
+    linhasItem.forEach(r => {{ if (r.item) (bosPorItem[r.item] = bosPorItem[r.item] || new Set()).add(r.bo); }});
+    const contItem = {{}};
+    Object.keys(bosPorItem).forEach(k => {{ contItem[k] = bosPorItem[k].size; }});
+    const rankItens = Object.entries(contItem).sort((a, b) => b[1] - a[1]);
+    const totalBOs = new Set(linhasItem.map(r => r.bo)).size;
+    linhas.push('');
+    linhas.push('Comparativo entre itens no município (' + (c.critTipo.length ? c.critTipo.join(', ') : 'todos os tipos') + '; total de B.O.s: ' + totalBOs + '):');
+    c.critItem.forEach(it => {{
+      const bosIt = bosPorItem[it] || new Set();
+      const arrIt = dadosU.filter(r => bosIt.has(r.bo));
+      const pos = posicao(contItem, it);
+      linhas.push('- ' + it + ': ' + (contItem[it] || 0) + ' ocorrência(s) (' + pct(contItem[it] || 0, totalBOs) + ' dos B.O.s), ' + (pos ? pos + 'º item mais frequente entre ' + rankItens.length + ' itens' : 'sem registros') +
+        '; por tipo: ' + distTxt(arrIt, 'tipo') + '; por turno: ' + distTxt(arrIt, 'turno', ORDEM_TURNO) + '; média de ' + ((contItem[it] || 0) / nMeses).toFixed(1) + ' por mês; tendência: ' + tendencia(arrIt) + '.');
+    }});
+    linhas.push('Itens mais frequentes no município para comparação (top 6): ' + rankItens.slice(0, 6).map(([k, v]) => k + ': ' + v).join(', ') + '.');
+  }}
+  return linhas.join('\\n');
+}}
+
 // Guarda os últimos critérios de ocorrência identificados na conversa, pra
 // reaproveitar em perguntas de acompanhamento (ex.: "qual foi o dia, o
 // horário e o B.O.?") que não repetem bairro/tipo/item — sem isso, essas
@@ -3010,16 +3245,29 @@ function montarContextoChat(pergunta) {{
   const meses     = [...new Set(dadosU.map(r=>r.mes).filter(Boolean))];
   const anos      = [...new Set(dadosU.map(r=>String(r.ano)).filter(Boolean))];
 
-  const acharNaLista = lista => _semSubsuncao(lista.filter(v => _correspondeValor(v, pNorm)));
+  // "boa noite"/"bom dia" são cumprimentos, não o turno perguntado.
+  const pNormSemSaudacao = pNorm.replace(/\\b(bom dia|boa tarde|boa noite)\\b/g, ' ');
+  const acharNaLista = (lista, txt) => _semSubsuncao(lista.filter(v => _correspondeValor(v, txt)));
 
-  let critBairro   = acharNaLista(bairros);
-  let critTipo     = acharNaLista(tipos);
-  let critTurno    = acharNaLista(turnos);
-  let critDia      = acharNaLista(DIA_ORDER);
-  let critItem     = acharNaLista(itens);
-  let critEndereco = acharNaLista(enderecos);
-  let critMes      = acharNaLista(meses);
-  let critAno      = acharNaLista(anos);
+  // A rua é identificada primeiro (nome completo ou só o nome, ex.: "atlântica")
+  // e seu nome sai do texto antes de procurar dia/bairro/turno — senão "Quinta
+  // Avenida" virava também o dia "quinta" e "Avenida do Estado" o bairro Estados.
+  let critEndereco = _semSubsuncao([...new Set([
+    ...acharNaLista(enderecos, pNormSemSaudacao),
+    ..._ruasPorNomeCurto(pNormSemSaudacao, enderecos),
+  ])]);
+  let pNormResto = pNormSemSaudacao;
+  critEndereco.forEach(e => {{ pNormResto = _tirarRuaDoTexto(e, pNormResto); }});
+
+  let critBairro   = acharNaLista(bairros, pNormResto);
+  let critTipo     = _semSubsuncao([...new Set([...acharNaLista(tipos, pNormResto), ..._resolverSinonimos(pNormResto, tipos, SINONIMOS_TIPO)])]);
+  let critTurno    = acharNaLista(turnos, pNormResto);
+  let critDia      = acharNaLista(DIA_ORDER, pNormResto);
+  let critItem     = _semSubsuncao([...new Set([...acharNaLista(itens, pNormResto), ..._resolverSinonimos(pNormResto, itens, SINONIMOS_ITEM)])]);
+  let critMes      = acharNaLista(meses, pNormResto);
+  let critAno      = acharNaLista(anos, pNormResto);
+  const horaPergunta = _extrairHoraPergunta(pNormResto);
+  if (horaPergunta !== null) critTurno = [_turnoDaHora(horaPergunta)];
 
   let semCriterio = !critBairro.length && !critTipo.length && !critTurno.length && !critDia.length &&
     !critItem.length && !critEndereco.length && !critMes.length && !critAno.length;
@@ -3140,13 +3388,16 @@ function montarContextoChat(pergunta) {{
     }}
   }}
 
+  const contextoAvaliacao     = montarContextoAvaliacao(pNormResto, {{
+    dadosU, dataFiltrada, critBairro, critEndereco, critTurno, critTipo, critItem, critMes, critAno,
+  }});
   const contextoAutores       = montarContextoAutores(pergunta, pNorm);
   const contextoRelatorioDia  = montarContextoRelatorioDia(pergunta, pNorm);
   const contextoDiaSemana     = montarContextoDiaSemana(pergunta, pNorm);
   const contextoPreditivo     = montarContextoPreditivo(pNorm);
   const contextoResumoGeral   = montarContextoResumoGeral(pNorm);
 
-  return [contextoOcorrencias, contextoAutores, contextoRelatorioDia, contextoDiaSemana, contextoPreditivo, contextoResumoGeral]
+  return [contextoAvaliacao, contextoOcorrencias, contextoAutores, contextoRelatorioDia, contextoDiaSemana, contextoPreditivo, contextoResumoGeral]
     .filter(Boolean).join('\\n\\n---\\n\\n');
 }}
 

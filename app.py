@@ -148,7 +148,7 @@ def chat():
     )
 
     try:
-        texto = _chamar_openai(carregar_prompt_ana(), user_content, max_tokens=600, historico=historico)
+        texto = _chamar_openai(carregar_prompt_ana(), user_content, max_tokens=800, historico=historico)
     except requests.RequestException as exc:
         return jsonify({"erro": f"Falha ao consultar a IA: {exc}"}), 502
 
