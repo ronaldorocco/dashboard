@@ -21,7 +21,7 @@ import os as _os
 warnings.filterwarnings('ignore')
 
 BRT = timezone(timedelta(hours=-3))
-BOT_VERSAO = '2026-10-22-menu-numerado'   # /versao responde isto: confirma qual código está no ar
+BOT_VERSAO = '2026-10-22-menu-sair'   # /versao responde isto: confirma qual código está no ar
 
 BOT_TOKEN       = _os.environ.get('BOT_TOKEN',       'SEU_TOKEN_AQUI').strip()
 CHAT_ID         = _os.environ.get('CHAT_ID',         '1931364088').strip()
@@ -543,7 +543,7 @@ def _cabecalho_busca(est):
 
 def _menu_busca(est):
     opcoes = [('dim:' + k, rot) for k, rot in _opcoes_disponiveis(est['base'])]
-    opcoes += [('ultimas', '🕘 Últimas ocorrências'), ('resumo', '📋 Resumo completo')]
+    opcoes += [('ultimas', '🕘 Últimas ocorrências'), ('resumo', '📋 Resumo completo'), ('sair', '🚪 Sair')]
     est['opcoes'] = [k for k, _ in opcoes]
     linhas = ["*Escolha uma opção (responda só com o número):*"]
     linhas += [f"  *{i+1}* - {rot}" for i, (_, rot) in enumerate(opcoes)]
@@ -564,6 +564,9 @@ def responder_opcao(chat_id, numero):
         return f"Opção inválida. Responda com um número de 1 a {len(est['opcoes'])}.\n\n" + _menu_busca(est)
 
     chave = est['opcoes'][numero - 1]
+    if chave == 'sair':
+        ESTADO_BUSCA.pop(chat_id, None)
+        return "✅ Busca encerrada. Digite o que procura quando quiser, ex.: *celular*, *rua 906*, *centro*."
     linhas = [_cabecalho_busca(est), ""]
     if chave.startswith('dim:'):
         dim = chave[4:]
@@ -1034,6 +1037,9 @@ def processar(text, chat_id, records):
     if tl_norm.isdigit() and len(tl_norm) <= 2:
         resp = responder_opcao(chat_id, int(tl_norm))
         return send_message(chat_id, resp or "Nenhuma busca ativa. Digite o que procura, ex.: *celular*, *rua 906*, *centro*.")
+    if tl in ('sair', '/sair'):
+        ESTADO_BUSCA.pop(chat_id, None)
+        return send_message(chat_id, "✅ Busca encerrada. Digite o que procura quando quiser, ex.: *celular*, *rua 906*, *centro*.")
     if tl in ('menu', '/menu') and chat_id in ESTADO_BUSCA:
         est = ESTADO_BUSCA[chat_id]
         return send_message(chat_id, _cabecalho_busca(est) + '\n\n' + _menu_busca(est))
