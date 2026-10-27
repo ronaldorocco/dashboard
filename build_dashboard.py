@@ -6361,6 +6361,18 @@ function analisarBairro() {{
       <div id="ab-correlacao-resumo" style="padding:8px 14px 0;font-size:11px;color:#555"></div>
       <div class="plano-body">${{ruasHtml}}</div>
     </div>
+    <div class="plano-card" style="margin-top:12px">
+      <div class="plano-head" style="background:linear-gradient(135deg,#0B1F4D,#7B2FF7)">🚓 Planejar Operação — onde posicionar as viaturas</div>
+      <div class="plano-body" style="padding:12px 14px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;font-size:12px">
+          <label>Das<br><select id="op-ini" style="padding:7px;border:1px solid #CCC;border-radius:6px"><option value="0">00h</option><option value="1">01h</option><option value="2">02h</option><option value="3">03h</option><option value="4">04h</option><option value="5">05h</option><option value="6">06h</option><option value="7">07h</option><option value="8">08h</option><option value="9">09h</option><option value="10">10h</option><option value="11">11h</option><option value="12">12h</option><option value="13">13h</option><option value="14">14h</option><option value="15" selected>15h</option><option value="16">16h</option><option value="17">17h</option><option value="18">18h</option><option value="19">19h</option><option value="20">20h</option><option value="21">21h</option><option value="22">22h</option><option value="23">23h</option></select></label>
+          <label>Até<br><select id="op-fim" style="padding:7px;border:1px solid #CCC;border-radius:6px"><option value="0">00h</option><option value="1">01h</option><option value="2">02h</option><option value="3">03h</option><option value="4">04h</option><option value="5">05h</option><option value="6">06h</option><option value="7">07h</option><option value="8">08h</option><option value="9">09h</option><option value="10">10h</option><option value="11">11h</option><option value="12">12h</option><option value="13">13h</option><option value="14">14h</option><option value="15">15h</option><option value="16">16h</option><option value="17">17h</option><option value="18" selected>18h</option><option value="19">19h</option><option value="20">20h</option><option value="21">21h</option><option value="22">22h</option><option value="23">23h</option></select></label>
+          <label>Viaturas<br><input id="op-vtr" type="number" min="1" max="30" value="4" style="width:70px;padding:7px;border:1px solid #CCC;border-radius:6px"></label>
+          <button class="btn-analise" onclick="planejarOperacao()">🚓 Gerar plano da operação</button>
+        </div>
+        <div id="op-resultado"></div>
+      </div>
+    </div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="btn-analise" id="btn-rota-bairro" onclick="tracarRotaBairro()" ${{waypoints.length<2?'disabled title="Coordenadas insuficientes para traçar rota"':''}}>🚓 Traçar Rota de Patrulhamento</button>
       <button class="btn-pdf" onclick="limparRotaBairro()">✖ Limpar Rota</button>
@@ -6867,6 +6879,138 @@ async function imprimirApresentacaoBairro() {{
   setTimeout(limpar, 5000);
 }}
 
+// ── PLANEJADOR DE OPERAÇÃO (posicionamento de viaturas por bairro e horário) ──
+let opLayer = null;
+function planejarOperacao() {{
+  const out = document.getElementById('op-resultado');
+  if(!out || !ultimaAnaliseBairro) return;
+  const bairro = ultimaAnaliseBairro.bairro;
+  const ini = parseInt(document.getElementById('op-ini').value);
+  const fim = parseInt(document.getElementById('op-fim').value);
+  const nVtr = Math.max(1, Math.min(30, parseInt(document.getElementById('op-vtr').value) || 1));
+  const naJanela = h => ini === fim ? true : (ini < fim ? (h >= ini && h < fim) : (h >= ini || h < fim));
+  const fmtH = h => String(h).padStart(2,'0') + 'h';
+  const janela = `${{fmtH(ini)}} às ${{fmtH(fim)}}`;
+
+  // Histórico do bairro (todos os anos) dentro da janela de horário
+  const data = dedupBO(RAW.filter(r => r.bairro === bairro)).filter(r => {{
+    const h = parseInt(r.hora);
+    return !isNaN(h) && naJanela(h);
+  }});
+  if(!data.length) {{
+    out.innerHTML = `<div class="alerta-box" style="margin-top:10px">Nenhuma ocorrência registrada em ${{bairro}} entre ${{janela}}.</div>`;
+    if(opLayer && mapaInst) {{ mapaInst.removeLayer(opLayer); opLayer = null; }}
+    return;
+  }}
+
+  // Agrupa por rua; ignora coordenadas muito distantes do centro do bairro
+  const coordsB = data.filter(r => r.lat && r.lon);
+  const cLat = _mediana(coordsB.map(r => r.lat)), cLon = _mediana(coordsB.map(r => r.lon));
+  const porRua = {{}};
+  data.forEach(r => {{
+    if(!r.endereco) return;
+    const o = porRua[r.endereco] || (porRua[r.endereco] = {{count:0, lats:[], lons:[], refs:{{}}, itens:{{}}, tipos:{{}}, horas:{{}}}});
+    o.count++;
+    if(r.lat && r.lon && _distanciaMetros(cLat, cLon, r.lat, r.lon) <= 2000) {{ o.lats.push(r.lat); o.lons.push(r.lon); }}
+    if(r.ref) o.refs[r.ref] = (o.refs[r.ref]||0) + 1;
+    if(r.item) o.itens[r.item] = (o.itens[r.item]||0) + 1;
+    if(r.tipo) o.tipos[r.tipo] = (o.tipos[r.tipo]||0) + 1;
+    const h = parseInt(r.hora); if(!isNaN(h)) o.horas[h] = (o.horas[h]||0) + 1;
+  }});
+  const ruas = Object.entries(porRua).sort((a,b) => b[1].count - a[1].count);
+
+  // Distribuição das viaturas: metade (arredondada p/ cima) cobre uma rua cada,
+  // das mais críticas para as menos; o resto vai por proporção de ocorrências
+  // (D'Hondt), com teto por rua para não concentrar todo o efetivo numa só.
+  const cand = ruas.slice(0, Math.max(nVtr * 2, 8));
+  const aloc = {{}};
+  cand.forEach(([nome]) => aloc[nome] = 0);
+  const teto = Math.max(1, Math.ceil(nVtr / 2));
+  const semente = Math.min(Math.ceil(nVtr / 2), cand.length);
+  for(let k = 0; k < semente; k++) aloc[cand[k][0]]++;
+  for(let k = semente; k < nVtr; k++) {{
+    let best = null, bq = -1;
+    cand.forEach(([nome,v]) => {{
+      if(aloc[nome] >= teto) return;
+      const q = v.count / (aloc[nome] + 1);
+      if(q > bq) {{ bq = q; best = nome; }}
+    }});
+    if(best === null) break;
+    aloc[best]++;
+  }}
+
+  const topDe = obj => sortedEntries(obj)[0];
+  let numVtr = 0, cobertas = 0;
+  const refsUsadas = new Set();
+  const marcadores = [];
+  const linhas = cand.filter(([nome]) => aloc[nome] > 0).map(([nome,v]) => {{
+    cobertas += v.count;
+    const n = aloc[nome];
+    const refTop = topDe(v.refs);
+    const fixo = refTop && refTop[1] >= Math.max(2, v.count * 0.4) && !refsUsadas.has(refTop[0]);
+    if(fixo) refsUsadas.add(refTop[0]);
+    const itemTop = topDe(v.itens), tipoTop = topDe(v.tipos), horaTop = topDe(v.horas);
+    const ids = [];
+    const funcoes = [];
+    for(let i = 0; i < n; i++) {{
+      ids.push('V' + (++numVtr));
+      funcoes.push(i === 0 && fixo ? `📌 Posto fixo em <strong>${{refTop[0]}}</strong>`
+        : i === 0 ? '🚓 Ronda lenta e ostensiva na rua' : '🚓 Ronda móvel (ida e volta na rua e travessas)');
+    }}
+    if(v.lats.length) marcadores.push({{
+      nome, ids, count:v.count,
+      lat: v.lats.reduce((a,b)=>a+b,0)/v.lats.length,
+      lon: v.lons.reduce((a,b)=>a+b,0)/v.lons.length,
+    }});
+    const pct = Math.round(v.count / data.length * 100);
+    return `<tr style="border-bottom:1px solid #EEE">
+      <td style="padding:8px 6px;font-weight:800;color:#0B1F4D;white-space:nowrap">${{ids.join(' · ')}}</td>
+      <td style="padding:8px 6px"><strong>${{nome}}</strong><br><span style="font-size:11px;color:#666">${{funcoes.join('<br>')}}</span></td>
+      <td style="padding:8px 6px;white-space:nowrap">${{v.count}} (${{pct}}%)</td>
+      <td style="padding:8px 6px;font-size:11.5px;color:#444">${{itemTop ? itemTop[0] : '–'}}${{tipoTop ? ' · ' + tipoTop[0] : ''}}${{horaTop ? '<br>pico às ' + fmtH(+horaTop[0]) : ''}}</td>
+    </tr>`;
+  }}).join('');
+
+  const itensJanela = sortedEntries(count(data,'item')).slice(0,3).map(e => `${{e[0]}} (${{e[1]}})`).join(', ');
+  const diasJanela = sortedEntries(count(data,'dia')).slice(0,3).map(e => `${{e[0]}} (${{e[1]}})`).join(', ');
+  const horasJanela = {{}};
+  data.forEach(r => {{ const h = parseInt(r.hora); horasJanela[h] = (horasJanela[h]||0) + 1; }});
+  const picoH = sortedEntries(horasJanela).slice(0,2).map(e => `${{fmtH(+e[0])}} (${{e[1]}})`).join(', ');
+  const pctCob = Math.round(cobertas / data.length * 100);
+  const aviso = data.length < 15 ? `<div style="padding:0 14px 8px;font-size:11px;color:#A4262C">⚠ Poucos registros nesta janela (${{data.length}}); trate como indicativo.</div>` : '';
+
+  out.innerHTML = `
+    <div style="margin-top:12px;border:1px solid #D6E4F0;border-radius:8px;overflow:hidden">
+      <div style="background:#0B1F4D;color:white;padding:10px 14px;font-weight:700;font-size:13px">
+        🚓 Plano sugerido — ${{bairro}} · ${{janela}} · ${{nVtr}} viatura${{nVtr>1?'s':''}}</div>
+      <div style="padding:10px 14px;font-size:12px;background:#F5F8FC;line-height:1.7">
+        Base: <strong>${{data.length}} B.O.(s)</strong> do histórico nesse horário.
+        As posições abaixo cobrem <strong>${{pctCob}}%</strong> das ocorrências.<br>
+        <strong>Horários de pico na janela:</strong> ${{picoH}} · <strong>Dias mais críticos:</strong> ${{diasJanela}}<br>
+        <strong>Itens mais visados:</strong> ${{itensJanela}}
+      </div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:#EAF1FA;text-align:left;font-size:11px;color:#333">
+          <th style="padding:6px">Viatura</th><th style="padding:6px">Posição / função</th><th style="padding:6px">B.O.s na janela</th><th style="padding:6px">Foco</th></tr></thead>
+        <tbody>${{linhas}}</tbody></table></div>
+      ${{aviso}}
+      <div style="padding:8px 14px;font-size:11px;color:#888">Sugestão estatística com base nos B.O.s registrados; ajuste conforme o efetivo e a leitura do local.</div>
+    </div>`;
+
+  // Marcadores V1, V2... no mapa
+  if(opLayer && mapaInst) mapaInst.removeLayer(opLayer);
+  opLayer = null;
+  if(mapaInst && marcadores.length) {{
+    opLayer = L.layerGroup(marcadores.map(m => L.marker([m.lat, m.lon], {{
+      icon: L.divIcon({{
+        html:`<div style="background:#0B1F4D;color:white;border-radius:14px;padding:3px 8px;white-space:nowrap;font-weight:800;font-size:12px;border:2px solid #FFB900;box-shadow:0 2px 6px rgba(0,0,0,.5)">🚓 ${{m.ids.join('·')}}</div>`,
+        className:'', iconAnchor:[24,12],
+      }})
+    }}).bindPopup(`<strong>${{m.ids.join(' · ')}} — ${{m.nome}}</strong><br>${{m.count}} ocorrência(s) na janela`))).addTo(mapaInst);
+    mapaInst.fitBounds(L.latLngBounds(marcadores.map(m => [m.lat, m.lon])), {{padding:[60,60], maxZoom:16}});
+  }}
+}}
+
 async function tracarRotaBairro() {{
   if(!ultimaAnaliseBairro || ultimaAnaliseBairro.waypoints.length < 2) return;
   const btn = document.getElementById('btn-rota-bairro');
@@ -6948,6 +7092,7 @@ function _abrirPopupRota(via, latlng) {{
 }}
 
 function limparRotaBairro() {{
+  if(opLayer && mapaInst) {{ mapaInst.removeLayer(opLayer); opLayer = null; }}
   if(rotaBairroLayer)   {{ mapaInst.removeLayer(rotaBairroLayer);   rotaBairroLayer = null; }}
   if(rotaBairroMarkers) {{ mapaInst.removeLayer(rotaBairroMarkers); rotaBairroMarkers = null; }}
   // Volta o mapa a mostrar todas as ocorrências (respeitando os filtros da
