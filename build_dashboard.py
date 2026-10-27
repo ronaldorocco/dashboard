@@ -6897,7 +6897,7 @@ function _carroSvg(w) {{
       <circle cx="14" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/><circle cx="44" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/>
     </svg>`;
 }}
-// ── PDF DA OPERAÇÃO: ordem de serviço com mapa e posicionamento das viaturas ──
+// ── PDF DA OPERAÇÃO: ordem de serviço (paisagem) com mapa e posicionamento das viaturas ──
 let ultimoPlanoOp = null;
 function gerarPdfOperacao() {{
   planejarOperacao();   // garante que o plano reflete o que está na tela
@@ -6913,19 +6913,22 @@ function gerarPdfOperacao() {{
   if(pl.centro) {{ lats.push(pl.centro[0]); lons.push(pl.centro[1]); }}
   const toX = (lon, z) => (lon + 180) / 360 * Math.pow(2, z);
   const toY = (lat, z) => {{ const r = lat * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z); }};
-  let z = 17, g = null;
-  for(z = 17; z >= 10; z--) {{
-    const x0 = toX(Math.min(...lons), z) - 0.4, x1 = toX(Math.max(...lons), z) + 0.4;
-    const y0 = toY(Math.max(...lats), z) - 0.4, y1 = toY(Math.min(...lats), z) + 0.4;
-    g = {{ tx0: Math.floor(x0), tx1: Math.floor(x1), ty0: Math.floor(y0), ty1: Math.floor(y1) }};
-    if(g.tx1 - g.tx0 + 1 <= 4 && g.ty1 - g.ty0 + 1 <= 3) break;
+  // Janela fixa de 660 x 520 px centrada nas viaturas, no maior zoom em que todas cabem
+  const larg = 660, alt = 520;
+  let z = 17;
+  for(z = 17; z > 10; z--) {{
+    const bx = (toX(Math.max(...lons), z) - toX(Math.min(...lons), z)) * 256;
+    const by = (toY(Math.min(...lats), z) - toY(Math.max(...lats), z)) * 256;
+    if(bx <= larg - 100 && by <= alt - 100) break;
   }}
-  const W = (g.tx1 - g.tx0 + 1) * 256, H = (g.ty1 - g.ty0 + 1) * 256;
-  const larg = 700, s = larg / W, alt = Math.round(H * s);
-  const px = lon => (toX(lon, z) - g.tx0) * 256 * s, py = lat => (toY(lat, z) - g.ty0) * 256 * s;
+  const cx = (toX(Math.min(...lons), z) + toX(Math.max(...lons), z)) / 2 * 256;
+  const cy = (toY(Math.min(...lats), z) + toY(Math.max(...lats), z)) / 2 * 256;
+  const ox = cx - larg / 2, oy = cy - alt / 2;
+  const px = lon => toX(lon, z) * 256 - ox, py = lat => toY(lat, z) * 256 - oy;
   let tiles = '';
-  for(let tx = g.tx0; tx <= g.tx1; tx++) for(let ty = g.ty0; ty <= g.ty1; ty++)
-    tiles += `<img src="https://tile.openstreetmap.org/${{z}}/${{tx}}/${{ty}}.png" style="position:absolute;left:${{(tx - g.tx0) * 256}}px;top:${{(ty - g.ty0) * 256}}px;width:256px;height:256px">`;
+  for(let tx = Math.floor(ox / 256); tx <= Math.floor((ox + larg) / 256); tx++)
+    for(let ty = Math.floor(oy / 256); ty <= Math.floor((oy + alt) / 256); ty++)
+      tiles += `<img src="https://tile.openstreetmap.org/${{z}}/${{tx}}/${{ty}}.png" style="position:absolute;left:${{Math.round(tx * 256 - ox)}}px;top:${{Math.round(ty * 256 - oy)}}px;width:256px;height:256px">`;
   const poligono = pl.modo === 'muro'
     ? `<svg width="${{larg}}" height="${{alt}}" style="position:absolute;left:0;top:0"><polygon points="${{pl.marcadores.map(m => px(m.lon).toFixed(1) + ',' + py(m.lat).toFixed(1)).join(' ')}}" fill="rgba(255,185,0,.12)" stroke="#FFB900" stroke-width="4" stroke-dasharray="10,8"/>
         ${{pl.centro ? `<circle cx="${{px(pl.centro[1]).toFixed(1)}}" cy="${{py(pl.centro[0]).toFixed(1)}}" r="7" fill="#D13438" stroke="white" stroke-width="2"/>` : ''}}</svg>` : '';
@@ -6933,6 +6936,10 @@ function gerarPdfOperacao() {{
   const marcas = pl.marcadores.map(m => `<div style="position:absolute;left:${{px(m.lon).toFixed(1)}}px;top:${{py(m.lat).toFixed(1)}}px;transform:translate(-50%,-62%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))">${{carro}}
       <div style="margin-top:-3px;background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:0 6px;font-weight:800;font-size:12px;line-height:16px">${{m.id}}</div></div>`).join('');
 
+  // Lista resumida (página 1, ao lado do mapa)
+  const lista = pl.marcadores.map(m => `<div class="item"><span class="b">${{m.id}}</span>
+      <div><strong>${{esc(m.titulo)}}</strong><br><span class="peq">${{m.rua && m.rua !== m.titulo ? esc(m.rua) + ' · ' : ''}}${{esc(m.funcao)}}</span></div></div>`).join('');
+  // Detalhamento (página 2)
   const linhas = pl.marcadores.map(m => `<tr>
       <td class="vtr">${{m.id}}</td>
       <td><strong>${{esc(m.titulo)}}</strong>${{m.rua && m.rua !== m.titulo ? '<br><span class="peq">' + esc(m.rua) + '</span>' : ''}}</td>
@@ -6942,55 +6949,73 @@ function gerarPdfOperacao() {{
 
   const resumo = pl.modo === 'muro'
     ? `Cerco (muro virtual) de <strong>${{pl.raio}} m</strong> de raio ao redor da área crítica; espaçamento médio de <strong>~${{pl.intervalo}} m</strong> entre viaturas; <strong>${{pl.dentro}}%</strong> das ocorrências da janela dentro do cerco.`
-    : `Viaturas posicionadas nos <strong>pontos estratégicos</strong> de maior incidência; o plano cobre <strong>${{pl.cobertura}}%</strong> das ocorrências da janela. Pico às <strong>${{pl.pico}}</strong>; dia mais crítico: <strong>${{esc(pl.dia)}}</strong>.`;
+    : `Viaturas nos <strong>pontos estratégicos</strong> de maior incidência; o plano cobre <strong>${{pl.cobertura}}%</strong> das ocorrências da janela. Pico às <strong>${{pl.pico}}</strong>; dia mais crítico: <strong>${{esc(pl.dia)}}</strong>.`;
+  const estrategia = pl.modo === 'muro' ? 'Estratégia: Muro virtual (cerco ao redor da área crítica)' : 'Estratégia: Pontos estratégicos (cobertura dos locais críticos)';
 
   const w = window.open('', '_blank');
   if(!w) {{ alert('O navegador bloqueou a nova janela. Permita pop-ups para este site e tente de novo.'); return; }}
   w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Ordem de Operação - ${{esc(pl.bairro)}} - ${{esc(pl.janela)}}</title>
 <style>
-  *{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-  body{{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;margin:0;padding:14px;color:#1A1A2E}}
-  .topo{{border-bottom:3px solid #1A1A2E;padding-bottom:8px;margin-bottom:8px}}
+  *{{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}}
+  body{{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;margin:0;padding:10px;color:#1A1A2E}}
+  .topo{{border-bottom:3px solid #1A1A2E;padding-bottom:5px;margin-bottom:6px}}
   .topo h1{{font-size:13px;margin:0;line-height:1.3}}
   .topo .sub{{font-size:10px;color:#555}}
-  .titulo{{background:linear-gradient(135deg,#0B1F4D,#0078D4);color:white;border-radius:6px;padding:9px 14px;margin:8px 0}}
-  .titulo h2{{margin:0;font-size:16px;letter-spacing:.5px}}
-  .titulo div{{font-size:11px;opacity:.92;margin-top:2px}}
-  .info{{display:flex;flex-wrap:wrap;gap:6px 18px;background:#f2f4f8;border-radius:5px;padding:7px 12px;margin-bottom:8px}}
+  .titulo{{background:linear-gradient(135deg,#0B1F4D,#0078D4);color:white;border-radius:6px;padding:7px 14px;margin:6px 0}}
+  .titulo h2{{margin:0;font-size:15px;letter-spacing:.5px}}
+  .titulo div{{font-size:10.5px;opacity:.92;margin-top:1px}}
+  .info{{display:flex;flex-wrap:wrap;gap:4px 22px;background:#f2f4f8;border-radius:5px;padding:6px 12px;margin-bottom:8px}}
   .info b{{color:#0B1F4D}}
-  .mapa{{position:relative;width:${{larg}}px;height:${{alt}}px;overflow:hidden;border:2px solid #0B1F4D;border-radius:4px;margin:0 auto 4px}}
-  .mapa-in{{position:absolute;left:0;top:0;width:${{W}}px;height:${{H}}px;transform:scale(${{s}});transform-origin:0 0}}
-  .attr{{font-size:8px;color:#777;text-align:right;margin-bottom:8px}}
-  .resumo{{font-size:11px;margin:6px 0 8px;line-height:1.5}}
-  table{{width:100%;border-collapse:collapse;font-size:10.5px}}
-  thead th{{background:#0B1F4D;color:white;padding:5px 7px;text-align:left}}
-  tbody td{{padding:6px 7px;border-bottom:1px solid #ddd;vertical-align:top}}
-  td.vtr{{font-weight:800;font-size:14px;color:#0B1F4D;white-space:nowrap}}
-  .peq{{font-size:9.5px;color:#555}}
-  .obs{{margin-top:10px;border:1px solid #bbb;border-radius:4px;padding:6px 10px;height:46px;font-size:10px;color:#777}}
-  .assin{{display:flex;gap:40px;margin-top:36px}}
-  .assin div{{flex:1;border-top:1px solid #333;text-align:center;padding-top:4px;font-size:10px}}
+  .pag1{{display:flex;gap:14px;align-items:flex-start}}
+  .col-mapa{{flex:0 0 ${{larg}}px}}
+  .col-lista{{flex:1;min-width:0}}
+  .mapa{{position:relative;width:${{larg}}px;height:${{alt}}px;overflow:hidden;border:2px solid #0B1F4D;border-radius:4px}}
+  .attr{{font-size:8px;color:#777;text-align:right;margin-top:2px}}
+  .col-lista h3{{margin:0 0 6px;font-size:12px;color:#0B1F4D;border-bottom:2px solid #FFB900;padding-bottom:3px}}
+  .item{{display:flex;gap:9px;align-items:center;border:1px solid #dde3ee;border-left:5px solid #0B1F4D;border-radius:6px;padding:5px 8px;margin-bottom:5px;background:#fafbfd}}
+  .item .b{{background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 8px;font-weight:800;font-size:12px}}
+  .resumo{{font-size:10.5px;margin-top:8px;line-height:1.5;background:#FFF8E1;border-left:5px solid #FFB900;border-radius:4px;padding:6px 10px}}
+  .pag2{{page-break-before:always}}
+  .pag2 h3{{margin:4px 0 8px;font-size:14px;color:#0B1F4D}}
+  table{{width:100%;border-collapse:collapse;font-size:11px}}
+  thead th{{background:#0B1F4D;color:white;padding:6px 8px;text-align:left}}
+  tbody td{{padding:7px 8px;border-bottom:1px solid #ddd;vertical-align:top}}
+  td.vtr{{font-weight:800;font-size:15px;color:#0B1F4D;white-space:nowrap}}
+  .peq{{font-size:10px;color:#555}}
+  .obs{{margin-top:12px;border:1px solid #bbb;border-radius:4px;padding:6px 10px;height:56px;font-size:10px;color:#777}}
+  .assin{{display:flex;gap:60px;margin-top:40px}}
+  .assin div{{flex:1;border-top:1px solid #333;text-align:center;padding-top:4px;font-size:10.5px}}
   .rodape{{margin-top:14px;font-size:8.5px;color:#888;border-top:1px solid #ddd;padding-top:5px}}
-  @media print{{ @page{{margin:8mm;size:A4 portrait}} body{{padding:0}} tr{{page-break-inside:avoid}} .mapa,.assin,.obs{{page-break-inside:avoid}} }}
+  @media print{{ @page{{margin:8mm;size:A4 landscape}} body{{padding:0}} tr,.item,.assin,.obs{{page-break-inside:avoid}} }}
 </style></head><body>
 <div class="topo"><h1>Secretaria de Segurança e Ordem Pública de Balneário Camboriú</h1>
   <div class="sub">Guarda Municipal de Balneário Camboriú - GMBC</div></div>
-<div class="titulo"><h2>ORDEM DE OPERAÇÃO — POSICIONAMENTO DE VIATURAS</h2>
-  <div>${{pl.modo === 'muro' ? 'Estratégia: Muro virtual (cerco ao redor da área crítica)' : 'Estratégia: Pontos estratégicos (cobertura dos locais críticos)'}}</div></div>
+<div class="titulo"><h2>ORDEM DE OPERAÇÃO — POSICIONAMENTO DE VIATURAS</h2><div>${{estrategia}}</div></div>
 <div class="info">
   <div><b>Bairro:</b> ${{esc(pl.bairro)}}</div>
   <div><b>Data da operação:</b> ${{dataTxt}}</div>
   <div><b>Horário:</b> ${{esc(pl.janela)}}</div>
   <div><b>Viaturas empenhadas:</b> ${{pl.nVtr}}</div>
 </div>
-<div class="mapa"><div class="mapa-in">${{tiles}}</div>${{poligono}}${{marcas}}</div>
-<div class="attr">© Contribuidores do OpenStreetMap</div>
-<div class="resumo">${{resumo}}</div>
-<table><thead><tr><th>Viatura</th><th>Posição</th><th>Função e orientação</th><th>Histórico no local</th></tr></thead><tbody>${{linhas}}</tbody></table>
-<div class="obs">Observações / orientações adicionais:</div>
-<div class="assin"><div>Comandante</div><div>Supervisor de serviço</div></div>
-<div class="rodape">Gerado em ${{agora}} · Base: ${{pl.base}} B.O.s registrados no bairro nesse horário (todo o histórico). Sugestão estatística; o supervisor pode ajustar as posições conforme o efetivo e a leitura do local.</div>
+<div class="pag1">
+  <div class="col-mapa">
+    <div class="mapa">${{tiles}}${{poligono}}${{marcas}}</div>
+    <div class="attr">© Contribuidores do OpenStreetMap</div>
+  </div>
+  <div class="col-lista">
+    <h3>Posicionamento das viaturas</h3>
+    ${{lista}}
+    <div class="resumo">${{resumo}}</div>
+  </div>
+</div>
+<div class="pag2">
+  <h3>Detalhamento por viatura — ${{esc(pl.bairro)}} · ${{esc(pl.janela)}} · ${{dataTxt}}</h3>
+  <table><thead><tr><th>Viatura</th><th>Posição</th><th>Função e orientação</th><th>Histórico no local</th></tr></thead><tbody>${{linhas}}</tbody></table>
+  <div class="obs">Observações / orientações adicionais:</div>
+  <div class="assin"><div>Comandante</div><div>Supervisor de serviço</div></div>
+  <div class="rodape">Gerado em ${{agora}} · Base: ${{pl.base}} B.O.s registrados no bairro nesse horário (todo o histórico). Sugestão estatística; o supervisor pode ajustar as posições conforme o efetivo e a leitura do local.</div>
+</div>
 <script>
   var impresso = false;
   function go() {{ if(impresso) return; impresso = true; window.print(); }}
