@@ -1570,6 +1570,7 @@ function sair(){
     <div style="position:relative;margin:4px 0 16px">
       <div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#0B1F4D,#0078D4);border-radius:12px;padding:14px 18px;box-shadow:0 6px 20px rgba(0,120,212,.45)">
         <span style="font-size:13px;font-weight:800;color:white;letter-spacing:.5px;white-space:nowrap">🔎 PESQUISAR</span>
+        <div id="ia-chips" style="display:flex;gap:6px;flex-wrap:wrap;max-width:50%"></div>
         <input id="ia-pesquisa-input" type="text" autocomplete="off"
           placeholder="Pesquisar bairro, rua, turno, dia, item, tipificação, mês... (escolha uma sugestão e todo o dashboard, inclusive o mapa, é filtrado)"
           oninput="onIaPesquisaInput(this.value)" onfocus="onIaPesquisaInput(this.value)"
@@ -1581,6 +1582,9 @@ function sair(){
       </div>
       <div id="ia-sugestoes" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:white;border:1px solid #D0D7E2;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:2000;max-height:340px;overflow-y:auto"></div>
     </div>
+
+    <!-- Resumo da pesquisa ativa -->
+    <div id="ia-resumo" style="display:none;background:#FFF8E1;border:1px solid #FFB900;border-left:6px solid #FFB900;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:12.5px;color:#333;line-height:1.7"></div>
 
     <!-- Resumo executivo dinâmico -->
     <div id="diagnostico-box" style="background:#FFF4F4;border:1px solid #F1BBBC;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:1.7"></div>
@@ -2338,7 +2342,7 @@ function renderDiagnostico(data) {
     O item mais furtado é <strong>${topItem[0]} (${topItem[1]} casos = ${pItem}%)</strong>,
     seguido de ${item2[0]} <strong>(${item2[1]})</strong> e ${item3[0]} <strong>(${item3[1]})</strong>.
     As ruas de maior risco são:
-    <strong>${topRua[0]} (${topRua[1]}), ${rua2[0]} (${rua2[1]}) e ${rua3[0]} (${rua3[1]})</strong>.
+    <strong>${[topRua,rua2,rua3].filter(x=>x[1]>0).map(x=>`${x[0]} (${x[1]})`).join(', ') || '–'}</strong>.
   `;
 }
 
@@ -2530,6 +2534,7 @@ function renderAll() {
   renderComparaPeriodos();
   renderPlanoPolicial(ocs);
   renderDiagnostico(ocs);
+  renderResumoPesquisa(ocs);
   renderRecomendacoes(ocs);
   renderInsights(ocs);
   renderMapa(ocs);
@@ -4609,6 +4614,36 @@ function escolherSugestaoIa(i) {
     analisarBairro();
     if(ultimaAnaliseBairro && ultimaAnaliseBairro.waypoints.length >= 2) tracarRotaBairro();
   }
+}
+function removerFiltroIa(key, enc) {
+  state[key].delete(decodeURIComponent(enc));
+  renderAll();
+}
+function renderResumoPesquisa(ocs) {
+  const chipsEl = document.getElementById('ia-chips');
+  const resumo  = document.getElementById('ia-resumo');
+  if(!chipsEl || !resumo) return;
+  const chips = [];
+  const estilo = 'background:#FFB900;color:#1A1A2E;font-size:12px;font-weight:700;border-radius:14px;padding:4px 10px;cursor:pointer;white-space:nowrap';
+  for(const [key,set] of Object.entries(state)) {
+    if(key === 'ano') continue;
+    set.forEach(v => chips.push(
+      `<span style="${estilo}" title="Clique para remover" onclick="removerFiltroIa('${key}','${encodeURIComponent(v)}')">${FILTER_LABELS[key]}: ${v} ✕</span>`));
+  }
+  if(pesquisaQ) chips.push(`<span style="${estilo}" title="Clique para remover" onclick="limparPesquisa()">Texto: ${pesquisaQ} ✕</span>`);
+  chipsEl.innerHTML = chips.join('');
+  if(!chips.length) { resumo.style.display = 'none'; return; }
+  if(!ocs.length) {
+    resumo.innerHTML = '<strong>🔎 Nenhum B.O. encontrado para esta pesquisa.</strong>';
+    resumo.style.display = 'block';
+    return;
+  }
+  const top = (key,n) => sortedEntries(count(ocs,key)).slice(0,n).map(e=>`${e[0]} (${e[1]})`).join(', ') || '–';
+  resumo.innerHTML = `<strong>🔎 Resultado da pesquisa: ${ocs.length} B.O.(s)</strong><br>
+    <strong>Bairros:</strong> ${top('bairro',3)} · <strong>Ruas:</strong> ${top('endereco',3)}<br>
+    <strong>Turnos:</strong> ${top('turno',4)} · <strong>Dias:</strong> ${top('dia',3)}<br>
+    <strong>Itens:</strong> ${top('item',3)} · <strong>Tipificação:</strong> ${top('tipo',3)}`;
+  resumo.style.display = 'block';
 }
 function limparPesquisa() {
   pesquisaQ = '';
