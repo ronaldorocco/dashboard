@@ -6919,9 +6919,9 @@ function planejarOperacao() {{
   const porRua = {{}};
   data.forEach(r => {{
     if(!r.endereco) return;
-    const o = porRua[r.endereco] || (porRua[r.endereco] = {{count:0, lats:[], lons:[], refs:{{}}, itens:{{}}, tipos:{{}}, horas:{{}}}});
+    const o = porRua[r.endereco] || (porRua[r.endereco] = {{count:0, lats:[], lons:[], pts:[], refs:{{}}, itens:{{}}, tipos:{{}}, horas:{{}}}});
     o.count++;
-    if(r.lat && r.lon && _distanciaMetros(cLat, cLon, r.lat, r.lon) <= 2000) {{ o.lats.push(r.lat); o.lons.push(r.lon); }}
+    if(r.lat && r.lon && _distanciaMetros(cLat, cLon, r.lat, r.lon) <= 2000) {{ o.lats.push(r.lat); o.lons.push(r.lon); o.pts.push([r.lat, r.lon, r.ref || '']); }}
     if(r.ref) o.refs[r.ref] = (o.refs[r.ref]||0) + 1;
     if(r.item) o.itens[r.item] = (o.itens[r.item]||0) + 1;
     if(r.tipo) o.tipos[r.tipo] = (o.tipos[r.tipo]||0) + 1;
@@ -6962,17 +6962,34 @@ function planejarOperacao() {{
     const itemTop = topDe(v.itens), tipoTop = topDe(v.tipos), horaTop = topDe(v.horas);
     const ids = [];
     const funcoes = [];
+    const funcoesTxt = [];
     for(let i = 0; i < n; i++) {{
       ids.push('V' + (++numVtr));
       const chip = (bg, fg, txt) => `<span style="display:inline-block;background:${{bg}};color:${{fg}};font-size:11px;font-weight:700;border-radius:12px;padding:2px 10px;margin:2px 4px 2px 0">${{txt}}</span>`;
+      funcoesTxt.push(i === 0 && fixo ? 'Posto fixo em ' + refTop[0] : i === 0 ? 'Ronda lenta e ostensiva' : 'Ronda móvel');
       funcoes.push(i === 0 && fixo ? chip('#FFF1C2','#7A5300',`📌 Posto fixo · ${{refTop[0]}}`)
         : i === 0 ? chip('#DCEBFA','#0B3D75','🚓 Ronda lenta e ostensiva')
         : chip('#E6F4EA','#14532D','🚓 Ronda móvel (ida e volta + travessas)'));
     }}
-    if(v.lats.length) marcadores.push({{
-      nome, ids, count:v.count,
-      lat: v.lats.reduce((a,b)=>a+b,0)/v.lats.length,
-      lon: v.lons.reduce((a,b)=>a+b,0)/v.lons.length,
+    // Uma posição por viatura: o posto fixo no ponto de referência; as demais
+    // espalhadas ao longo da rua (pontos de ocorrência ordenados e divididos em grupos)
+    const media = arr => [arr.reduce((a,p)=>a+p[0],0)/arr.length, arr.reduce((a,p)=>a+p[1],0)/arr.length];
+    const ordenados = [...v.pts].sort((a,b) => (a[0]+a[1]) - (b[0]+b[1]));
+    ids.forEach((id, k) => {{
+      let pos = null;
+      if(k === 0 && fixo) {{
+        const doRef = v.pts.filter(q => q[2] === refTop[0]);
+        if(doRef.length) pos = media(doRef);
+      }}
+      if(!pos && ordenados.length >= n) {{
+        const ini = Math.floor(k * ordenados.length / n), fimC = Math.floor((k+1) * ordenados.length / n);
+        pos = media(ordenados.slice(ini, Math.max(fimC, ini + 1)));
+      }}
+      if(!pos && ordenados.length) pos = media(ordenados);
+      if(!pos) pos = [cLat, cLon];
+      // evita carros exatamente sobrepostos
+      marcadores.forEach(m => {{ if(Math.abs(m.lat-pos[0]) < 0.00012 && Math.abs(m.lon-pos[1]) < 0.00012) pos = [pos[0] + 0.00018, pos[1] + 0.00018]; }});
+      marcadores.push({{ nome, id, count:v.count, lat:pos[0], lon:pos[1], funcao:funcoesTxt[k] }});
     }});
     const pct = Math.round(v.count / data.length * 100);
     const cor = pct >= 40 ? '#D13438' : pct >= 15 ? '#E07B00' : '#0078D4';
@@ -6980,8 +6997,8 @@ function planejarOperacao() {{
       .map(t => `<span style="display:inline-block;background:#F1F3F8;color:#333;font-size:11px;border-radius:12px;padding:2px 9px;margin:2px 4px 2px 0">${{t}}</span>`).join('');
     return `<div style="display:flex;gap:14px;align-items:stretch;border:1px solid #E2E8F0;border-left:6px solid ${{cor}};border-radius:10px;padding:12px 14px;margin:10px 0;background:white;flex-wrap:wrap">
       <div style="min-width:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
-        ${{_carroSvg(74)}}
-        <div style="background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 9px;font-weight:800;font-size:12px;white-space:nowrap">${{ids.join(' · ')}}</div>
+        ${{ids.map(id => `<div style="display:flex;flex-direction:column;align-items:center">${{_carroSvg(74)}}
+          <div style="background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 9px;font-weight:800;font-size:12px">${{id}}</div></div>`).join('')}}
       </div>
       <div style="flex:1;min-width:230px">
         <div style="font-size:15px;font-weight:800;color:#0B1F4D">${{nome}}</div>
@@ -7034,15 +7051,15 @@ function planejarOperacao() {{
   opLayer = null;
   if(mapaInst && marcadores.length) {{
     // Imagem de viatura (SVG) com a etiqueta V1, V2... embaixo
-    const carro = _carroSvg(58);
+    const carro = _carroSvg(36);
     opLayer = L.layerGroup(marcadores.map(m => L.marker([m.lat, m.lon], {{
       zIndexOffset: 1000,
       icon: L.divIcon({{
         html:`<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))">${{carro}}
-          <div style="margin-top:-2px;background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 7px;font-weight:800;font-size:11px;white-space:nowrap">${{m.ids.join(' · ')}}</div></div>`,
-        className:'', iconSize:[58,48], iconAnchor:[29,24],
+          <div style="margin-top:-2px;background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:0 5px;font-weight:800;font-size:9.5px;line-height:14px;white-space:nowrap">${{m.id}}</div></div>`,
+        className:'', iconSize:[36,34], iconAnchor:[18,17],
       }})
-    }}).bindPopup(`<strong>${{m.ids.join(' · ')}} — ${{m.nome}}</strong><br>${{m.count}} ocorrência(s) na janela`))).addTo(mapaInst);
+    }}).bindPopup(`<strong>${{m.id}} — ${{m.nome}}</strong><br>${{m.funcao}}<br>${{m.count}} ocorrência(s) na rua na janela`))).addTo(mapaInst);
     mapaInst.fitBounds(L.latLngBounds(marcadores.map(m => [m.lat, m.lon])), {{padding:[60,60], maxZoom:16}});
   }}
 }}
