@@ -1432,14 +1432,14 @@ function sair(){{
 
     <!-- Busca única: sugestões por bairro, rua, turno, dia, item, tipificação, mês -->
     <div style="position:relative;margin:4px 0 16px">
-      <div style="display:flex;align-items:center;gap:12px;background:white;border:2px solid #0078D4;border-radius:12px;padding:12px 16px;box-shadow:0 4px 16px rgba(0,120,212,.25)">
-        <span style="font-size:22px">🔎</span>
+      <div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#0B1F4D,#0078D4);border-radius:12px;padding:14px 18px;box-shadow:0 6px 20px rgba(0,120,212,.45)">
+        <span style="font-size:13px;font-weight:800;color:white;letter-spacing:.5px;white-space:nowrap">🔎 PESQUISAR</span>
         <input id="ia-pesquisa-input" type="text" autocomplete="off"
           placeholder="Pesquisar bairro, rua, turno, dia, item, tipificação, mês... (escolha uma sugestão e todo o dashboard, inclusive o mapa, é filtrado)"
           oninput="onIaPesquisaInput(this.value)" onfocus="onIaPesquisaInput(this.value)"
           onkeydown="onIaPesquisaKey(event)" onblur="setTimeout(fecharSugestoesIa,150)"
-          style="flex:1;border:none;outline:none;font-size:15px;font-weight:500;background:transparent;color:#1A1A2E;min-width:0">
-        <span id="ia-pesquisa-info" style="font-size:12px;color:#666;white-space:nowrap"></span>
+          style="flex:1;border:3px solid #FFB900;outline:none;font-size:15px;font-weight:500;background:white;color:#1A1A2E;min-width:0;border-radius:8px;padding:10px 14px">
+        <span id="ia-pesquisa-info" style="font-size:12px;color:white;font-weight:600;white-space:nowrap"></span>
         <button id="ia-pesquisa-limpar" onclick="limparPesquisa()" title="Limpar texto da busca"
           style="display:none;background:#EEF1F6;color:#555;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✕</button>
       </div>
