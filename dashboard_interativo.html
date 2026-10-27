@@ -7100,14 +7100,14 @@ function planejarOperacao() {
   });
   const ruas = Object.entries(porRua).sort((a,b) => b[1].count - a[1].count);
 
-  // Distribuição das viaturas: metade (arredondada p/ cima) cobre uma rua cada,
-  // das mais críticas para as menos; o resto vai por proporção de ocorrências
-  // (D'Hondt), com teto por rua para não concentrar todo o efetivo numa só.
+  // Distribuição das viaturas: uma por rua, das mais críticas para as menos.
+  // Só se houver mais viaturas que ruas, o excedente repete as ruas mais críticas
+  // (proporção de ocorrências, D'Hondt), no máximo ceil(viaturas/ruas) por rua.
   const cand = ruas.slice(0, Math.max(nVtr * 2, 8));
   const aloc = {};
   cand.forEach(([nome]) => aloc[nome] = 0);
-  const teto = Math.max(1, Math.ceil(nVtr / 2));
-  const semente = Math.min(Math.ceil(nVtr / 2), cand.length);
+  const teto = Math.max(1, Math.ceil(nVtr / ruas.length));
+  const semente = Math.min(nVtr, cand.length);
   for(let k = 0; k < semente; k++) aloc[cand[k][0]]++;
   for(let k = semente; k < nVtr; k++) {
     let best = null, bq = -1;
