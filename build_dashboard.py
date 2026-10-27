@@ -1470,6 +1470,18 @@ function sair(){{
       <span id="diag-header-sub" style="font-size:10px;font-weight:400;color:#888;margin-left:8px"></span>
     </div>
 
+    <!-- Busca rápida junto da análise da IA -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:white;border:1px solid #D0D7E2;border-radius:8px;padding:6px 10px">
+      <span style="font-size:14px">🔎</span>
+      <input id="ia-pesquisa-input" type="text" autocomplete="off"
+        placeholder="Filtrar a análise por bairro, rua, turno, dia, item..."
+        oninput="onIaPesquisaInput(this.value)"
+        style="flex:1;border:none;outline:none;font-size:12.5px;background:transparent;color:#333">
+      <span id="ia-pesquisa-info" style="font-size:11px;color:#888;white-space:nowrap"></span>
+      <button id="ia-pesquisa-limpar" onclick="limparPesquisa()" title="Limpar busca"
+        style="display:none;background:#EEF1F6;color:#555;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer">✕</button>
+    </div>
+
     <!-- Resumo executivo dinâmico -->
     <div id="diagnostico-box" style="background:#FFF4F4;border:1px solid #F1BBBC;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:1.7"></div>
 
@@ -2128,6 +2140,10 @@ function renderDiagnostico(data) {{
   const box   = document.getElementById('diagnostico-box');
   const sub   = document.getElementById('diag-header-sub');
   if(!box) return;
+  const iaInfo = document.getElementById('ia-pesquisa-info');
+  if(iaInfo) iaInfo.textContent = pesquisaQ ? `${{total}} B.O.(s) encontrados` : '';
+  const iaLimpar = document.getElementById('ia-pesquisa-limpar');
+  if(iaLimpar) iaLimpar.style.display = pesquisaQ ? '' : 'none';
 
   if(total === 0) {{
     box.innerHTML = '<em style="color:#999">Nenhum dado para o filtro selecionado.</em>';
@@ -2415,7 +2431,13 @@ function toggleFilter(key, val) {{
 // ── RESET ─────────────────────────────────────────────────────────────────────
 function resetFilters() {{
   for(const k of Object.keys(state)) state[k].clear();
-  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = ''; corQ = ''; detalhesQ = '';
+  imeiQ = ''; marcaQ = ''; placaQ = ''; numeroSerieQ = ''; corQ = ''; detalhesQ = ''; pesquisaQ = '';
+  const iaIn = document.getElementById('ia-pesquisa-input');
+  if(iaIn) iaIn.value = '';
+  const hdrIn = document.getElementById('pesquisa-input');
+  if(hdrIn) hdrIn.value = '';
+  const hdrLimpar = document.getElementById('pesquisa-limpar');
+  if(hdrLimpar) hdrLimpar.style.display = 'none';
   const imeiInput = document.querySelector('#filter-imei-input');
   if(imeiInput) imeiInput.value = '';
   const marcaInput = document.querySelector('#filter-marca-input');
@@ -4331,10 +4353,24 @@ function onPesquisaInput(val) {{
   clearTimeout(_pesquisaTimer);
   _pesquisaTimer = setTimeout(()=>{{ if(val.trim().length >= 2) executarPesquisa(); }}, 400);
 }}
+// Busca ao vivo ao lado da análise da IA: usa o mesmo pesquisaQ da busca do
+// cabeçalho, mas sem abrir o modal — só refiltra o dashboard.
+let _iaPesquisaTimer = null;
+function onIaPesquisaInput(val) {{
+  clearTimeout(_iaPesquisaTimer);
+  _iaPesquisaTimer = setTimeout(()=>{{
+    pesquisaQ = val.trim();
+    document.getElementById('pesquisa-input').value = pesquisaQ;
+    document.getElementById('pesquisa-limpar').style.display = pesquisaQ ? '' : 'none';
+    renderAll();
+  }}, 300);
+}}
 function limparPesquisa() {{
   pesquisaQ = '';
   document.getElementById('pesquisa-input').value = '';
   document.getElementById('pesquisa-limpar').style.display = 'none';
+  const iaIn = document.getElementById('ia-pesquisa-input');
+  if(iaIn) iaIn.value = '';
   const badge = document.getElementById('pesquisa-badge');
   if(badge) {{ badge.style.display='none'; badge.textContent=''; }}
   renderAll(filtered());
@@ -4346,6 +4382,8 @@ function executarPesquisa() {{
   const termo = document.getElementById('pesquisa-input').value.trim();
   if(!termo) return;
   pesquisaQ = termo;
+  const iaIn = document.getElementById('ia-pesquisa-input');
+  if(iaIn) iaIn.value = termo;
   document.getElementById('pesquisa-limpar').style.display = '';
 
   const termoLow = termo.toLowerCase();
