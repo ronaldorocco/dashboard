@@ -1566,16 +1566,20 @@ function sair(){
       <span id="diag-header-sub" style="font-size:10px;font-weight:400;color:#888;margin-left:8px"></span>
     </div>
 
-    <!-- Busca rápida junto da análise da IA -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:white;border:1px solid #D0D7E2;border-radius:8px;padding:6px 10px">
-      <span style="font-size:14px">🔎</span>
-      <input id="ia-pesquisa-input" type="text" autocomplete="off"
-        placeholder="Filtrar a análise por bairro, rua, turno, dia, item..."
-        oninput="onIaPesquisaInput(this.value)"
-        style="flex:1;border:none;outline:none;font-size:12.5px;background:transparent;color:#333">
-      <span id="ia-pesquisa-info" style="font-size:11px;color:#888;white-space:nowrap"></span>
-      <button id="ia-pesquisa-limpar" onclick="limparPesquisa()" title="Limpar busca"
-        style="display:none;background:#EEF1F6;color:#555;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer">✕</button>
+    <!-- Busca única: sugestões por bairro, rua, turno, dia, item, tipificação, mês -->
+    <div style="position:relative;margin:4px 0 16px">
+      <div style="display:flex;align-items:center;gap:12px;background:white;border:2px solid #0078D4;border-radius:12px;padding:12px 16px;box-shadow:0 4px 16px rgba(0,120,212,.25)">
+        <span style="font-size:22px">🔎</span>
+        <input id="ia-pesquisa-input" type="text" autocomplete="off"
+          placeholder="Pesquisar bairro, rua, turno, dia, item, tipificação, mês... (escolha uma sugestão e todo o dashboard, inclusive o mapa, é filtrado)"
+          oninput="onIaPesquisaInput(this.value)" onfocus="onIaPesquisaInput(this.value)"
+          onkeydown="onIaPesquisaKey(event)" onblur="setTimeout(fecharSugestoesIa,150)"
+          style="flex:1;border:none;outline:none;font-size:15px;font-weight:500;background:transparent;color:#1A1A2E;min-width:0">
+        <span id="ia-pesquisa-info" style="font-size:12px;color:#666;white-space:nowrap"></span>
+        <button id="ia-pesquisa-limpar" onclick="limparPesquisa()" title="Limpar texto da busca"
+          style="display:none;background:#EEF1F6;color:#555;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✕</button>
+      </div>
+      <div id="ia-sugestoes" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:white;border:1px solid #D0D7E2;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:2000;max-height:340px;overflow-y:auto"></div>
     </div>
 
     <!-- Resumo executivo dinâmico -->
@@ -1583,18 +1587,14 @@ function sair(){
 
     <div class="rec-grid" id="rec-container"></div>
 
-    <!-- ANÁLISE DE BAIRRO -->
-    <div class="section-header">🏘️ Análise de Segurança por Bairro <span style="font-size:10px;font-weight:400;color:#888">(pesquisa independente dos filtros da barra lateral)</span></div>
-    <div class="plano-card" style="margin-bottom:16px">
-      <div class="plano-body" style="padding-top:14px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <select id="ab-bairro-select" style="flex:1;min-width:220px;padding:9px 12px;border-radius:6px;border:1px solid #DDD;font-size:12px;color:#1A1A2E">
-            <option value="">Selecione um bairro…</option>
-          </select>
-          <button class="btn-analise" onclick="analisarBairro()" style="white-space:nowrap">🔎 Analisar Bairro</button>
-          <button class="btn-reset" onclick="limparAnaliseBairro()" style="white-space:nowrap">⟳ Limpar</button>
+    <!-- ANÁLISE DE BAIRRO (aparece ao escolher um bairro na busca acima) -->
+    <div id="ab-wrap" style="display:none">
+      <div class="section-header">🏘️ Análise de Segurança do Bairro <span style="font-size:10px;font-weight:400;color:#888">(escolhido na busca · números de todo o histórico, sem os filtros da barra lateral)</span></div>
+      <div class="plano-card" style="margin-bottom:16px">
+        <div class="plano-body" style="padding-top:14px">
+          <select id="ab-bairro-select" style="display:none"><option value="">Selecione um bairro…</option></select>
+          <div id="analise-bairro-result"></div>
         </div>
-        <div id="analise-bairro-result"></div>
       </div>
     </div>
 
@@ -2538,6 +2538,7 @@ function renderAll() {
   renderTabela(data);   // tabela detalhada mostra todos os itens do B.O.
   renderChips();
   buildSidebar();
+  if(ultimaAnaliseBairro && !state.bairro.has(ultimaAnaliseBairro.bairro)) limparAnaliseBairro();
 }
 
 // ── CHIPS DE FILTROS ATIVOS ───────────────────────────────────────────────────
@@ -4524,17 +4525,92 @@ function onPesquisaInput(val) {
   clearTimeout(_pesquisaTimer);
   _pesquisaTimer = setTimeout(()=>{ if(val.trim().length >= 2) executarPesquisa(); }, 400);
 }
-// Busca ao vivo ao lado da análise da IA: usa o mesmo pesquisaQ da busca do
-// cabeçalho, mas sem abrir o modal — só refiltra o dashboard.
-let _iaPesquisaTimer = null;
+// Busca única junto da análise da IA: sugestões por categoria. Escolher uma
+// sugestão aplica o filtro estruturado (igual à barra lateral) e redesenha tudo;
+// se for um bairro, também abre a análise do bairro e traça a rota no mapa.
+const IA_CATEGORIAS = [
+  ['bairro','bairro','Bairro'], ['endereco','logradouro','Rua'], ['turno','turno','Turno'],
+  ['dia','dia','Dia'], ['item','item','Item'], ['tipo','tipo','Tipificação'], ['mes','mes','Mês'],
+];
+const _iaNorm = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+let _iaIndice = null, _iaSugestoes = [], _iaSel = -1;
+function _iaConstruirIndice() {
+  _iaIndice = [];
+  const ocs = dedupBO(RAW);
+  IA_CATEGORIAS.forEach(([campo,chave,rotulo]) => {
+    Object.entries(count(ocs,campo)).forEach(([valor,n]) => {
+      _iaIndice.push({chave, rotulo, valor, n, norm:_iaNorm(valor)});
+    });
+  });
+}
 function onIaPesquisaInput(val) {
-  clearTimeout(_iaPesquisaTimer);
-  _iaPesquisaTimer = setTimeout(()=>{
-    pesquisaQ = val.trim();
-    document.getElementById('pesquisa-input').value = pesquisaQ;
-    document.getElementById('pesquisa-limpar').style.display = pesquisaQ ? '' : 'none';
-    renderAll();
-  }, 300);
+  const box = document.getElementById('ia-sugestoes');
+  const q = _iaNorm(val.trim());
+  if(q.length < 1) { fecharSugestoesIa(); return; }
+  if(!_iaIndice) _iaConstruirIndice();
+  const achados = _iaIndice.filter(x => x.norm.includes(q))
+    .sort((a,b) => (b.norm.startsWith(q)-a.norm.startsWith(q)) || (b.n-a.n));
+  const porCat = {};
+  _iaSugestoes = achados.filter(x => (porCat[x.chave]=(porCat[x.chave]||0)+1) <= 4).slice(0,16);
+  _iaSel = _iaSugestoes.length ? 0 : -1;
+  if(!_iaSugestoes.length) {
+    box.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:#888">Nada encontrado. Enter busca "'+val.replace(/</g,'&lt;')+'" em todos os campos.</div>';
+    box.style.display = 'block';
+    return;
+  }
+  _iaDesenharSugestoes();
+}
+function _iaDesenharSugestoes() {
+  const box = document.getElementById('ia-sugestoes');
+  box.innerHTML = _iaSugestoes.map((x,i) => `
+    <div onmousedown="escolherSugestaoIa(${i})" style="display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:13px;cursor:pointer;background:${i===_iaSel?'#EAF3FC':'white'}">
+      <span style="font-size:9.5px;font-weight:700;color:white;background:#0078D4;border-radius:3px;padding:1px 6px;min-width:62px;text-align:center">${x.rotulo}</span>
+      <span style="flex:1;color:#1A1A2E">${x.valor}</span>
+      <span style="font-size:11px;color:#888">${x.n} B.O.</span>
+    </div>`).join('');
+  box.style.display = 'block';
+}
+function fecharSugestoesIa() {
+  const box = document.getElementById('ia-sugestoes');
+  if(box) box.style.display = 'none';
+}
+function onIaPesquisaKey(e) {
+  if(e.key === 'Escape') { fecharSugestoesIa(); return; }
+  if(e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if(!_iaSugestoes.length) return;
+    e.preventDefault();
+    _iaSel = (_iaSel + (e.key==='ArrowDown'?1:-1) + _iaSugestoes.length) % _iaSugestoes.length;
+    _iaDesenharSugestoes();
+    return;
+  }
+  if(e.key === 'Enter') {
+    e.preventDefault();
+    const box = document.getElementById('ia-sugestoes');
+    if(_iaSel >= 0 && box.style.display !== 'none') escolherSugestaoIa(_iaSel);
+    else {
+      // Sem sugestão: busca livre em todos os campos
+      pesquisaQ = e.target.value.trim();
+      document.getElementById('pesquisa-input').value = pesquisaQ;
+      document.getElementById('pesquisa-limpar').style.display = pesquisaQ ? '' : 'none';
+      fecharSugestoesIa();
+      renderAll();
+    }
+  }
+}
+function escolherSugestaoIa(i) {
+  const x = _iaSugestoes[i];
+  if(!x) return;
+  document.getElementById('ia-pesquisa-input').value = '';
+  fecharSugestoesIa();
+  if(pesquisaQ) limparPesquisa();
+  if(x.chave === 'bairro') state.bairro.clear();
+  state[x.chave].add(x.valor);
+  renderAll();
+  if(x.chave === 'bairro') {
+    document.getElementById('ab-bairro-select').value = x.valor;
+    analisarBairro();
+    if(ultimaAnaliseBairro && ultimaAnaliseBairro.waypoints.length >= 2) tracarRotaBairro();
+  }
 }
 function limparPesquisa() {
   pesquisaQ = '';
@@ -6288,6 +6364,8 @@ function limparAnaliseBairro() {
   if(sel) sel.value = '';
   const cont = document.getElementById('analise-bairro-result');
   if(cont) cont.innerHTML = '';
+  const wrap = document.getElementById('ab-wrap');
+  if(wrap) wrap.style.display = 'none';
   ultimaAnaliseBairro = null;
   limparRotaBairro();
 }
@@ -6295,6 +6373,8 @@ function limparAnaliseBairro() {
 function analisarBairro() {
   const bairro = document.getElementById('ab-bairro-select').value;
   const cont = document.getElementById('analise-bairro-result');
+  const wrap = document.getElementById('ab-wrap');
+  if(wrap) wrap.style.display = '';
   if(!bairro) {
     cont.innerHTML = '<div class="alerta-box" style="margin-top:10px">⚠ Selecione um bairro para analisar.</div>';
     return;
@@ -6929,7 +7009,7 @@ async function tracarRotaBairro() {
     limparRotaBairro();
     // Mostra só as ocorrências do bairro selecionado no mapa enquanto a
     // rota estiver visível, pra não poluir com os outros bairros.
-    renderMapa(dedupBO(RAW.filter(r => r.bairro === ultimaAnaliseBairro.bairro)));
+    renderMapa(dedupBO(filtered().filter(r => r.bairro === ultimaAnaliseBairro.bairro)));
 
     const pts = ultimaAnaliseBairro.waypoints;
     const coordsStr = pts.map(p => `${p.lon},${p.lat}`).join(';');
