@@ -6538,6 +6538,10 @@ function analisarBairro() {
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;font-size:12px">
           <label>Das<br><select id="op-ini" style="padding:7px;border:1px solid #CCC;border-radius:6px"><option value="0">00h</option><option value="1">01h</option><option value="2">02h</option><option value="3">03h</option><option value="4">04h</option><option value="5">05h</option><option value="6">06h</option><option value="7">07h</option><option value="8">08h</option><option value="9">09h</option><option value="10">10h</option><option value="11">11h</option><option value="12">12h</option><option value="13">13h</option><option value="14">14h</option><option value="15" selected>15h</option><option value="16">16h</option><option value="17">17h</option><option value="18">18h</option><option value="19">19h</option><option value="20">20h</option><option value="21">21h</option><option value="22">22h</option><option value="23">23h</option></select></label>
           <label>Até<br><select id="op-fim" style="padding:7px;border:1px solid #CCC;border-radius:6px"><option value="0">00h</option><option value="1">01h</option><option value="2">02h</option><option value="3">03h</option><option value="4">04h</option><option value="5">05h</option><option value="6">06h</option><option value="7">07h</option><option value="8">08h</option><option value="9">09h</option><option value="10">10h</option><option value="11">11h</option><option value="12">12h</option><option value="13">13h</option><option value="14">14h</option><option value="15">15h</option><option value="16">16h</option><option value="17">17h</option><option value="18" selected>18h</option><option value="19">19h</option><option value="20">20h</option><option value="21">21h</option><option value="22">22h</option><option value="23">23h</option></select></label>
+          <label>Estratégia<br><select id="op-modo" style="padding:7px;border:1px solid #CCC;border-radius:6px">
+            <option value="locais">📍 Pontos estratégicos (cobrir os locais críticos)</option>
+            <option value="muro">🧱 Muro virtual (cerco ao redor da área crítica)</option>
+          </select></label>
           <label>Viaturas<br><input id="op-vtr" type="number" min="1" max="30" value="4" style="width:70px;padding:7px;border:1px solid #CCC;border-radius:6px"></label>
           <button class="btn-analise" onclick="planejarOperacao()">🚓 Gerar plano da operação</button>
         </div>
@@ -7062,6 +7066,114 @@ function _carroSvg(w) {
       <circle cx="14" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/><circle cx="44" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/>
     </svg>`;
 }
+// ── MURO VIRTUAL: viaturas em anel ao redor da área crítica, fechando as rotas de fuga ──
+function planejarMuro(out, bairro, data, nVtr, janela, fmtH) {
+  if(nVtr < 3) {
+    out.innerHTML = '<div class="alerta-box" style="margin-top:10px">⚠ O muro virtual precisa de pelo menos 3 viaturas para formar o cerco.</div>';
+    return;
+  }
+  const coordsJ = data.filter(r => r.lat && r.lon);
+  if(coordsJ.length < 3) {
+    out.innerHTML = '<div class="alerta-box" style="margin-top:10px">Poucas ocorrências com localização nesta janela para montar o cerco.</div>';
+    return;
+  }
+  // Centro da área crítica e raio do cerco (75% das ocorrências ficam dentro dele)
+  let cLat = _mediana(coordsJ.map(r => r.lat)), cLon = _mediana(coordsJ.map(r => r.lon));
+  const dist = (lat, lon) => _distanciaMetros(cLat, cLon, lat, lon);
+  const noBairro = coordsJ.filter(r => dist(r.lat, r.lon) <= 2000);
+  const ds = noBairro.map(r => dist(r.lat, r.lon)).sort((a,b) => a-b);
+  const R = Math.round(Math.min(900, Math.max(250, ds[Math.floor(ds.length * 0.75)] || 250)));
+  const dentro = noBairro.filter(r => dist(r.lat, r.lon) <= R).length;
+  const pctDentro = Math.round(dentro / data.length * 100);
+
+  // Pontos de rua conhecidos do bairro (todo o histórico) para apoiar as viaturas em ruas reais
+  const vistos = new Set();
+  const ruasPts = dedupBO(RAW.filter(r => r.bairro === bairro && r.lat && r.lon && r.endereco)).filter(r => {
+    const k = r.endereco + '|' + r.lat.toFixed(4) + '|' + r.lon.toFixed(4);
+    if(vistos.has(k)) return false; vistos.add(k); return dist(r.lat, r.lon) <= 2500;
+  });
+
+  const bussola = ['Norte','Nordeste','Leste','Sudeste','Sul','Sudoeste','Oeste','Noroeste'];
+  const cosLat = Math.cos(cLat * Math.PI / 180);
+  const pontos = [];
+  for(let k = 0; k < nVtr; k++) {
+    const b = k * 360 / nVtr, rad = b * Math.PI / 180;
+    const alvo = [cLat + (R * Math.cos(rad)) / 111320, cLon + (R * Math.sin(rad)) / (111320 * cosLat)];
+    let melhor = null, md = 1e9;
+    ruasPts.forEach(r => {
+      const d = _distanciaMetros(alvo[0], alvo[1], r.lat, r.lon);
+      if(d < md && !pontos.some(p => _distanciaMetros(p.lat, p.lon, r.lat, r.lon) < 120)) { md = d; melhor = r; }
+    });
+    const usaRua = melhor && md <= 600;
+    pontos.push({
+      id: 'V' + (k+1), lat: usaRua ? melhor.lat : alvo[0], lon: usaRua ? melhor.lon : alvo[1],
+      rua: usaRua ? melhor.endereco : 'ponto no perímetro (sem rua mapeada)',
+      lado: bussola[Math.round(b / 45) % 8],
+      perto: coordsJ.filter(r => _distanciaMetros(usaRua ? melhor.lat : alvo[0], usaRua ? melhor.lon : alvo[1], r.lat, r.lon) <= 300).length,
+    });
+  }
+  let perim = 0;
+  pontos.forEach((p, i) => { const q = pontos[(i+1) % pontos.length]; perim += _distanciaMetros(p.lat, p.lon, q.lat, q.lon); });
+  const intervalo = Math.round(perim / pontos.length);
+
+  const cards = pontos.map(p => `<div style="display:flex;gap:14px;align-items:stretch;border:1px solid #E2E8F0;border-left:6px solid #FFB900;border-radius:10px;padding:12px 14px;margin:10px 0;background:white;flex-wrap:wrap">
+      <div style="min-width:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        ${_carroSvg(74)}
+        <div style="background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 9px;font-weight:800;font-size:12px">${p.id}</div>
+      </div>
+      <div style="flex:1;min-width:230px">
+        <div style="font-size:15px;font-weight:800;color:#0B1F4D">${p.rua}</div>
+        <div style="font-size:12px;color:#555">🧭 Lado ${p.lado} da área crítica</div>
+        <div style="margin:4px 0"><span style="display:inline-block;background:#FFF1C2;color:#7A5300;font-size:11px;font-weight:700;border-radius:12px;padding:2px 10px">🧱 Ponto de bloqueio do cerco</span></div>
+      </div>
+      <div style="min-width:150px;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:26px;font-weight:800;color:#E07B00;line-height:1">${p.perto} <span style="font-size:12px;font-weight:600;color:#666">B.O.s a 300 m</span></div>
+        <div style="font-size:11px;color:#666;margin-top:3px">fecha a rota de fuga deste lado</div>
+      </div>
+    </div>`).join('');
+
+  const kpi = (rot, val, sub, cor) => `<div style="flex:1;min-width:150px;background:white;border:1px solid #E2E8F0;border-top:4px solid ${cor};border-radius:8px;padding:10px 12px">
+      <div style="font-size:10.5px;color:#777;font-weight:700;letter-spacing:.4px">${rot}</div>
+      <div style="font-size:22px;font-weight:800;color:#0B1F4D;line-height:1.2">${val}</div>
+      <div style="font-size:11px;color:#666">${sub}</div></div>`;
+  out.innerHTML = `
+    <div style="margin-top:14px;border:1px solid #D6E4F0;border-radius:10px;overflow:hidden;background:#F7F9FC">
+      <div style="background:linear-gradient(135deg,#0B1F4D,#7B2FF7);color:white;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        ${_carroSvg(54)}
+        <div><div style="font-weight:800;font-size:15px">🧱 Muro virtual · ${bairro}</div>
+        <div style="font-size:12px;opacity:.9">${janela} · ${nVtr} viaturas formando um cerco ao redor da área crítica</div></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 14px">
+        ${kpi('RAIO DO CERCO', R + ' m', 'a partir do centro da área crítica', '#0078D4')}
+        ${kpi('DENTRO DO CERCO', pctDentro + '%', 'das ocorrências da janela', pctDentro >= 60 ? '#107C10' : '#E07B00')}
+        ${kpi('ESPAÇAMENTO', '~' + intervalo + ' m', 'entre viaturas vizinhas', '#8764B8')}
+        ${kpi('BASE HISTÓRICA', data.length + ' B.O.s', 'nesse horário no bairro', '#D13438')}
+      </div>
+      <div style="padding:0 14px 4px;font-size:12px;color:#555">As viaturas se posicionam em ruas do perímetro; abordagem em quem sai da área e fechamento das rotas de fuga.</div>
+      <div style="padding:2px 14px 6px">${cards}</div>
+      <div style="padding:8px 14px 12px;font-size:11px;color:#888">Sugestão estatística; o raio e os pontos seguem a concentração dos B.O.s. Ajuste conforme o efetivo e o terreno.</div>
+    </div>`;
+
+  // Mapa: carros no perímetro, linha do muro e centro da área crítica
+  if(opLayer && mapaInst) mapaInst.removeLayer(opLayer);
+  opLayer = null;
+  if(mapaInst) {
+    const carro = _carroSvg(36);
+    const camadas = pontos.map(p => L.marker([p.lat, p.lon], {
+      zIndexOffset: 1000,
+      icon: L.divIcon({
+        html:`<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))">${carro}
+          <div style="margin-top:-2px;background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:0 5px;font-weight:800;font-size:9.5px;line-height:14px;white-space:nowrap">${p.id}</div></div>`,
+        className:'', iconSize:[36,34], iconAnchor:[18,17],
+      })
+    }).bindPopup(`<strong>${p.id} — ${p.rua}</strong><br>Lado ${p.lado} do cerco<br>${p.perto} B.O.(s) a 300 m`));
+    camadas.push(L.polygon(pontos.map(p => [p.lat, p.lon]), { color:'#FFB900', weight:4, dashArray:'10,8', fillColor:'#FFB900', fillOpacity:0.08 }));
+    camadas.push(L.circleMarker([cLat, cLon], { radius:7, color:'white', weight:2, fillColor:'#D13438', fillOpacity:1 }).bindPopup('Centro da área crítica'));
+    opLayer = L.layerGroup(camadas).addTo(mapaInst);
+    mapaInst.fitBounds(L.latLngBounds(pontos.map(p => [p.lat, p.lon])), {padding:[60,60], maxZoom:16});
+  }
+}
+
 function planejarOperacao() {
   const out = document.getElementById('op-resultado');
   if(!out || !ultimaAnaliseBairro) return;
@@ -7084,126 +7196,101 @@ function planejarOperacao() {
     return;
   }
 
-  // Agrupa por rua; ignora coordenadas muito distantes do centro do bairro
+  if(document.getElementById('op-modo').value === 'muro') {
+    planejarMuro(out, bairro, data, nVtr, janela, fmtH);
+    return;
+  }
+
+  // ── LOCAIS: cada ponto de referência frequente numa rua é um local próprio
+  // (ex.: "Shopping Balneário · Avenida Santa Catarina"); o que sobra da rua
+  // vira o local "Rua X". Referências genéricas não viram local.
+  const GENERICA = /resid|via p[uú]blica|n[aã]o inform|logradouro|^\s*-?\s*$/i;
   const coordsB = data.filter(r => r.lat && r.lon);
   const cLat = _mediana(coordsB.map(r => r.lat)), cLon = _mediana(coordsB.map(r => r.lon));
   const porRua = {};
-  data.forEach(r => {
-    if(!r.endereco) return;
-    const o = porRua[r.endereco] || (porRua[r.endereco] = {count:0, lats:[], lons:[], pts:[], refs:{}, itens:{}, tipos:{}, horas:{}});
-    o.count++;
-    if(r.lat && r.lon && _distanciaMetros(cLat, cLon, r.lat, r.lon) <= 2000) { o.lats.push(r.lat); o.lons.push(r.lon); o.pts.push([r.lat, r.lon, r.ref || '']); }
-    if(r.ref) o.refs[r.ref] = (o.refs[r.ref]||0) + 1;
-    if(r.item) o.itens[r.item] = (o.itens[r.item]||0) + 1;
-    if(r.tipo) o.tipos[r.tipo] = (o.tipos[r.tipo]||0) + 1;
-    const h = parseInt(r.hora); if(!isNaN(h)) o.horas[h] = (o.horas[h]||0) + 1;
+  data.forEach(r => { if(r.endereco) (porRua[r.endereco] || (porRua[r.endereco] = [])).push(r); });
+  const locais = [];
+  const novoLocal = (rua, ref, regs) => {
+    const pts = regs.filter(r => r.lat && r.lon && _distanciaMetros(cLat, cLon, r.lat, r.lon) <= 2000).map(r => [r.lat, r.lon]);
+    const horas = count(regs.map(r => ({h: parseInt(r.hora)})).filter(x => !isNaN(x.h)), 'h');
+    locais.push({ rua, ref, count: regs.length, pts, regs,
+      item: sortedEntries(count(regs,'item'))[0], tipo: sortedEntries(count(regs,'tipo'))[0],
+      hora: sortedEntries(horas)[0] });
+  };
+  Object.entries(porRua).forEach(([rua, regs]) => {
+    const refs = count(regs.filter(r => r.ref && !GENERICA.test(r.ref)), 'ref');
+    const fortes = Object.entries(refs).filter(([,c]) => c >= 2);
+    const usados = new Set(fortes.map(f => f[0]));
+    fortes.forEach(([ref]) => novoLocal(rua, ref, regs.filter(r => r.ref === ref)));
+    const resto = regs.filter(r => !usados.has(r.ref));
+    if(resto.length) novoLocal(rua, null, resto);
   });
-  const ruas = Object.entries(porRua).sort((a,b) => b[1].count - a[1].count);
+  locais.sort((a,b) => b.count - a.count);
 
-  // Distribuição das viaturas: uma por rua, das mais críticas para as menos.
-  // Só se houver mais viaturas que ruas, o excedente repete as ruas mais críticas
-  // (proporção de ocorrências, D'Hondt), no máximo ceil(viaturas/ruas) por rua.
-  const cand = ruas.slice(0, Math.max(nVtr * 2, 8));
-  const aloc = {};
-  cand.forEach(([nome]) => aloc[nome] = 0);
-  const teto = Math.max(1, Math.ceil(nVtr / ruas.length));
-  const semente = Math.min(nVtr, cand.length);
-  for(let k = 0; k < semente; k++) aloc[cand[k][0]]++;
-  for(let k = semente; k < nVtr; k++) {
-    let best = null, bq = -1;
-    cand.forEach(([nome,v]) => {
-      if(aloc[nome] >= teto) return;
-      const q = v.count / (aloc[nome] + 1);
-      if(q > bq) { bq = q; best = nome; }
-    });
-    if(best === null) break;
-    aloc[best]++;
-  }
+  // Uma viatura por local, dos mais críticos para os menos, espalhadas:
+  // 1ª passada = no máximo um local por rua e sem repetir o ponto de referência;
+  // 2ª passada = mais locais sem repetir referência (ruas podem repetir);
+  // se ainda sobrar viatura, reforça os locais mais críticos (ronda móvel).
+  const sel = [], refsUsadas = new Set(), ruasUsadas = new Set();
+  const pega = l => { sel.push(l); ruasUsadas.add(l.rua); if(l.ref) refsUsadas.add(l.ref); };
+  locais.forEach(l => { if(sel.length < nVtr && !ruasUsadas.has(l.rua) && !(l.ref && refsUsadas.has(l.ref))) pega(l); });
+  locais.forEach(l => { if(sel.length < nVtr && !sel.includes(l) && !(l.ref && refsUsadas.has(l.ref))) pega(l); });
+  const escolhidos = sel.map((l,k) => ({ id: 'V' + (k+1), loc: l, extra: false }));
+  for(let k = sel.length; k < nVtr; k++) escolhidos.push({ id: 'V' + (k+1), loc: sel[k % sel.length], extra: true });
+  const cobertas = new Set(escolhidos.map(e => e.loc)).size ? [...new Set(escolhidos.map(e => e.loc))].reduce((a,l) => a + l.count, 0) : 0;
+  const pctCob = Math.min(100, Math.round(cobertas / data.length * 100));
 
-  const topDe = obj => sortedEntries(obj)[0];
-  let numVtr = 0, cobertas = 0;
-  const refsUsadas = new Set();
+  // Posição de cada viatura: centro do local; reforços ficam levemente afastados
   const marcadores = [];
-  const linhas = cand.filter(([nome]) => aloc[nome] > 0).map(([nome,v]) => {
-    cobertas += v.count;
-    const n = aloc[nome];
-    const refTop = topDe(v.refs);
-    const fixo = refTop && refTop[1] >= Math.max(2, v.count * 0.4) && !refsUsadas.has(refTop[0]);
-    if(fixo) refsUsadas.add(refTop[0]);
-    const itemTop = topDe(v.itens), tipoTop = topDe(v.tipos), horaTop = topDe(v.horas);
-    const ids = [];
-    const funcoes = [];
-    const funcoesTxt = [];
-    for(let i = 0; i < n; i++) {
-      ids.push('V' + (++numVtr));
-      const chip = (bg, fg, txt) => `<span style="display:inline-block;background:${bg};color:${fg};font-size:11px;font-weight:700;border-radius:12px;padding:2px 10px;margin:2px 4px 2px 0">${txt}</span>`;
-      funcoesTxt.push(i === 0 && fixo ? 'Posto fixo em ' + refTop[0] : i === 0 ? 'Ronda lenta e ostensiva' : 'Ronda móvel');
-      funcoes.push(i === 0 && fixo ? chip('#FFF1C2','#7A5300',`📌 Posto fixo · ${refTop[0]}`)
-        : i === 0 ? chip('#DCEBFA','#0B3D75','🚓 Ronda lenta e ostensiva')
-        : chip('#E6F4EA','#14532D','🚓 Ronda móvel (ida e volta + travessas)'));
-    }
-    // Uma posição por viatura: o posto fixo no ponto de referência; as demais
-    // espalhadas ao longo da rua (pontos de ocorrência ordenados e divididos em grupos)
-    const media = arr => [arr.reduce((a,p)=>a+p[0],0)/arr.length, arr.reduce((a,p)=>a+p[1],0)/arr.length];
-    const ordenados = [...v.pts].sort((a,b) => (a[0]+a[1]) - (b[0]+b[1]));
-    ids.forEach((id, k) => {
-      let pos = null;
-      if(k === 0 && fixo) {
-        const doRef = v.pts.filter(q => q[2] === refTop[0]);
-        if(doRef.length) pos = media(doRef);
-      }
-      if(!pos && ordenados.length >= n) {
-        const ini = Math.floor(k * ordenados.length / n), fimC = Math.floor((k+1) * ordenados.length / n);
-        pos = media(ordenados.slice(ini, Math.max(fimC, ini + 1)));
-      }
-      if(!pos && ordenados.length) pos = media(ordenados);
-      if(!pos) pos = [cLat, cLon];
-      // evita carros exatamente sobrepostos
-      marcadores.forEach(m => { if(Math.abs(m.lat-pos[0]) < 0.00012 && Math.abs(m.lon-pos[1]) < 0.00012) pos = [pos[0] + 0.00018, pos[1] + 0.00018]; });
-      marcadores.push({ nome, id, count:v.count, lat:pos[0], lon:pos[1], funcao:funcoesTxt[k] });
-    });
-    const pct = Math.round(v.count / data.length * 100);
+  const cards = escolhidos.map((e, idx) => {
+    const l = e.loc;
+    let pos = l.pts.length ? [l.pts.reduce((a,p)=>a+p[0],0)/l.pts.length, l.pts.reduce((a,p)=>a+p[1],0)/l.pts.length] : [cLat, cLon];
+    if(e.extra) pos = [pos[0] + 0.00025, pos[1] - 0.00025];
+    marcadores.forEach(m => { if(Math.abs(m.lat-pos[0]) < 0.00012 && Math.abs(m.lon-pos[1]) < 0.00012) pos = [pos[0] + 0.00018, pos[1] + 0.00018]; });
+    const titulo = l.ref ? `Em frente a ${l.ref}` : l.rua;
+    const funcaoTxt = e.extra ? 'Ronda móvel de reforço' : (l.ref ? 'Posto fixo' : 'Ronda lenta e ostensiva');
+    marcadores.push({ id:e.id, titulo, rua:l.rua, count:l.count, lat:pos[0], lon:pos[1], funcao:funcaoTxt });
+
+    const pct = Math.round(l.count / data.length * 100);
     const cor = pct >= 40 ? '#D13438' : pct >= 15 ? '#E07B00' : '#0078D4';
-    const foco = [itemTop && itemTop[0], tipoTop && tipoTop[0], horaTop && ('pico ' + fmtH(+horaTop[0]))].filter(Boolean)
+    const chip = (bg, fg, txt) => `<span style="display:inline-block;background:${bg};color:${fg};font-size:11px;font-weight:700;border-radius:12px;padding:2px 10px;margin:2px 4px 2px 0">${txt}</span>`;
+    const funcaoChip = e.extra ? chip('#E6F4EA','#14532D','🚓 Ronda móvel de reforço')
+      : l.ref ? chip('#FFF1C2','#7A5300','📌 Posto fixo') : chip('#DCEBFA','#0B3D75','🚓 Ronda lenta e ostensiva');
+    const foco = [l.item && l.item[0], l.tipo && l.tipo[0], l.hora && ('pico ' + fmtH(+l.hora[0]))].filter(Boolean)
       .map(t => `<span style="display:inline-block;background:#F1F3F8;color:#333;font-size:11px;border-radius:12px;padding:2px 9px;margin:2px 4px 2px 0">${t}</span>`).join('');
     return `<div style="display:flex;gap:14px;align-items:stretch;border:1px solid #E2E8F0;border-left:6px solid ${cor};border-radius:10px;padding:12px 14px;margin:10px 0;background:white;flex-wrap:wrap">
       <div style="min-width:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
-        ${ids.map(id => `<div style="display:flex;flex-direction:column;align-items:center">${_carroSvg(74)}
-          <div style="background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 9px;font-weight:800;font-size:12px">${id}</div></div>`).join('')}
+        ${_carroSvg(74)}
+        <div style="background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 9px;font-weight:800;font-size:12px">${e.id}</div>
       </div>
       <div style="flex:1;min-width:230px">
-        <div style="font-size:15px;font-weight:800;color:#0B1F4D">${nome}</div>
-        <div style="margin:4px 0">${funcoes.join('')}</div>
+        <div style="font-size:15px;font-weight:800;color:#0B1F4D">${titulo}</div>
+        ${l.ref ? `<div style="font-size:12px;color:#555">📍 ${l.rua}</div>` : ''}
+        <div style="margin:4px 0">${funcaoChip}</div>
         <div style="margin-top:4px"><span style="font-size:10.5px;color:#888;margin-right:6px">FOCO</span>${foco}</div>
       </div>
       <div style="min-width:150px;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:26px;font-weight:800;color:${cor};line-height:1">${v.count} <span style="font-size:12px;font-weight:600;color:#666">B.O.s na janela</span></div>
+        <div style="font-size:26px;font-weight:800;color:${cor};line-height:1">${l.count} <span style="font-size:12px;font-weight:600;color:#666">B.O.s neste local</span></div>
         <div style="height:8px;background:#EDF0F5;border-radius:4px;margin-top:6px;overflow:hidden"><div style="width:${Math.max(pct,3)}%;height:100%;background:${cor}"></div></div>
         <div style="font-size:11px;color:#666;margin-top:3px">${pct}% das ocorrências da janela</div>
       </div>
     </div>`;
   }).join('');
 
-  const itensJanela = sortedEntries(count(data,'item')).slice(0,3).map(e => `${e[0]} (${e[1]})`).join(', ');
-  const diasJanela = sortedEntries(count(data,'dia')).slice(0,3).map(e => `${e[0]} (${e[1]})`).join(', ');
-  const horasJanela = {};
-  data.forEach(r => { const h = parseInt(r.hora); horasJanela[h] = (horasJanela[h]||0) + 1; });
-  const picoH = sortedEntries(horasJanela).slice(0,2).map(e => `${fmtH(+e[0])} (${e[1]})`).join(', ');
-  const pctCob = Math.round(cobertas / data.length * 100);
+  const horasJanela = count(data.map(r => ({h: parseInt(r.hora)})), 'h');
+  const picoTop = sortedEntries(horasJanela)[0], diaTop = sortedEntries(count(data,'dia'))[0];
   const aviso = data.length < 15 ? `<div style="padding:0 14px 8px;font-size:11px;color:#A4262C">⚠ Poucos registros nesta janela (${data.length}); trate como indicativo.</div>` : '';
-
   const kpi = (rot, val, sub, cor) => `<div style="flex:1;min-width:150px;background:white;border:1px solid #E2E8F0;border-top:4px solid ${cor};border-radius:8px;padding:10px 12px">
       <div style="font-size:10.5px;color:#777;font-weight:700;letter-spacing:.4px">${rot}</div>
       <div style="font-size:22px;font-weight:800;color:#0B1F4D;line-height:1.2">${val}</div>
       <div style="font-size:11px;color:#666">${sub}</div></div>`;
-  const picoTop = sortedEntries(horasJanela)[0], diaTop = sortedEntries(count(data,'dia'))[0];
   const chipsItens = sortedEntries(count(data,'item')).slice(0,5).map(e => `<span style="display:inline-block;background:#EAF1FA;color:#0B3D75;font-size:11.5px;font-weight:600;border-radius:12px;padding:3px 11px;margin:3px 5px 3px 0">${e[0]} · ${e[1]}</span>`).join('');
   out.innerHTML = `
     <div style="margin-top:14px;border:1px solid #D6E4F0;border-radius:10px;overflow:hidden;background:#F7F9FC">
       <div style="background:linear-gradient(135deg,#0B1F4D,#0078D4);color:white;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         ${_carroSvg(54)}
         <div><div style="font-weight:800;font-size:15px">Plano sugerido · ${bairro}</div>
-        <div style="font-size:12px;opacity:.9">${janela} · ${nVtr} viatura${nVtr>1?'s':''}</div></div>
+        <div style="font-size:12px;opacity:.9">${janela} · ${nVtr} viatura${nVtr>1?'s':''} · ${locais.length} locais com ocorrência</div></div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 14px">
         ${kpi('BASE HISTÓRICA', data.length + ' B.O.s', 'nesse horário no bairro', '#0078D4')}
@@ -7212,16 +7299,15 @@ function planejarOperacao() {
         ${kpi('DIA MAIS CRÍTICO', diaTop[0], diaTop[1] + ' ocorrências', '#8764B8')}
       </div>
       <div style="padding:0 14px 4px"><span style="font-size:10.5px;color:#777;font-weight:700;letter-spacing:.4px;margin-right:8px">ITENS MAIS VISADOS</span>${chipsItens}</div>
-      <div style="padding:2px 14px 6px">${linhas}</div>
+      <div style="padding:2px 14px 6px">${cards}</div>
       ${aviso}
       <div style="padding:8px 14px 12px;font-size:11px;color:#888">Sugestão estatística com base nos B.O.s registrados; ajuste conforme o efetivo e a leitura do local.</div>
     </div>`;
 
-  // Marcadores V1, V2... no mapa
+  // Marcadores V1, V2... no mapa (um carro por viatura)
   if(opLayer && mapaInst) mapaInst.removeLayer(opLayer);
   opLayer = null;
   if(mapaInst && marcadores.length) {
-    // Imagem de viatura (SVG) com a etiqueta V1, V2... embaixo
     const carro = _carroSvg(36);
     opLayer = L.layerGroup(marcadores.map(m => L.marker([m.lat, m.lon], {
       zIndexOffset: 1000,
@@ -7230,7 +7316,7 @@ function planejarOperacao() {
           <div style="margin-top:-2px;background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:0 5px;font-weight:800;font-size:9.5px;line-height:14px;white-space:nowrap">${m.id}</div></div>`,
         className:'', iconSize:[36,34], iconAnchor:[18,17],
       })
-    }).bindPopup(`<strong>${m.id} — ${m.nome}</strong><br>${m.funcao}<br>${m.count} ocorrência(s) na rua na janela`))).addTo(mapaInst);
+    }).bindPopup(`<strong>${m.id} — ${m.titulo}</strong><br>${m.rua}<br>${m.funcao}<br>${m.count} ocorrência(s) neste local na janela`))).addTo(mapaInst);
     mapaInst.fitBounds(L.latLngBounds(marcadores.map(m => [m.lat, m.lon])), {padding:[60,60], maxZoom:16});
   }
 }
