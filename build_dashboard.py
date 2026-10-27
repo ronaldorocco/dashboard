@@ -6881,6 +6881,16 @@ async function imprimirApresentacaoBairro() {{
 
 // ── PLANEJADOR DE OPERAÇÃO (posicionamento de viaturas por bairro e horário) ──
 let opLayer = null;
+function _carroSvg(w) {{
+  return `<svg width="${{w}}" height="${{Math.round(w*30/58)}}" viewBox="0 0 58 30" xmlns="http://www.w3.org/2000/svg">
+      <rect x="21" y="1" width="7" height="4" rx="1" fill="#E02424"/><rect x="29" y="1" width="7" height="4" rx="1" fill="#1C64F2"/>
+      <path d="M4 20 L8 12 Q10 9 14 9 L42 9 Q46 9 48 12 L54 20 Z" fill="#FFFFFF" stroke="#0B1F4D" stroke-width="1.5"/>
+      <path d="M13 11 L41 11 L46 18 L9 18 Z" fill="#9CC9F5" stroke="#0B1F4D" stroke-width="1"/>
+      <rect x="2" y="18" width="54" height="8" rx="3" fill="#0B1F4D"/>
+      <rect x="2" y="21" width="54" height="2" fill="#FFB900"/>
+      <circle cx="14" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/><circle cx="44" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/>
+    </svg>`;
+}}
 function planejarOperacao() {{
   const out = document.getElementById('op-resultado');
   if(!out || !ultimaAnaliseBairro) return;
@@ -6954,8 +6964,10 @@ function planejarOperacao() {{
     const funcoes = [];
     for(let i = 0; i < n; i++) {{
       ids.push('V' + (++numVtr));
-      funcoes.push(i === 0 && fixo ? `📌 Posto fixo em <strong>${{refTop[0]}}</strong>`
-        : i === 0 ? '🚓 Ronda lenta e ostensiva na rua' : '🚓 Ronda móvel (ida e volta na rua e travessas)');
+      const chip = (bg, fg, txt) => `<span style="display:inline-block;background:${{bg}};color:${{fg}};font-size:11px;font-weight:700;border-radius:12px;padding:2px 10px;margin:2px 4px 2px 0">${{txt}}</span>`;
+      funcoes.push(i === 0 && fixo ? chip('#FFF1C2','#7A5300',`📌 Posto fixo · ${{refTop[0]}}`)
+        : i === 0 ? chip('#DCEBFA','#0B3D75','🚓 Ronda lenta e ostensiva')
+        : chip('#E6F4EA','#14532D','🚓 Ronda móvel (ida e volta + travessas)'));
     }}
     if(v.lats.length) marcadores.push({{
       nome, ids, count:v.count,
@@ -6963,12 +6975,25 @@ function planejarOperacao() {{
       lon: v.lons.reduce((a,b)=>a+b,0)/v.lons.length,
     }});
     const pct = Math.round(v.count / data.length * 100);
-    return `<tr style="border-bottom:1px solid #EEE">
-      <td style="padding:8px 6px;font-weight:800;color:#0B1F4D;white-space:nowrap">${{ids.join(' · ')}}</td>
-      <td style="padding:8px 6px"><strong>${{nome}}</strong><br><span style="font-size:11px;color:#666">${{funcoes.join('<br>')}}</span></td>
-      <td style="padding:8px 6px;white-space:nowrap">${{v.count}} (${{pct}}%)</td>
-      <td style="padding:8px 6px;font-size:11.5px;color:#444">${{itemTop ? itemTop[0] : '–'}}${{tipoTop ? ' · ' + tipoTop[0] : ''}}${{horaTop ? '<br>pico às ' + fmtH(+horaTop[0]) : ''}}</td>
-    </tr>`;
+    const cor = pct >= 40 ? '#D13438' : pct >= 15 ? '#E07B00' : '#0078D4';
+    const foco = [itemTop && itemTop[0], tipoTop && tipoTop[0], horaTop && ('pico ' + fmtH(+horaTop[0]))].filter(Boolean)
+      .map(t => `<span style="display:inline-block;background:#F1F3F8;color:#333;font-size:11px;border-radius:12px;padding:2px 9px;margin:2px 4px 2px 0">${{t}}</span>`).join('');
+    return `<div style="display:flex;gap:14px;align-items:stretch;border:1px solid #E2E8F0;border-left:6px solid ${{cor}};border-radius:10px;padding:12px 14px;margin:10px 0;background:white;flex-wrap:wrap">
+      <div style="min-width:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        ${{_carroSvg(74)}}
+        <div style="background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 9px;font-weight:800;font-size:12px;white-space:nowrap">${{ids.join(' · ')}}</div>
+      </div>
+      <div style="flex:1;min-width:230px">
+        <div style="font-size:15px;font-weight:800;color:#0B1F4D">${{nome}}</div>
+        <div style="margin:4px 0">${{funcoes.join('')}}</div>
+        <div style="margin-top:4px"><span style="font-size:10.5px;color:#888;margin-right:6px">FOCO</span>${{foco}}</div>
+      </div>
+      <div style="min-width:150px;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:26px;font-weight:800;color:${{cor}};line-height:1">${{v.count}} <span style="font-size:12px;font-weight:600;color:#666">B.O.s na janela</span></div>
+        <div style="height:8px;background:#EDF0F5;border-radius:4px;margin-top:6px;overflow:hidden"><div style="width:${{Math.max(pct,3)}}%;height:100%;background:${{cor}}"></div></div>
+        <div style="font-size:11px;color:#666;margin-top:3px">${{pct}}% das ocorrências da janela</div>
+      </div>
+    </div>`;
   }}).join('');
 
   const itensJanela = sortedEntries(count(data,'item')).slice(0,3).map(e => `${{e[0]}} (${{e[1]}})`).join(', ');
@@ -6979,22 +7004,29 @@ function planejarOperacao() {{
   const pctCob = Math.round(cobertas / data.length * 100);
   const aviso = data.length < 15 ? `<div style="padding:0 14px 8px;font-size:11px;color:#A4262C">⚠ Poucos registros nesta janela (${{data.length}}); trate como indicativo.</div>` : '';
 
+  const kpi = (rot, val, sub, cor) => `<div style="flex:1;min-width:150px;background:white;border:1px solid #E2E8F0;border-top:4px solid ${{cor}};border-radius:8px;padding:10px 12px">
+      <div style="font-size:10.5px;color:#777;font-weight:700;letter-spacing:.4px">${{rot}}</div>
+      <div style="font-size:22px;font-weight:800;color:#0B1F4D;line-height:1.2">${{val}}</div>
+      <div style="font-size:11px;color:#666">${{sub}}</div></div>`;
+  const picoTop = sortedEntries(horasJanela)[0], diaTop = sortedEntries(count(data,'dia'))[0];
+  const chipsItens = sortedEntries(count(data,'item')).slice(0,5).map(e => `<span style="display:inline-block;background:#EAF1FA;color:#0B3D75;font-size:11.5px;font-weight:600;border-radius:12px;padding:3px 11px;margin:3px 5px 3px 0">${{e[0]}} · ${{e[1]}}</span>`).join('');
   out.innerHTML = `
-    <div style="margin-top:12px;border:1px solid #D6E4F0;border-radius:8px;overflow:hidden">
-      <div style="background:#0B1F4D;color:white;padding:10px 14px;font-weight:700;font-size:13px">
-        🚓 Plano sugerido — ${{bairro}} · ${{janela}} · ${{nVtr}} viatura${{nVtr>1?'s':''}}</div>
-      <div style="padding:10px 14px;font-size:12px;background:#F5F8FC;line-height:1.7">
-        Base: <strong>${{data.length}} B.O.(s)</strong> do histórico nesse horário.
-        As posições abaixo cobrem <strong>${{pctCob}}%</strong> das ocorrências.<br>
-        <strong>Horários de pico na janela:</strong> ${{picoH}} · <strong>Dias mais críticos:</strong> ${{diasJanela}}<br>
-        <strong>Itens mais visados:</strong> ${{itensJanela}}
+    <div style="margin-top:14px;border:1px solid #D6E4F0;border-radius:10px;overflow:hidden;background:#F7F9FC">
+      <div style="background:linear-gradient(135deg,#0B1F4D,#0078D4);color:white;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        ${{_carroSvg(54)}}
+        <div><div style="font-weight:800;font-size:15px">Plano sugerido · ${{bairro}}</div>
+        <div style="font-size:12px;opacity:.9">${{janela}} · ${{nVtr}} viatura${{nVtr>1?'s':''}}</div></div>
       </div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <thead><tr style="background:#EAF1FA;text-align:left;font-size:11px;color:#333">
-          <th style="padding:6px">Viatura</th><th style="padding:6px">Posição / função</th><th style="padding:6px">B.O.s na janela</th><th style="padding:6px">Foco</th></tr></thead>
-        <tbody>${{linhas}}</tbody></table></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;padding:12px 14px">
+        ${{kpi('BASE HISTÓRICA', data.length + ' B.O.s', 'nesse horário no bairro', '#0078D4')}}
+        ${{kpi('COBERTURA DO PLANO', pctCob + '%', 'das ocorrências da janela', pctCob >= 60 ? '#107C10' : '#E07B00')}}
+        ${{kpi('HORA DE PICO', fmtH(+picoTop[0]), picoTop[1] + ' ocorrências', '#D13438')}}
+        ${{kpi('DIA MAIS CRÍTICO', diaTop[0], diaTop[1] + ' ocorrências', '#8764B8')}}
+      </div>
+      <div style="padding:0 14px 4px"><span style="font-size:10.5px;color:#777;font-weight:700;letter-spacing:.4px;margin-right:8px">ITENS MAIS VISADOS</span>${{chipsItens}}</div>
+      <div style="padding:2px 14px 6px">${{linhas}}</div>
       ${{aviso}}
-      <div style="padding:8px 14px;font-size:11px;color:#888">Sugestão estatística com base nos B.O.s registrados; ajuste conforme o efetivo e a leitura do local.</div>
+      <div style="padding:8px 14px 12px;font-size:11px;color:#888">Sugestão estatística com base nos B.O.s registrados; ajuste conforme o efetivo e a leitura do local.</div>
     </div>`;
 
   // Marcadores V1, V2... no mapa
@@ -7002,14 +7034,7 @@ function planejarOperacao() {{
   opLayer = null;
   if(mapaInst && marcadores.length) {{
     // Imagem de viatura (SVG) com a etiqueta V1, V2... embaixo
-    const carro = `<svg width="58" height="30" viewBox="0 0 58 30" xmlns="http://www.w3.org/2000/svg">
-      <rect x="21" y="1" width="7" height="4" rx="1" fill="#E02424"/><rect x="29" y="1" width="7" height="4" rx="1" fill="#1C64F2"/>
-      <path d="M4 20 L8 12 Q10 9 14 9 L42 9 Q46 9 48 12 L54 20 Z" fill="#FFFFFF" stroke="#0B1F4D" stroke-width="1.5"/>
-      <path d="M13 11 L41 11 L46 18 L9 18 Z" fill="#9CC9F5" stroke="#0B1F4D" stroke-width="1"/>
-      <rect x="2" y="18" width="54" height="8" rx="3" fill="#0B1F4D"/>
-      <rect x="2" y="21" width="54" height="2" fill="#FFB900"/>
-      <circle cx="14" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/><circle cx="44" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/>
-    </svg>`;
+    const carro = _carroSvg(58);
     opLayer = L.layerGroup(marcadores.map(m => L.marker([m.lat, m.lon], {{
       zIndexOffset: 1000,
       icon: L.divIcon({{
