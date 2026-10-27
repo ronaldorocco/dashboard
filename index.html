@@ -7172,10 +7172,21 @@ function planejarOperacao() {
   if(opLayer && mapaInst) mapaInst.removeLayer(opLayer);
   opLayer = null;
   if(mapaInst && marcadores.length) {
+    // Imagem de viatura (SVG) com a etiqueta V1, V2... embaixo
+    const carro = `<svg width="58" height="30" viewBox="0 0 58 30" xmlns="http://www.w3.org/2000/svg">
+      <rect x="21" y="1" width="7" height="4" rx="1" fill="#E02424"/><rect x="29" y="1" width="7" height="4" rx="1" fill="#1C64F2"/>
+      <path d="M4 20 L8 12 Q10 9 14 9 L42 9 Q46 9 48 12 L54 20 Z" fill="#FFFFFF" stroke="#0B1F4D" stroke-width="1.5"/>
+      <path d="M13 11 L41 11 L46 18 L9 18 Z" fill="#9CC9F5" stroke="#0B1F4D" stroke-width="1"/>
+      <rect x="2" y="18" width="54" height="8" rx="3" fill="#0B1F4D"/>
+      <rect x="2" y="21" width="54" height="2" fill="#FFB900"/>
+      <circle cx="14" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/><circle cx="44" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/>
+    </svg>`;
     opLayer = L.layerGroup(marcadores.map(m => L.marker([m.lat, m.lon], {
+      zIndexOffset: 1000,
       icon: L.divIcon({
-        html:`<div style="background:#0B1F4D;color:white;border-radius:14px;padding:3px 8px;white-space:nowrap;font-weight:800;font-size:12px;border:2px solid #FFB900;box-shadow:0 2px 6px rgba(0,0,0,.5)">🚓 ${m.ids.join('·')}</div>`,
-        className:'', iconAnchor:[24,12],
+        html:`<div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))">${carro}
+          <div style="margin-top:-2px;background:#0B1F4D;color:white;border:2px solid #FFB900;border-radius:10px;padding:1px 7px;font-weight:800;font-size:11px;white-space:nowrap">${m.ids.join(' · ')}</div></div>`,
+        className:'', iconSize:[58,48], iconAnchor:[29,24],
       })
     }).bindPopup(`<strong>${m.ids.join(' · ')} — ${m.nome}</strong><br>${m.count} ocorrência(s) na janela`))).addTo(mapaInst);
     mapaInst.fitBounds(L.latLngBounds(marcadores.map(m => [m.lat, m.lon])), {padding:[60,60], maxZoom:16});
