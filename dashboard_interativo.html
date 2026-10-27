@@ -1557,21 +1557,6 @@ function sair(){
     <div class="section-header">👮 Plano de Distribuição Policial <span style="font-size:10px;font-weight:400;color:#888">(gerado automaticamente com base nos dados)</span></div>
     <div id="plano-policial"></div>
 
-    <!-- ANÁLISE DE BAIRRO -->
-    <div class="section-header">🏘️ Análise de Segurança por Bairro <span style="font-size:10px;font-weight:400;color:#888">(pesquisa independente dos filtros da barra lateral)</span></div>
-    <div class="plano-card" style="margin-bottom:16px">
-      <div class="plano-body" style="padding-top:14px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <select id="ab-bairro-select" style="flex:1;min-width:220px;padding:9px 12px;border-radius:6px;border:1px solid #DDD;font-size:12px;color:#1A1A2E">
-            <option value="">Selecione um bairro…</option>
-          </select>
-          <button class="btn-analise" onclick="analisarBairro()" style="white-space:nowrap">🔎 Analisar Bairro</button>
-          <button class="btn-reset" onclick="limparAnaliseBairro()" style="white-space:nowrap">⟳ Limpar</button>
-        </div>
-        <div id="analise-bairro-result"></div>
-      </div>
-    </div>
-
     <!-- INSIGHTS DINÂMICOS -->
     <div class="section-header">🔍 Análise Automática <span style="font-size:10px;font-weight:400;color:#888">(atualiza com os filtros)</span></div>
     <div class="insight-grid" id="insights-container"></div>
@@ -1597,6 +1582,21 @@ function sair(){
     <div id="diagnostico-box" style="background:#FFF4F4;border:1px solid #F1BBBC;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:1.7"></div>
 
     <div class="rec-grid" id="rec-container"></div>
+
+    <!-- ANÁLISE DE BAIRRO -->
+    <div class="section-header">🏘️ Análise de Segurança por Bairro <span style="font-size:10px;font-weight:400;color:#888">(pesquisa independente dos filtros da barra lateral)</span></div>
+    <div class="plano-card" style="margin-bottom:16px">
+      <div class="plano-body" style="padding-top:14px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <select id="ab-bairro-select" style="flex:1;min-width:220px;padding:9px 12px;border-radius:6px;border:1px solid #DDD;font-size:12px;color:#1A1A2E">
+            <option value="">Selecione um bairro…</option>
+          </select>
+          <button class="btn-analise" onclick="analisarBairro()" style="white-space:nowrap">🔎 Analisar Bairro</button>
+          <button class="btn-reset" onclick="limparAnaliseBairro()" style="white-space:nowrap">⟳ Limpar</button>
+        </div>
+        <div id="analise-bairro-result"></div>
+      </div>
+    </div>
 
     <!-- MAPA -->
     <div class="section-header">🗺️ Mapa de Ocorrências <span style="font-size:10px;font-weight:400;color:#888">(atualiza com os filtros)</span></div>
