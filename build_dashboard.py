@@ -6897,6 +6897,26 @@ function _carroSvg(w) {{
       <circle cx="14" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/><circle cx="44" cy="26" r="4" fill="#222" stroke="#fff" stroke-width="1.5"/>
     </svg>`;
 }}
+// Distância mínima entre viaturas: primeiro tenta outros pontos reais da mesma rua;
+// se todos estiverem perto de outra viatura, afasta a posição radialmente.
+const DIST_MIN_VTR = 120;
+function _posLivre(pos, candidatos, ocupados) {{
+  const livre = p => ocupados.every(o => _distanciaMetros(p[0], p[1], o.lat, o.lon) >= DIST_MIN_VTR);
+  if(livre(pos)) return pos;
+  const ord = candidatos.map(c => [c, _distanciaMetros(pos[0], pos[1], c[0], c[1])]).sort((a, b) => a[1] - b[1]);
+  for(const [c] of ord) if(livre(c)) return c;
+  let atual = pos.slice();
+  for(let it = 0; it < 12 && !livre(atual); it++) {{
+    let o = null, od = 1e9;
+    ocupados.forEach(q => {{ const d = _distanciaMetros(atual[0], atual[1], q.lat, q.lon); if(d < od) {{ od = d; o = q; }} }});
+    const cosL = Math.cos(o.lat * Math.PI / 180);
+    let dy = (atual[0] - o.lat) * 111320, dx = (atual[1] - o.lon) * 111320 * cosL;
+    let len = Math.hypot(dx, dy);
+    if(len < 1) {{ const ang = ocupados.length * 2.399; dx = Math.cos(ang); dy = Math.sin(ang); len = 1; }}
+    atual = [o.lat + (dy / len) * (DIST_MIN_VTR + 5) / 111320, o.lon + (dx / len) * (DIST_MIN_VTR + 5) / (111320 * cosL)];
+  }}
+  return atual;
+}}
 // ── PDF DA OPERAÇÃO: ordem de serviço (paisagem) com mapa e posicionamento das viaturas ──
 let ultimoPlanoOp = null;
 function gerarPdfOperacao() {{
@@ -7215,8 +7235,7 @@ function planejarOperacao() {{
   const cards = escolhidos.map((e, idx) => {{
     const l = e.loc;
     let pos = l.pts.length ? [l.pts.reduce((a,p)=>a+p[0],0)/l.pts.length, l.pts.reduce((a,p)=>a+p[1],0)/l.pts.length] : [cLat, cLon];
-    if(e.extra) pos = [pos[0] + 0.00025, pos[1] - 0.00025];
-    marcadores.forEach(m => {{ if(Math.abs(m.lat-pos[0]) < 0.00012 && Math.abs(m.lon-pos[1]) < 0.00012) pos = [pos[0] + 0.00018, pos[1] + 0.00018]; }});
+    pos = _posLivre(pos, l.pts, marcadores);
     const titulo = l.ref ? `Em frente a ${{l.ref}}` : l.rua;
     const funcaoTxt = e.extra ? 'Ronda móvel de reforço' : (l.ref ? 'Posto fixo' : 'Ronda lenta e ostensiva');
     const focoTxt = [l.item && l.item[0], l.tipo && l.tipo[0], l.hora && ('pico ' + fmtH(+l.hora[0]))].filter(Boolean).join(' · ');
