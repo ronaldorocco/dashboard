@@ -1,23 +1,23 @@
 {
-  "gerado_em": "23/10/2026 17:33",
-  "total_bos": 1131,
+  "gerado_em": "27/10/2026 15:36",
+  "total_bos": 1144,
   "total_grupos": 56,
-  "total_vinculados": 381,
+  "total_vinculados": 385,
   "bairros_freq": {
-    "Centro": 273,
-    "CENTRO": 265,
+    "Centro": 274,
+    "CENTRO": 267,
     "NOVA ESPERANÇA": 82,
     "MUNICÍPIOS": 69,
     "ESTADOS": 66,
     "Estados": 40,
-    "NAÇÕES": 32,
-    "Vila Real": 31
+    "Vila Real": 35,
+    "NAÇÕES": 32
   },
   "turnos_freq": {
-    "Manhã": 225,
-    "Noite": 304,
-    "Tarde": 318,
-    "Madrugada": 280,
+    "Manhã": 227,
+    "Noite": 307,
+    "Tarde": 322,
+    "Madrugada": 284,
     "Não informado": 4
   },
   "grupos": [
@@ -92,34 +92,34 @@
         "31/08/2026"
       ],
       "bairros": [
-        "Das Nações",
-        "MUNICÍPIOS",
-        "CENTRO",
-        "Nações",
-        "Centro",
-        "Vila Real",
-        "NAÇÕES",
-        "ESTADOS",
-        "PIONEIROS",
         "VILA REAL",
         "Pioneiros",
-        "Dos Estados",
-        "Barra"
+        "ESTADOS",
+        "MUNICÍPIOS",
+        "Nações",
+        "PIONEIROS",
+        "NAÇÕES",
+        "Centro",
+        "Das Nações",
+        "Barra",
+        "CENTRO",
+        "Vila Real",
+        "Dos Estados"
       ],
       "objetos": [
-        "Outra ferramenta",
-        "Fio/Fiação elétrica",
-        "Chip de celular",
         "Botijão de gás",
-        "Motor de veículo"
+        "Televisor",
+        "Notebook",
+        "Outra ferramenta",
+        "Fio/Fiação elétrica"
       ],
       "mo_tags": [
         "bicicleta furtada",
         "furto de mochila",
-        "solicitou PIX",
+        "arrombamento",
         "capacete (não identificado)",
-        "golpe/estelionato",
-        "furto de bolsa"
+        "furto de bolsa",
+        "golpe/estelionato"
       ],
       "crimes": [
         {
@@ -1409,7 +1409,7 @@
     },
     {
       "id": 2,
-      "n": 41,
+      "n": 42,
       "risco": "CRÍTICO",
       "tipo_ref": "Furto",
       "n_suspeitos": 1,
@@ -1445,6 +1445,7 @@
         "19/07/2026",
         "21/07/2026",
         "21/08/2026",
+        "22/09/2026",
         "23/06/2026",
         "25/07/2026",
         "26/07/2026",
@@ -1455,34 +1456,35 @@
         "31/05/2026"
       ],
       "bairros": [
-        "Das Nações",
-        "MUNICÍPIOS",
-        "CENTRO",
-        "Estados",
         "Ariribá",
-        "Da Praia dos Amores",
-        "Centro",
-        "Vila Real",
         "ESTADOS",
-        "NOVA ESPERANÇA",
+        "MUNICÍPIOS",
+        "Dos Municípios",
+        "Estados",
+        "Centro",
         "Nova Esperança",
-        "Municípios",
-        "Dos Municípios"
+        "Das Nações",
+        "CENTRO",
+        "NOVA ESPERANÇA",
+        "Dos Estados",
+        "Da Praia dos Amores",
+        "Vila Real",
+        "Municípios"
       ],
       "objetos": [
-        "Outra joia/bijuteria",
-        "Fio/Fiação elétrica",
-        "Smartphone/Telefone celular",
-        "Óculos",
+        "Eletrodoméstico",
+        "Roupa",
+        "Dinheiro",
+        "Placa de veículo",
         "Relógio"
       ],
       "mo_tags": [
         "bicicleta furtada",
         "furto de mochila",
+        "veículo estacionado",
         "carteira furtada/roubada",
         "notebook furtado/roubado",
-        "solicitou PIX",
-        "veículo estacionado"
+        "furto de bolsa"
       ],
       "crimes": [
         {
@@ -2047,11 +2049,380 @@
             "fuga: veículo",
             "objeto: Outro bem/objeto"
           ]
+        },
+        {
+          "numero": "BO-00549.2026.0009319",
+          "data": "22/09/2026",
+          "hora": "17:00",
+          "turno": "Tarde",
+          "local": "Avenida Santa Catarina, 1 - Dos Estados",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: veículo"
+          ]
         }
       ]
     },
     {
       "id": 3,
+      "n": 23,
+      "risco": "CRÍTICO",
+      "tipo_ref": "Furto",
+      "n_suspeitos": 1,
+      "armado": true,
+      "veiculo": "motocicleta",
+      "datas": [
+        "01/07/2026",
+        "04/07/2026",
+        "05/07/2026",
+        "09/07/2026",
+        "10/07/2026",
+        "10/08/2026",
+        "10/09/2026",
+        "11/06/2026",
+        "11/09/2026",
+        "14/08/2026",
+        "16/09/2026",
+        "18/06/2026",
+        "19/06/2026",
+        "21/09/2026",
+        "22/06/2026",
+        "22/07/2026",
+        "22/08/2026",
+        "23/07/2026",
+        "27/05/2026",
+        "28/06/2026"
+      ],
+      "bairros": [
+        "VILA REAL",
+        "Pioneiros",
+        "Dos Municípios",
+        "Nações",
+        "Centro",
+        "Das Nações",
+        "Barra",
+        "Nova Esperança",
+        "NOVA ESPERANÇA",
+        "CENTRO",
+        "Da Barra",
+        "Vila Real"
+      ],
+      "objetos": [
+        "Televisor",
+        "Placa de veículo",
+        "Dinheiro",
+        "Outro bem/objeto",
+        "Calçado"
+      ],
+      "mo_tags": [
+        "bicicleta furtada",
+        "furto de mochila",
+        "veículo estacionado",
+        "solicitou PIX",
+        "celular furtado/roubado"
+      ],
+      "crimes": [
+        {
+          "numero": "BO-00600.2026.0036346",
+          "data": "10/08/2026",
+          "hora": "22:00",
+          "turno": "Noite",
+          "local": "RUA JOSÉ CESÁRIO PEREIRA, 1000 - NOVA ESPERANÇA",
+          "tipo": "Furto",
+          "razoes": []
+        },
+        {
+          "numero": "BOCOP-02317.2026.0003362",
+          "data": "14/08/2026",
+          "hora": "15:25",
+          "turno": "Tarde",
+          "local": "Avenida Marginal Oeste, S/N - Vila Real",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0008006",
+          "data": "22/08/2026",
+          "hora": "00:20",
+          "turno": "Madrugada",
+          "local": "Rua Hermógenes Assis Feijó, - Da Barra",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006321",
+          "data": "01/07/2026",
+          "hora": "02:30",
+          "turno": "Madrugada",
+          "local": "Rua Dom Felipe, 248 - Vila Real",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006422",
+          "data": "04/07/2026",
+          "hora": "05:40",
+          "turno": "Madrugada",
+          "local": "4a Avenida, 721 - Centro",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BOCOP-02317.2026.0002901",
+          "data": "04/07/2026",
+          "hora": "21:00",
+          "turno": "Noite",
+          "local": "Rua Emanoel Rebelo dos Santos, S/N - Barra",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006445",
+          "data": "05/07/2026",
+          "hora": "19:00",
+          "turno": "Noite",
+          "local": "Rua Mil, 50 - Centro",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006571",
+          "data": "09/07/2026",
+          "hora": "03:17",
+          "turno": "Madrugada",
+          "local": "Rua Araranguá, 523 - Dos Municípios",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00600.2026.0031685",
+          "data": "10/07/2026",
+          "hora": "21:03",
+          "turno": "Noite",
+          "local": "RUA DOM HENRIQUE, 361 - VILA REAL",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "ambos armados"
+          ]
+        },
+        {
+          "numero": "BOCOP-02317.2026.0003096",
+          "data": "22/07/2026",
+          "hora": "08:15",
+          "turno": "Manhã",
+          "local": "Rua Antônio Bittencourt, S/N - Pioneiros",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0007003",
+          "data": "23/07/2026",
+          "hora": "18:40",
+          "turno": "Noite",
+          "local": "Rua Chapecó, 373 - Dos Municípios",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BOCOP-02317.2026.0002614",
+          "data": "11/06/2026",
+          "hora": "01:10",
+          "turno": "Madrugada",
+          "local": "Rua Bibiano dos Santos, 87 - Pioneiros",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006019",
+          "data": "18/06/2026",
+          "hora": "02:49",
+          "turno": "Madrugada",
+          "local": "Rua Israel, 1998 - Das Nações",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006050",
+          "data": "19/06/2026",
+          "hora": "21:25",
+          "turno": "Noite",
+          "local": "Rua Dom Francisco, S/N - Vila Real",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006106",
+          "data": "22/06/2026",
+          "hora": "17:00",
+          "turno": "Tarde",
+          "local": "Rua Caçador, 376 - Dos Municípios",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0006266",
+          "data": "28/06/2026",
+          "hora": "03:40",
+          "turno": "Madrugada",
+          "local": "Rua Marinilza C. do Nascimento, 100 - Nova Esperan",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BOCOP-02317.2026.0002410",
+          "data": "27/05/2026",
+          "hora": "08:22",
+          "turno": "Manhã",
+          "local": "Rua José Honorato da Silva, S/N - Nova Esperança",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0008503",
+          "data": "10/09/2026",
+          "hora": "03:50",
+          "turno": "Madrugada",
+          "local": "Rua Armazém, 50 - Vila Real",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BOCOP-02317.2026.0003684",
+          "data": "10/09/2026",
+          "hora": "06:20",
+          "turno": "Manhã",
+          "local": "Rua Grécia, S/N - Nações",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "ambos armados"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0008532",
+          "data": "11/09/2026",
+          "hora": "03:00",
+          "turno": "Madrugada",
+          "local": "Rua Jordânia, 650 - Das Nações",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0008708",
+          "data": "16/09/2026",
+          "hora": "22:00",
+          "turno": "Noite",
+          "local": "Rua Dom Afonso, 410 - Vila Real",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00549.2026.0008839",
+          "data": "21/09/2026",
+          "hora": "02:50",
+          "turno": "Madrugada",
+          "local": "Rua Dom Miguel, 55 - Vila Real",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        },
+        {
+          "numero": "BO-00600.2026.0043354",
+          "data": "21/09/2026",
+          "hora": "19:48",
+          "turno": "Noite",
+          "local": "RUA 2438, 684 - CENTRO",
+          "tipo": "Furto",
+          "razoes": [
+            "crime: Furto",
+            "1 suspeito(s)",
+            "fuga: motocicleta"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
       "n": 23,
       "risco": "CRÍTICO",
       "tipo_ref": "Furto",
@@ -2409,334 +2780,8 @@
       ]
     },
     {
-      "id": 4,
-      "n": 21,
-      "risco": "CRÍTICO",
-      "tipo_ref": "Furto",
-      "n_suspeitos": 1,
-      "armado": true,
-      "veiculo": "motocicleta",
-      "datas": [
-        "01/07/2026",
-        "04/07/2026",
-        "05/07/2026",
-        "09/07/2026",
-        "10/07/2026",
-        "10/08/2026",
-        "10/09/2026",
-        "11/06/2026",
-        "11/09/2026",
-        "14/08/2026",
-        "16/09/2026",
-        "18/06/2026",
-        "19/06/2026",
-        "22/06/2026",
-        "22/07/2026",
-        "22/08/2026",
-        "23/07/2026",
-        "27/05/2026",
-        "28/06/2026"
-      ],
-      "bairros": [
-        "Das Nações",
-        "Nações",
-        "Centro",
-        "Vila Real",
-        "NOVA ESPERANÇA",
-        "VILA REAL",
-        "Da Barra",
-        "Nova Esperança",
-        "Pioneiros",
-        "Barra",
-        "Dos Municípios"
-      ],
-      "objetos": [
-        "Dinheiro",
-        "Televisor",
-        "Placa de veículo",
-        "Outro bem/objeto"
-      ],
-      "mo_tags": [
-        "bicicleta furtada",
-        "veículo estacionado",
-        "celular furtado/roubado",
-        "furto de mochila"
-      ],
-      "crimes": [
-        {
-          "numero": "BO-00600.2026.0036346",
-          "data": "10/08/2026",
-          "hora": "22:00",
-          "turno": "Noite",
-          "local": "RUA JOSÉ CESÁRIO PEREIRA, 1000 - NOVA ESPERANÇA",
-          "tipo": "Furto",
-          "razoes": []
-        },
-        {
-          "numero": "BOCOP-02317.2026.0003362",
-          "data": "14/08/2026",
-          "hora": "15:25",
-          "turno": "Tarde",
-          "local": "Avenida Marginal Oeste, S/N - Vila Real",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0008006",
-          "data": "22/08/2026",
-          "hora": "00:20",
-          "turno": "Madrugada",
-          "local": "Rua Hermógenes Assis Feijó, - Da Barra",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006321",
-          "data": "01/07/2026",
-          "hora": "02:30",
-          "turno": "Madrugada",
-          "local": "Rua Dom Felipe, 248 - Vila Real",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006422",
-          "data": "04/07/2026",
-          "hora": "05:40",
-          "turno": "Madrugada",
-          "local": "4a Avenida, 721 - Centro",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BOCOP-02317.2026.0002901",
-          "data": "04/07/2026",
-          "hora": "21:00",
-          "turno": "Noite",
-          "local": "Rua Emanoel Rebelo dos Santos, S/N - Barra",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006445",
-          "data": "05/07/2026",
-          "hora": "19:00",
-          "turno": "Noite",
-          "local": "Rua Mil, 50 - Centro",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006571",
-          "data": "09/07/2026",
-          "hora": "03:17",
-          "turno": "Madrugada",
-          "local": "Rua Araranguá, 523 - Dos Municípios",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00600.2026.0031685",
-          "data": "10/07/2026",
-          "hora": "21:03",
-          "turno": "Noite",
-          "local": "RUA DOM HENRIQUE, 361 - VILA REAL",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "ambos armados"
-          ]
-        },
-        {
-          "numero": "BOCOP-02317.2026.0003096",
-          "data": "22/07/2026",
-          "hora": "08:15",
-          "turno": "Manhã",
-          "local": "Rua Antônio Bittencourt, S/N - Pioneiros",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0007003",
-          "data": "23/07/2026",
-          "hora": "18:40",
-          "turno": "Noite",
-          "local": "Rua Chapecó, 373 - Dos Municípios",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BOCOP-02317.2026.0002614",
-          "data": "11/06/2026",
-          "hora": "01:10",
-          "turno": "Madrugada",
-          "local": "Rua Bibiano dos Santos, 87 - Pioneiros",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006019",
-          "data": "18/06/2026",
-          "hora": "02:49",
-          "turno": "Madrugada",
-          "local": "Rua Israel, 1998 - Das Nações",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006050",
-          "data": "19/06/2026",
-          "hora": "21:25",
-          "turno": "Noite",
-          "local": "Rua Dom Francisco, S/N - Vila Real",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006106",
-          "data": "22/06/2026",
-          "hora": "17:00",
-          "turno": "Tarde",
-          "local": "Rua Caçador, 376 - Dos Municípios",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0006266",
-          "data": "28/06/2026",
-          "hora": "03:40",
-          "turno": "Madrugada",
-          "local": "Rua Marinilza C. do Nascimento, 100 - Nova Esperan",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BOCOP-02317.2026.0002410",
-          "data": "27/05/2026",
-          "hora": "08:22",
-          "turno": "Manhã",
-          "local": "Rua José Honorato da Silva, S/N - Nova Esperança",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0008503",
-          "data": "10/09/2026",
-          "hora": "03:50",
-          "turno": "Madrugada",
-          "local": "Rua Armazém, 50 - Vila Real",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BOCOP-02317.2026.0003684",
-          "data": "10/09/2026",
-          "hora": "06:20",
-          "turno": "Manhã",
-          "local": "Rua Grécia, S/N - Nações",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "ambos armados"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0008532",
-          "data": "11/09/2026",
-          "hora": "03:00",
-          "turno": "Madrugada",
-          "local": "Rua Jordânia, 650 - Das Nações",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        },
-        {
-          "numero": "BO-00549.2026.0008708",
-          "data": "16/09/2026",
-          "hora": "22:00",
-          "turno": "Noite",
-          "local": "Rua Dom Afonso, 410 - Vila Real",
-          "tipo": "Furto",
-          "razoes": [
-            "crime: Furto",
-            "1 suspeito(s)",
-            "fuga: motocicleta"
-          ]
-        }
-      ]
-    },
-    {
       "id": 5,
-      "n": 20,
+      "n": 21,
       "risco": "CRÍTICO",
       "tipo_ref": "Roubo",
       "n_suspeitos": 1,
@@ -2757,6 +2802,7 @@
         "17/09/2026",
         "18/08/2026",
         "18/09/2026",
+        "21/09/2026",
         "22/05/2026",
         "23/08/2026",
         "26/06/2026",
@@ -2765,29 +2811,30 @@
         "31/05/2026"
       ],
       "bairros": [
-        "SÃO JUDAS TADEU",
+        "Dos Municípios",
         "Nações",
         "Centro",
-        "Vila Real",
+        "Nova Esperança",
         "NOVA ESPERANÇA",
+        "SÃO JUDAS TADEU",
         "Dos Estados",
-        "Municípios",
-        "Dos Municípios"
+        "Vila Real",
+        "Municípios"
       ],
       "objetos": [
-        "Bolsa",
-        "Smartphone/Telefone celular",
         "Notebook",
-        "Outro bem/objeto",
-        "Carteira de Documentos"
+        "Carteira de Documentos",
+        "Óculos",
+        "Dinheiro",
+        "Bolsa"
       ],
       "mo_tags": [
+        "bicicleta furtada",
+        "expressão 'perdeu'",
         "furto de mochila",
         "carteira furtada/roubada",
-        "bicicleta furtada",
-        "solicitou PIX",
         "capacete (não identificado)",
-        "expressão 'perdeu'"
+        "furto de bolsa"
       ],
       "crimes": [
         {
@@ -3062,6 +3109,20 @@
             "ambos armados",
             "MO: celular furtado/roubado"
           ]
+        },
+        {
+          "numero": "BO-00549.2026.0008901",
+          "data": "21/09/2026",
+          "hora": "21:00",
+          "turno": "Noite",
+          "local": "Rua Amador Bueno da Ribeira, - Nova Esperança",
+          "tipo": "Roubo",
+          "razoes": [
+            "crime: Roubo",
+            "1 suspeito(s)",
+            "ambos armados",
+            "MO: celular furtado/roubado"
+          ]
         }
       ]
     },
@@ -3089,27 +3150,27 @@
         "27/05/2026"
       ],
       "bairros": [
+        "ESTADOS",
         "MUNICÍPIOS",
         "Nações",
-        "CENTRO",
-        "ARIRIBÁ",
-        "Região das Praias",
-        "ESTADOS",
         "PIONEIROS",
-        "NOVA ESPERANÇA"
+        "Região das Praias",
+        "NOVA ESPERANÇA",
+        "ARIRIBÁ",
+        "CENTRO"
       ],
       "objetos": [
-        "Outra ferramenta",
-        "Fio/Fiação elétrica",
+        "Chave",
+        "Gênero alimentício",
+        "Roupa",
         "Notebook",
-        "Smartphone/Telefone celular",
-        "Outro bem/objeto"
+        "Carteira de Documentos"
       ],
       "mo_tags": [
         "furto de bolsa",
-        "celular furtado/roubado",
+        "notebook furtado/roubado",
         "furto de mochila",
-        "notebook furtado/roubado"
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -3325,16 +3386,16 @@
       ],
       "objetos": [
         "Carteira de Documentos",
-        "Outro bem/objeto",
         "Smartphone/Telefone celular",
+        "Outro bem/objeto",
         "Outra ferramenta"
       ],
       "mo_tags": [
         "furto de mochila",
         "carteira furtada/roubada",
+        "quebra de vidro",
         "golpe/estelionato",
-        "celular furtado/roubado",
-        "quebra de vidro"
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -3537,21 +3598,21 @@
         "27/06/2026"
       ],
       "bairros": [
+        "CENTRO",
         "Centro",
-        "Dos Pioneiros",
-        "CENTRO"
+        "Dos Pioneiros"
       ],
       "objetos": [
         "Computador",
-        "Bolsa",
-        "Smartphone/Telefone celular",
+        "Chave",
         "Carteira de Documentos",
-        "Chave"
+        "Cartão de crédito/débito",
+        "Dinheiro"
       ],
       "mo_tags": [
         "bicicleta furtada",
-        "carteira furtada/roubada",
         "furto de mochila",
+        "carteira furtada/roubada",
         "notebook furtado/roubado",
         "furto de bolsa",
         "celular furtado/roubado"
@@ -3617,7 +3678,7 @@
           "razoes": [
             "crime: Furto",
             "1 suspeito(s)",
-            "MO: furto de bolsa, celular furtado/roubado, carteira furtada/roubada",
+            "MO: celular furtado/roubado, furto de bolsa, carteira furtada/roubada",
             "bairro: Centro"
           ]
         },
@@ -3711,12 +3772,12 @@
         "28/08/2026"
       ],
       "bairros": [
-        "CENTRO",
+        "Ilhota",
         "Ariribá",
         "ESTADOS",
-        "ILHOTA",
-        "Ilhota",
-        "Dos Municípios"
+        "Dos Municípios",
+        "CENTRO",
+        "ILHOTA"
       ],
       "objetos": [
         "Smartphone/Telefone celular"
@@ -4095,15 +4156,15 @@
         "31/08/2026"
       ],
       "bairros": [
-        "Centro",
         "Municípios",
-        "Cartão Nacional de Saúde",
-        "CENTRO"
+        "CENTRO",
+        "Centro",
+        "Cartão Nacional de Saúde"
       ],
       "objetos": [
-        "Bicicleta",
+        "Smartphone/Telefone celular",
         "Botijão de gás",
-        "Smartphone/Telefone celular"
+        "Bicicleta"
       ],
       "mo_tags": [
         "bicicleta furtada",
@@ -4130,7 +4191,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: bicicleta",
-            "MO: celular furtado/roubado, bicicleta furtada",
+            "MO: bicicleta furtada, celular furtado/roubado",
             "objeto: Smartphone/Telefone celular"
           ]
         },
@@ -4144,7 +4205,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: bicicleta",
-            "MO: celular furtado/roubado, bicicleta furtada",
+            "MO: bicicleta furtada, celular furtado/roubado",
             "objeto: Smartphone/Telefone celular"
           ]
         },
@@ -4158,7 +4219,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: bicicleta",
-            "MO: celular furtado/roubado, bicicleta furtada",
+            "MO: bicicleta furtada, celular furtado/roubado",
             "objeto: Smartphone/Telefone celular"
           ]
         },
@@ -4172,7 +4233,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: bicicleta",
-            "MO: celular furtado/roubado, bicicleta furtada",
+            "MO: bicicleta furtada, celular furtado/roubado",
             "objeto: Smartphone/Telefone celular"
           ]
         },
@@ -4757,21 +4818,21 @@
         "27/07/2026"
       ],
       "bairros": [
-        "Ariribá",
+        "Das Nações",
         "Centro",
-        "Das Nações"
+        "Ariribá"
       ],
       "objetos": [
         "Computador",
-        "Bolsa",
         "Notebook",
-        "Outro bem/objeto",
-        "Anel"
+        "Anel",
+        "Videogame",
+        "Bolsa"
       ],
       "mo_tags": [
         "vítima dormia",
-        "furto de mochila",
         "notebook furtado/roubado",
+        "furto de mochila",
         "joias furtadas"
       ],
       "crimes": [
@@ -5171,8 +5232,8 @@
         "31/07/2026"
       ],
       "bairros": [
-        "MUNICÍPIOS",
-        "PIONEIROS"
+        "PIONEIROS",
+        "MUNICÍPIOS"
       ],
       "objetos": [
         "Outro bem/objeto"
@@ -5300,8 +5361,8 @@
         "NOVA ESPERANÇA"
       ],
       "objetos": [
-        "Roupa",
         "Bolsa",
+        "Roupa",
         "Outro bem/objeto"
       ],
       "mo_tags": [],
@@ -5580,8 +5641,8 @@
         "Outro bem/objeto"
       ],
       "mo_tags": [
-        "furto de mochila",
-        "expressão 'perdeu'"
+        "expressão 'perdeu'",
+        "furto de mochila"
       ],
       "crimes": [
         {
@@ -5628,8 +5689,8 @@
         "Notebook"
       ],
       "mo_tags": [
-        "veículo estacionado",
-        "notebook furtado/roubado"
+        "notebook furtado/roubado",
+        "veículo estacionado"
       ],
       "crimes": [
         {
@@ -5723,8 +5784,8 @@
       ],
       "mo_tags": [
         "veículo estacionado",
-        "celular furtado/roubado",
-        "furto de mochila"
+        "furto de mochila",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -5866,8 +5927,8 @@
         "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
-        "carteira furtada/roubada"
+        "carteira furtada/roubada",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -5908,17 +5969,17 @@
         "27/05/2026"
       ],
       "bairros": [
-        "NOVA ESPERANÇA",
-        "PRAIA DO ESTALEIRO"
+        "PRAIA DO ESTALEIRO",
+        "NOVA ESPERANÇA"
       ],
       "objetos": [
         "Notebook",
         "Outro bem/objeto"
       ],
       "mo_tags": [
-        "veículo estacionado",
+        "notebook furtado/roubado",
         "furto de mochila",
-        "notebook furtado/roubado"
+        "veículo estacionado"
       ],
       "crimes": [
         {
@@ -5940,7 +6001,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: carro",
-            "MO: veículo estacionado, furto de mochila",
+            "MO: furto de mochila, veículo estacionado",
             "objeto: Outro bem/objeto"
           ]
         }
@@ -5962,8 +6023,8 @@
         "São Judas Tadeu"
       ],
       "objetos": [
-        "Televisor",
         "Outra ferramenta",
+        "Televisor",
         "Outro bem/objeto"
       ],
       "mo_tags": [
@@ -6008,18 +6069,18 @@
         "30/07/2026"
       ],
       "bairros": [
-        "NAÇÕES",
-        "CENTRO"
+        "CENTRO",
+        "NAÇÕES"
       ],
       "objetos": [
+        "Outro bem/objeto",
         "Televisor",
-        "Notebook",
-        "Outro bem/objeto"
+        "Notebook"
       ],
       "mo_tags": [
-        "veículo estacionado",
+        "notebook furtado/roubado",
         "furto de mochila",
-        "notebook furtado/roubado"
+        "veículo estacionado"
       ],
       "crimes": [
         {
@@ -6041,7 +6102,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: veículo",
-            "MO: veículo estacionado, furto de mochila, notebook furtado/roubado",
+            "MO: notebook furtado/roubado, furto de mochila, veículo estacionado",
             "objeto: Notebook"
           ]
         }
@@ -6159,9 +6220,9 @@
         "Notebook"
       ],
       "mo_tags": [
-        "veículo estacionado",
+        "notebook furtado/roubado",
         "furto de mochila",
-        "notebook furtado/roubado"
+        "veículo estacionado"
       ],
       "crimes": [
         {
@@ -6183,7 +6244,7 @@
           "razoes": [
             "crime: Furto",
             "fuga: carro",
-            "MO: veículo estacionado, notebook furtado/roubado",
+            "MO: notebook furtado/roubado, veículo estacionado",
             "objeto: Notebook"
           ]
         }
@@ -6345,9 +6406,9 @@
         "Dos Pioneiros"
       ],
       "objetos": [
-        "Relógio",
         "Dinheiro",
         "Cartão de crédito/débito",
+        "Relógio",
         "Outro bem/objeto"
       ],
       "mo_tags": [
@@ -6495,8 +6556,8 @@
         "Smartphone/Telefone celular"
       ],
       "mo_tags": [
-        "celular furtado/roubado",
-        "carteira furtada/roubada"
+        "carteira furtada/roubada",
+        "celular furtado/roubado"
       ],
       "crimes": [
         {
@@ -6681,11 +6742,11 @@
         "Centro"
       ],
       "objetos": [
-        "Outra ferramenta",
         "Bebida alcoólica",
+        "Outra ferramenta",
+        "Dinheiro",
         "Smartphone/Telefone celular",
-        "Bicicleta",
-        "Dinheiro"
+        "Bicicleta"
       ],
       "mo_tags": [
         "furto de bolsa",
@@ -6736,8 +6797,8 @@
         "Outro bem/objeto"
       ],
       "mo_tags": [
-        "veículo estacionado",
-        "carteira furtada/roubada"
+        "carteira furtada/roubada",
+        "veículo estacionado"
       ],
       "crimes": [
         {
@@ -18036,6 +18097,136 @@
       "bairro": "Centro",
       "tipo": "Furto",
       "relato": "Relata que deixou a motocicleta ontem pela manhã na rua 1301 esquina com avenida Brasil e hoje\npercebeu o Furto de sua motocicleta, relata que acredita que tenha sido furtada em torno de 03h da manhã."
+    },
+    {
+      "numero": "BO-00549.2026.0008839",
+      "data": "21/09/2026",
+      "hora": "02:50",
+      "turno": "Madrugada",
+      "local": "Rua Dom Miguel, 55 - Vila Real",
+      "bairro": "Vila Real",
+      "tipo": "Furto",
+      "relato": "O comunicante, Paulo de Tássio Nunes Borges, informa que deixou sua motocicleta estacionada em frente\nà residência de uma amiga. Relata que, por volta das 10h00, percebeu que o veículo não estava mais no\nlocal. Informa, ainda, que teve acesso a imagens de câmeras de segurança que registraram quatro\nindivíduos em duas motonetas (scooters) praticando o furto. Sem mais a relatar."
+    },
+    {
+      "numero": "BO-00549.2026.0008853",
+      "data": "21/09/2026",
+      "hora": "11:30",
+      "turno": "Manhã",
+      "local": "Avenida Santa Catarina, 1 - Dos Estados",
+      "bairro": "Dos Estados",
+      "tipo": "Furto",
+      "relato": "Relata o comunicante ARLLYSON WALLACE DE PAULA BARBOSA que, deixou o seu autopropelido\nelétrica devidamente travada no endereço mencionado. Informa que, ao retornar ao local para buscá-la,\nconstatou que o referido veículo havia sido subtraído Sem mais a relatar."
+    },
+    {
+      "numero": "BO-00549.2026.0008901",
+      "data": "21/09/2026",
+      "hora": "21:00",
+      "turno": "Noite",
+      "local": "Rua Amador Bueno da Ribeira, - Nova Esperança",
+      "bairro": "Nova Esperança",
+      "tipo": "Roubo",
+      "relato": "Relata o comunicante MIGUEL PAES NETO que, na data supracitada, encontrava-se realizando uma\nentrega em nome da empresa RM Gás, onde trabalha, quando foi abordado por dois indivíduos que\nestavam em uma motocicleta, sendo que um deles portava uma arma de fogo. Informa que os indivíduos\nsubtraíram seu aparelho celular e, posteriormente, perceberam que havia um objeto sob suas vestes, na\nregião do peitoral. Ao ser questionado sobre o que seria, o comunicante informou que se tratava de uma\npochete contendo uma máquina de cartão. Diante disso, os indivíduos exigiram a entrega do referido objeto,\ntendo o comunicante, por temer por sua integridade física, obedecido à ordem. Relata, ainda, que foram\nsubtraídos bens pertencentes à empresa RM Gás, consistentes em uma máquina de cartão e a quantia de"
+    },
+    {
+      "numero": "BO-00600.2026.0041810",
+      "data": "21/09/2026",
+      "hora": "13:45",
+      "turno": "Tarde",
+      "local": "AVENIDA BRASIL, 360 - CENTRO",
+      "bairro": "CENTRO",
+      "tipo": "Furto",
+      "relato": "A meliante entrou na minha loja, onde pegou o aparelho que estava na vitrine, e colocou no bolso, sem ser\npercebida pois estava atendendo outros clientes no balcão, e foi até o balcão com outro aparelho para\nperguntar as condições de venda do mesmo, assim que respondi, ela disse que ficaria com o aparelho e foi\nembora. Ao guardar o outro aparelho que ela trouxe até o balcão, identifiquei a falta do aparelho em questão\n( iphone 14 vermelho ) onde fui até as cameras identificar o furto."
+    },
+    {
+      "numero": "BO-00600.2026.0041830",
+      "data": "21/09/2026",
+      "hora": "00:30",
+      "turno": "Madrugada",
+      "local": "RUA BENTO CUNHA, 101 - BARRA",
+      "bairro": "BARRA",
+      "tipo": "Furto",
+      "relato": "No local onde se encontra uma torre móvel modelo poste sobre posse da VIVO , onde fica esquimantos de\ntelecomunicações, foram furtadas baterias litio modelo Huawei 48w , indivíduos pularam a cerca abriram os\ngabinetes modelo APM30 padrão VIVO e furtaram bateria , indivíduos forçaram a poeta para abrir o\ngabinete , torre fica no morro onde tem uma caixa de água."
+    },
+    {
+      "numero": "BO-00600.2026.0043354",
+      "data": "21/09/2026",
+      "hora": "19:48",
+      "turno": "Noite",
+      "local": "RUA 2438, 684 - CENTRO",
+      "bairro": "CENTRO",
+      "tipo": "Furto",
+      "relato": "O solicitante informa que contratou um serviço de entrega (Uber ) através do aplicativo da Uber no dia\n21/09/26, para transporte de pertences, sendo: 01 (uma) capa de chuva, contendo 01 (uma) blusa, 01 (uma)\ncalça e 01 (um) par de botas. No aplicativo da UBER tem as seguintes informações: nome do motorista\nSEBASTIAN modelo e placa do veiculo: honda CG 160 / placa TQK7D64. O motorista parceiro retirou os\nitens no endereço indicado no aplicativo as 19;39hs. No entanto, no meio do trajeto, o referido motorista\nencerrou a corrida as 19;48hs, unilateralmente e não realizou a entrega no endereço de destino indicado no\naplicativo. Ao entrar em contato com o suporte da Uber, na opção \"objeto esquecido\", o solicitante recebeu\numa fotografia enviada pelo próprio motorista, na qual os itens aparecem "
+    },
+    {
+      "numero": "BOCOP-02317.2026.0003834",
+      "data": "21/09/2026",
+      "hora": "19:25",
+      "turno": "Noite",
+      "local": "Rua Armazém, S/N - Vila Real",
+      "bairro": "Vila Real",
+      "tipo": "Furto",
+      "relato": "AMANDA MEDEIROS DE SOUZA, informou aos policiais militares que reside na Rua Armazém, n205,\nbairro dos municípios, em Balneário Camboriú/SC, momento que observou seu tio MARCIO ROBERTO\nMEDEIROS, que é dependente químico, o qual vem até sua residência com o pretexto de visita sua vó e\nacabou subtraindo sua prancha de cabelo \"chapinha de cabelo\" e sacador de cabelo, acredita que para\ntrocar por droga, por essas razões acionou à polícia militar."
+    },
+    {
+      "numero": "BO-00549.2026.0008908",
+      "data": "22/09/2026",
+      "hora": "15:00",
+      "turno": "Tarde",
+      "local": "Rua Acre, - Dos Estados",
+      "bairro": "Dos Estados",
+      "tipo": "Furto",
+      "relato": "Relata o comunicante KAUAN YAGO DA CONCEIÇÃO DA SILVA que, na data dos fatos, deixou sua\nmotocicleta estacionada no endereço informado, ausentando-se do local por aproximadamente 01 (uma)\nhora.\nInforma que, ao retornar, constatou que a motocicleta não mais se encontrava no local onde havia sido\nestacionada, verificando, assim, que teria sido subtraída.\nDiante do exposto, comparece a esta Delegacia de Polícia para formalizar o presente registro e solicitar, se\npossível, a expedição de ofício para obtenção das imagens das câmeras de segurança existentes nas\nproximidades do local, a fim de auxiliar na apuração dos fatos, bem como requerer a adoção das medidas\ncabíveis.\nNada mais relatou."
+    },
+    {
+      "numero": "BO-00549.2026.0008912",
+      "data": "22/09/2026",
+      "hora": "03:14",
+      "turno": "Madrugada",
+      "local": "Rua Dom Miguel, 383 - Vila Real",
+      "bairro": "Vila Real",
+      "tipo": "Furto",
+      "relato": "Na madrugada do dia 22/09/2026 a moto Hunter da marca Royal Enfield PLACA SXN6D12 foi furtada em\nfrente a nossa residência na rua dom miguel n 383 bairro vila real - Balneário Camboriu!\nConforme a filmagem do vizinho da frente, dois homens chegaram em uma bicicleta e um deles subiu na\nmoto, realizou a micha e furtou as 3:14 da madrugada."
+    },
+    {
+      "numero": "BO-00549.2026.0008940",
+      "data": "22/09/2026",
+      "hora": "16:31",
+      "turno": "Tarde",
+      "local": "Avenida Marginal Leste, S/N - Centro",
+      "bairro": "Centro",
+      "tipo": "Furto",
+      "relato": "Que estava trabalhando quando foi avisada que dois masculinos estavam mexendo em sua scooter."
+    },
+    {
+      "numero": "BO-00549.2026.0009319",
+      "data": "22/09/2026",
+      "hora": "17:00",
+      "turno": "Tarde",
+      "local": "Avenida Santa Catarina, 1 - Dos Estados",
+      "bairro": "Dos Estados",
+      "tipo": "Furto",
+      "relato": "Relata o comunicante RAFAEL SALLES RANGEL que deixou sua scooter elétrica MC X11 1000W\ndevidamente travada no endereço supracitado e, ao retornar ao local, constatou que o veículo havia sido\nsubtraído. Informa, ainda, que teve acesso às imagens do sistema de segurança do prédio, nas quais é\npossível visualizar um indivíduo retirando a scooter elétrica do interior do edifício e, posteriormente,\nentregando-a a outro indivíduo. Acrescenta que, a sua scooter possuí rastreador. Ademais, relata que o\nsuspeito do ocorrido é RAPHAEL SINGLER FILSNER . Sem mais a relatar."
+    },
+    {
+      "numero": "BOCOP-02317.2026.0003835",
+      "data": "22/09/2026",
+      "hora": "00:15",
+      "turno": "Madrugada",
+      "local": "Rua Brusque, S/N - Municípios",
+      "bairro": "Municípios",
+      "tipo": "Furto",
+      "relato": "LAURA ELENA SANTOS MOYANO, informou aos policiais militares que é proprietária da motocicleta\nYAMAHA/YBR150 FACTOR (TQM2D24) a qual havia deixado estacionada em frente a residência de seu\nirmão, na Rua Brusque, n27, bairro Municípios, em Balneário Camboriú/SC e foi até seu trabalho, com\nveículos de aplicativo (uber) às 15h, ao retornar, próximo à meia-noite, percebeu que a motocicleta havia\nsido furtada, por essas razões acionou a polícia militar."
+    },
+    {
+      "numero": "BOCOP-02317.2026.0003840",
+      "data": "22/09/2026",
+      "hora": "10:00",
+      "turno": "Manhã",
+      "local": "Rua Dom Henrique, S/N - Vila Real",
+      "bairro": "Vila Real",
+      "tipo": "Furto",
+      "relato": "Relata que veio dormir na casa da sua namorada e que quando acordou para trabalhar a sua motocicleta ja\nnão estava mais no local, relata que a deixou estacionada na rua, relata que pegou câmeras no local e\nconfirmou que o furto foi por volta das 02h20min."
     }
   ],
   "autores": [
@@ -19754,6 +19945,18 @@
       "menor": false,
       "bairro_residencia": "Não Informado",
       "cidade_residencia": "Itajaí"
+    },
+    {
+      "naturalidade_cidade": "Curitibanos",
+      "naturalidade_uf": "SC",
+      "sexo": "Masculino",
+      "estado_civil": "Divorciado",
+      "profissao": "Não trabalha",
+      "crime": "Furto",
+      "idade": 46,
+      "menor": false,
+      "bairro_residencia": "Não Informado",
+      "cidade_residencia": "Camboriú"
     }
   ]
 }
