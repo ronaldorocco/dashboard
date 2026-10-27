@@ -1426,6 +1426,13 @@ function sair(){{
     <div class="insight-grid" id="insights-container"></div>
 
     <!-- RECOMENDAÇÕES -->
+    <div style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#3B0A6B,#7B2FF7 55%,#0078D4);color:white;border-radius:12px;padding:16px 22px;margin:22px 0 12px;box-shadow:0 6px 20px rgba(123,47,247,.4)">
+      <span style="font-size:34px;line-height:1">🤖</span>
+      <div>
+        <div style="font-size:22px;font-weight:800;letter-spacing:.5px;text-transform:uppercase">Análise com Inteligência Artificial</div>
+        <div style="font-size:12px;opacity:.9;margin-top:2px">Diagnóstico e recomendações geradas automaticamente a partir dos B.O.s e dos filtros selecionados</div>
+      </div>
+    </div>
     <div class="section-header">💡 Análise e Recomendações do Analista de Segurança
       <span id="diag-header-sub" style="font-size:10px;font-weight:400;color:#888;margin-left:8px"></span>
     </div>
