@@ -6017,13 +6017,27 @@ function renderComparaPeriodos() {{
 }}
 
 // ── PLANO POLICIAL DINÂMICO ───────────────────────────────────────────────────
+// Quantidade de viaturas por turno (editável pelo usuário, salva no navegador)
+const VIATURAS_PLANO = {{A:8, B:7}};
+try {{
+  const sv = JSON.parse(localStorage.getItem('viaturasPlano')||'null');
+  if(sv) {{ VIATURAS_PLANO.A = Math.max(0,parseInt(sv.A)||0); VIATURAS_PLANO.B = Math.max(0,parseInt(sv.B)||0); }}
+}} catch(e) {{}}
+let _planoData = [];
+function setViaturasPlano(t, v) {{
+  VIATURAS_PLANO[t] = Math.max(0, Math.min(99, parseInt(v)||0));
+  try {{ localStorage.setItem('viaturasPlano', JSON.stringify(VIATURAS_PLANO)); }} catch(e) {{}}
+  renderPlanoPolicial(_planoData);
+}}
+
 function renderPlanoPolicial(data) {{
+  _planoData = data;
   const total = data.length;
   if(total===0){{ document.getElementById('plano-policial').innerHTML=''; return; }}
 
   // ── Separar os dois turnos operacionais (usa campo turno, igual ao gráfico) ──
-  // Turno A: Matutino (Manhã 06-11h) + Vespertino (Tarde 12-17h) → 8 viaturas
-  // Turno B: Noturno (Noite 18-23h) + Madrugada (00-05h) → 7 viaturas
+  // Turno A: Matutino (Manhã 06-11h) + Vespertino (Tarde 12-17h) 
+  // Turno B: Noturno (Noite 18-23h) + Madrugada (00-05h) 
   const dadosA = data.filter(r=>r.turno==='Manhã'||r.turno==='Tarde');
   const dadosB = data.filter(r=>r.turno==='Noite'||r.turno==='Madrugada');
 
@@ -6063,37 +6077,30 @@ function renderPlanoPolicial(data) {{
   ];
 
   function distribuirPorRegiao(bairroCount, totalViaturas) {{
-    // Soma crimes por região
     const regioes = REGIOES.map(r => {{
       const crimes = r.bairros.reduce((s,b) => s+(bairroCount[b]||0), 0);
       return {{ ...r, crimes }};
-    }}).filter(r => r.crimes > 0);
+    }}).filter(r => r.crimes > 0).sort((a,b)=>b.crimes-a.crimes);
 
-    if(!regioes.length) return [];
+    if(!regioes.length || totalViaturas<=0) return regioes.map(r=>({{...r, viaturas:0}}));
+    const n = regioes.length;
     const totalCrimes = regioes.reduce((s,r)=>s+r.crimes,0);
 
-    // Distribuição proporcional com mínimo 1 por região
-    let alocado = regioes.map(r => ({{
-      ...r,
-      viaturas: Math.max(1, Math.floor((r.crimes/totalCrimes)*totalViaturas)),
-    }}));
+    // Poucas viaturas: 1 para cada região mais crítica; as demais ficam sem cobertura
+    if(totalViaturas < n) return regioes.map((r,i)=>({{...r, viaturas: i<totalViaturas?1:0}}));
 
-    // Ajustar diferença
-    let diff = alocado.reduce((s,r)=>s+r.viaturas,0) - totalViaturas;
-    // Remover do menor (exceto mínimo 1)
-    let i = alocado.length-1;
-    while(diff>0){{ if(alocado[i].viaturas>1){{alocado[i].viaturas--;diff--;}} i=((i-1)+alocado.length)%alocado.length; }}
-    // Adicionar ao maior
-    i=0;
-    while(diff<0){{ alocado[i].viaturas++;diff++;i=(i+1)%alocado.length; }}
-
+    // 1 viatura por região + o restante proporcional às ocorrências (maior resto)
+    const extra = totalViaturas - n;
+    const cotas = regioes.map(r => (r.crimes/totalCrimes)*extra);
+    const alocado = regioes.map((r,i)=>({{...r, viaturas: 1+Math.floor(cotas[i])}}));
+    let falta = totalViaturas - alocado.reduce((s,r)=>s+r.viaturas,0);
+    cotas.map((c,i)=>[c-Math.floor(c),i]).sort((x,y)=>y[0]-x[0]).slice(0,falta)
+      .forEach(([,i])=>{{ alocado[i].viaturas++; }});
     return alocado;
   }}
 
-  const distA = distribuirPorRegiao(bairrosA, 8);
-  const distB = distribuirPorRegiao(bairrosB, 7);
-  const totalA = distA.reduce((s,e)=>s+e.viaturas,0);
-  const totalB = distB.reduce((s,e)=>s+e.viaturas,0);
+  const distA = distribuirPorRegiao(bairrosA, VIATURAS_PLANO.A);
+  const distB = distribuirPorRegiao(bairrosB, VIATURAS_PLANO.B);
 
   // ── HTML de um turno ──────────────────────────────────────────────────────
   function turnoHtml(dist, totalV, label, horario, icon, bgGrad, crimes) {{
@@ -6112,8 +6119,8 @@ function renderPlanoPolicial(data) {{
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
             <span style="font-size:14px;letter-spacing:2px">${{vArr}}</span>
-            <span style="font-size:10px;font-weight:700;color:white;background:${{cor}};
-              border-radius:3px;padding:2px 7px">${{e.viaturas}} viatura${{e.viaturas>1?'s':''}}</span>
+            <span style="font-size:10px;font-weight:700;color:white;background:${{e.viaturas?cor:'#999'}};
+              border-radius:3px;padding:2px 7px">${{e.viaturas?e.viaturas+' viatura'+(e.viaturas>1?'s':''):'sem viatura'}}</span>
             <span style="font-size:10px;color:#888">${{e.crimes}} ocorrência${{e.crimes>1?'s':''}}</span>
           </div>
           <div style="background:#EEE;border-radius:3px;height:6px;overflow:hidden">
@@ -6125,7 +6132,7 @@ function renderPlanoPolicial(data) {{
     const somaV = dist.reduce((s,e)=>s+e.viaturas,0);
     const checks = `<div style="display:flex;gap:16px;padding:8px 0 2px;font-size:11px;color:#555;flex-wrap:wrap">
       <span>✅ Total alocado: <strong>${{somaV}} / ${{totalV}}</strong></span>
-      <span>📍 ${{dist.length}} regiões cobertas</span>
+      <span>📍 ${{dist.filter(x=>x.viaturas>0).length}} de ${{dist.length}} regiões cobertas</span>
       <span>🔴 ${{crimes}} ocorrências no turno</span>
     </div>`;
     return `
@@ -6143,9 +6150,9 @@ function renderPlanoPolicial(data) {{
     </div>`;
   }}
 
-  const cardA = turnoHtml(distA,8,'Turno A','07h às 19h','☀️',
+  const cardA = turnoHtml(distA,VIATURAS_PLANO.A,'Turno A','07h às 19h','☀️',
     'linear-gradient(135deg,#7A5100,#E07B00)', dadosA.length);
-  const cardB = turnoHtml(distB,7,'Turno B','19h às 07h','🌙',
+  const cardB = turnoHtml(distB,VIATURAS_PLANO.B,'Turno B','19h às 07h','🌙',
     'linear-gradient(135deg,#1A1A2E,#0078D4)', dadosB.length);
 
   const postosHtml = topRefs.map((e,i)=>{{
@@ -6175,7 +6182,14 @@ function renderPlanoPolicial(data) {{
   const diasTexto = topDias.map(e=>`<strong>${{e[0]}}</strong> (${{e[1]}} casos)`).join(', ');
   const bairrosTexto = topBairros.slice(0,3).map(e=>e[0]).join(' › ');
 
+  const inpSt = 'width:56px;padding:4px 6px;border:1px solid #C8C8C8;border-radius:5px;font-size:13px;font-weight:700;text-align:center';
   document.getElementById('plano-policial').innerHTML = `
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:#F5F9FF;border:1px solid #CFE0F5;border-radius:8px;padding:9px 14px;margin-bottom:10px;font-size:12px;color:#333">
+    <strong>🚔 Viaturas disponíveis hoje:</strong>
+    <label>☀️ Turno A <input type="number" min="0" max="99" value="${{VIATURAS_PLANO.A}}" style="${{inpSt}}" onchange="setViaturasPlano('A',this.value)"></label>
+    <label>🌙 Turno B <input type="number" min="0" max="99" value="${{VIATURAS_PLANO.B}}" style="${{inpSt}}" onchange="setViaturasPlano('B',this.value)"></label>
+    <span style="color:#777;font-size:11px">A distribuição é recalculada automaticamente conforme as ocorrências do período.</span>
+  </div>
   <div class="alerta-box">
     🚨 <span><strong>Zona de Máximo Risco:</strong> Bairro
     <strong>${{topBairros[0]?topBairros[0][0]:'–'}}</strong>.
@@ -6202,8 +6216,8 @@ function renderPlanoPolicial(data) {{
         ✅ Diretrizes Operacionais
       </div>
       <div class="plano-body" style="padding-top:10px">
-        <div class="ok-box">✔ <strong>Turno A (07h–19h):</strong> concentrar ${{distA[0]?distA[0].viaturas:3}} viaturas na ${{distA[0]?distA[0].nome.split('\\n')[0]:'Área Central'}} — maior volume diurno.</div>
-        <div class="ok-box">✔ <strong>Turno B (19h–07h):</strong> concentrar ${{distB[0]?distB[0].viaturas:3}} viaturas na ${{distB[0]?distB[0].nome.split('\\n')[0]:'Área Central'}} — pico noturno e madrugada.</div>
+        <div class="ok-box">✔ <strong>Turno A (07h–19h):</strong> concentrar ${{distA[0]?distA[0].viaturas:0}} viatura(s) na ${{distA[0]?distA[0].nome.split('\\n')[0]:'Área Central'}} — maior volume diurno.</div>
+        <div class="ok-box">✔ <strong>Turno B (19h–07h):</strong> concentrar ${{distB[0]?distB[0].viaturas:0}} viatura(s) na ${{distB[0]?distB[0].nome.split('\\n')[0]:'Área Central'}} — pico noturno e madrugada.</div>
         <div class="ok-box">✔ Criar operação toda <strong>${{topDias[0]?topDias[0][0]:'Sexta'}}</strong> a partir das ${{horasPico.split(',')[0]||'18h'}} com reforço de efetivo.</div>
         <div class="alerta-box">⚠ ${{dadosB.length}} dos ${{total}} crimes (${{((dadosB.length/total)*100).toFixed(0)}}%) ocorrem no Turno B. Não reduzir o efetivo noturno.</div>
       </div>
